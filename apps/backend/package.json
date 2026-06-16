@@ -9,7 +9,7 @@
     "build": "tsc",
     "test": "vitest run",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
   },
   "dependencies": {

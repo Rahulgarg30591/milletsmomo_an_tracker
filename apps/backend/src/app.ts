@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { errorHandler } from './middleware/errorHandler.js';
+import { getPool } from './db/pool.js';
 import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
 import ordersRoutes from './routes/ordersRoutes.js';
@@ -32,8 +33,14 @@ app.use(
   }),
 );
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    const pool = await getPool();
+    await pool.request().query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' });
+  }
 });
 
 app.use('/api/auth', authRoutes);

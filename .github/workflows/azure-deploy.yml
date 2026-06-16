@@ -67,7 +67,7 @@ jobs:
         with:
           header: swa-preview
           message: |
-            :rocket: **Azure SWA Preview Deployed**
+            **Azure SWA Preview Deployed**
 
             Preview URL: ${{ steps.swa_deploy.outputs.static_web_app_url }}
 

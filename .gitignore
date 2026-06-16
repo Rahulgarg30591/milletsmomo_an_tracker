@@ -15,6 +15,9 @@ local.settings.json
 infra/*.json
 !infra/main.json
 
+# Deployment secrets
+infra/.env
+
 # IDE
 .vscode/
 .idea/

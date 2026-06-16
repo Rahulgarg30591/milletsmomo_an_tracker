@@ -1,3 +1,8 @@
+IF OBJECT_ID('OrderItems', 'U') IS NOT NULL DROP TABLE OrderItems;
+IF OBJECT_ID('Orders', 'U') IS NOT NULL DROP TABLE Orders;
+IF OBJECT_ID('MenuItems', 'U') IS NOT NULL DROP TABLE MenuItems;
+IF OBJECT_ID('Users', 'U') IS NOT NULL DROP TABLE Users;
+
 CREATE TABLE Users (
   id           INT IDENTITY(1,1) PRIMARY KEY,
   username     NVARCHAR(50)  NOT NULL UNIQUE,

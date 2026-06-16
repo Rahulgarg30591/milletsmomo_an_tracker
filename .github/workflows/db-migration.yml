@@ -34,16 +34,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install SQL tools
-        run: npm install -g sqlcmd
-
       - name: Run schema migration
         env:
           SQL_SERVER: ${{ secrets.SQL_SERVER }}
           SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
           SQL_USER: ${{ secrets.SQL_USER }}
           SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_PORT: '1433'
           SQL_ENCRYPT: 'true'
+          SQL_TRUST_CERT: 'false'
         run: npm run db:migrate
 
       - name: Run seed data
@@ -53,5 +52,7 @@ jobs:
           SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
           SQL_USER: ${{ secrets.SQL_USER }}
           SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_PORT: '1433'
           SQL_ENCRYPT: 'true'
+          SQL_TRUST_CERT: 'false'
         run: npm run db:seed

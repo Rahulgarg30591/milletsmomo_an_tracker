@@ -5,21 +5,31 @@ param baseName string = 'millets-momo'
 param location string = resourceGroup().location
 
 @description('SQL Server admin username')
-param sqlAdminUser string
+param sqlAdminUser string = 'momoadmin'
 
-@description('SQL Server admin password')
+@description('SQL Server admin password (min 8 chars, upper+lower+digit+symbol)')
 @secure()
 param sqlAdminPassword string
+
+@description('SQL Database name')
+param sqlDbName string = '${baseName}-db'
 
 @description('JWT secret for API auth')
 @secure()
 param jwtSecret string
+
+@description('Client public IP for SQL firewall (leave empty to skip)')
+param clientIp string = ''
 
 @description('Allowed CORS origin (SWA default hostname)')
 param allowedOrigin string = ''
 
 @description('GitHub repo for SWA deployment source (e.g. owner/repo)')
 param repoUrl string = ''
+
+@description('GitHub PAT for SWA CI/CD')
+@secure()
+param repositoryToken string = ''
 
 @description('Branch for SWA deployment source')
 param branch string = 'main'
@@ -31,7 +41,6 @@ param sqlSkuName string = 'Free'
 param sqlSkuTier string = 'Free'
 
 var sqlServerName = '${baseName}-sql'
-var sqlDbName = '${baseName}-db'
 var swaName = '${baseName}-swa'
 var tags = {
   project: 'millets-momo'
@@ -59,12 +68,12 @@ resource sqlFirewallAzure 'Microsoft.Sql/servers/firewallRules@2023-05-01-previe
   }
 }
 
-resource sqlFirewallLocal 'Microsoft.Sql/servers/firewallRules@2023-05-01-preview' = {
+resource sqlFirewallClient 'Microsoft.Sql/servers/firewallRules@2023-05-01-preview' = if (clientIp != '') {
   parent: sqlServer
-  name: 'AllowLocalDev'
+  name: 'AllowClientIp'
   properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '255.255.255.255'
+    startIpAddress: clientIp
+    endIpAddress: clientIp
   }
 }
 
@@ -95,7 +104,7 @@ resource swa 'Microsoft.Web/staticSites@2023-12-01' = {
   properties: {
     repositoryUrl: repoUrl
     branch: branch
-    repositoryToken: ''
+    repositoryToken: repositoryToken
     buildProperties: {
       appLocation: 'apps/frontend'
       apiLocation: 'apps/backend'
@@ -117,7 +126,9 @@ resource swaAppSettings 'Microsoft.Web/staticSites/configuredAppSettings@2023-12
       SQL_DATABASE: sqlDbName
       SQL_USER: sqlAdminUser
       SQL_PASSWORD: sqlAdminPassword
+      SQL_PORT: '1433'
       SQL_ENCRYPT: 'true'
+      SQL_TRUST_CERT: 'false'
       JWT_SECRET: jwtSecret
       JWT_EXPIRY: '12h'
       ALLOWED_ORIGIN: empty(allowedOrigin) ? 'https://${swaHostName}' : allowedOrigin

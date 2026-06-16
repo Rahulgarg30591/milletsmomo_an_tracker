@@ -8,7 +8,9 @@
     "SQL_DATABASE": "millets-momo-db",
     "SQL_USER": "<admin-username>",
     "SQL_PASSWORD": "<admin-password>",
+    "SQL_PORT": "1433",
     "SQL_ENCRYPT": "true",
+    "SQL_TRUST_CERT": "false",
     "JWT_SECRET": "<random-long-secret-string>",
     "JWT_EXPIRY": "12h",
     "ALLOWED_ORIGIN": "http://localhost:5173"
