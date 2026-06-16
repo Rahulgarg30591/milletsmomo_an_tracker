@@ -1,0 +1,57 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      run_seed:
+        description: 'Run seed.sql after schema?'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    name: Run Schema Migration
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install SQL tools
+        run: npm install -g sqlcmd
+
+      - name: Run schema migration
+        env:
+          SQL_SERVER: ${{ secrets.SQL_SERVER }}
+          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+          SQL_USER: ${{ secrets.SQL_USER }}
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_ENCRYPT: 'true'
+        run: npm run db:migrate
+
+      - name: Run seed data
+        if: ${{ github.event.inputs.run_seed == 'true' }}
+        env:
+          SQL_SERVER: ${{ secrets.SQL_SERVER }}
+          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+          SQL_USER: ${{ secrets.SQL_USER }}
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_ENCRYPT: 'true'
+        run: npm run db:seed

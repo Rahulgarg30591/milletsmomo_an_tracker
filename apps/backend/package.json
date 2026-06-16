@@ -1,0 +1,41 @@
+{
+  "name": "backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/functions/api.js",
+  "scripts": {
+    "dev": "tsc && func start",
+    "build": "tsc",
+    "test": "vitest run",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/migrate.ts",
+    "generate-pin-hash": "tsx scripts/generatePinHash.ts"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.6.0",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mssql": "^11.0.1",
+    "shared": "*",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/morgan": "^1.9.9",
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^22.13.10",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.8"
+  }
+}

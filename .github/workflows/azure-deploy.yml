@@ -1,0 +1,83 @@
+name: Azure SWA CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  NODE_VERSION: '20'
+  APP_LOCATION: 'apps/frontend'
+  API_LOCATION: 'apps/backend'
+  OUTPUT_LOCATION: 'dist'
+
+jobs:
+  build_and_deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build frontend
+        run: npm run build -w apps/frontend
+
+      - name: Build backend
+        run: npm run build -w apps/backend
+
+      - name: Deploy to Azure Static Web Apps
+        id: swa_deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: ${{ env.APP_LOCATION }}
+          api_location: ${{ env.API_LOCATION }}
+          output_location: ${{ env.OUTPUT_LOCATION }}
+
+      - name: Comment PR with preview URL
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: swa-preview
+          message: |
+            :rocket: **Azure SWA Preview Deployed**
+
+            Preview URL: ${{ steps.swa_deploy.outputs.static_web_app_url }}
+
+  close_pull_request:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close and Cleanup
+    steps:
+      - name: Cleanup Azure SWA staging environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
