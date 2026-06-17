@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
 import { haptics, vibrate } from '../theme/tokens';
+import { getToday } from '../utils/dateUtils';
 
 const pageTitles: Record<string, string> = {
   '/login': 'Login',
@@ -38,14 +39,28 @@ export default function AppBarComponent() {
     navigate('/login');
   };
 
+  const handleLogoClick = () => {
+    vibrate(haptics.light);
+    if (auth.role === 'admin') {
+      navigate('/admin');
+    } else {
+      navigate(`/day/${getToday()}`);
+    }
+  };
+
   return (
     <AppBar position="sticky" elevation={0} sx={{ zIndex: 1200 }}>
       <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: 56 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box 
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
+          onClick={handleLogoClick}
+        >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
             <Box
               sx={{

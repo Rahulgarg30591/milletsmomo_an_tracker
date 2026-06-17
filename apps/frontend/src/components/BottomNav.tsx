@@ -1,22 +1,31 @@
-import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
+import { BottomNavigation, BottomNavigationAction, Paper, useMediaQuery, useTheme } from '@mui/material';
 import { Home, PlusCircle, BarChart3 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+function getDateFromPath(path: string): string {
+  const match = path.match(/\/day\/([^\/]+)/);
+  return match ? match[1] : new Date().toISOString().split('T')[0];
+}
 
 export default function BottomNav() {
   const { auth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
   if (!auth.role || location.pathname === '/login') return null;
+  if (isDesktop) return null; // Hide on desktop, use FAB instead
 
   const isAdmin = auth.role === 'admin';
   const isStaff = auth.role === 'staff';
+  const currentDate = getDateFromPath(location.pathname);
 
   let value = 0;
-  if (location.pathname.startsWith('/day')) value = 0;
+  if (location.pathname.startsWith('/day') && !location.pathname.endsWith('/new')) value = 0;
   if (location.pathname === '/dates') value = 0;
-  if (location.pathname.startsWith('/day') && location.pathname.endsWith('/new')) value = 1;
+  if (location.pathname.endsWith('/new')) value = 1;
   if (location.pathname === '/admin') value = 0;
 
   if (isAdmin) {
@@ -42,14 +51,8 @@ export default function BottomNav() {
           showLabels
           value={value}
           onChange={(_e, newValue) => {
-            if (newValue === 0) {
-              const today = new Date().toISOString().split('T')[0];
-              navigate(`/day/${today}`);
-            }
-            if (newValue === 1) {
-              const today = new Date().toISOString().split('T')[0];
-              navigate(`/day/${today}/new`);
-            }
+            if (newValue === 0) navigate(`/day/${currentDate}`);
+            if (newValue === 1) navigate(`/day/${currentDate}/new`);
           }}
         >
           <BottomNavigationAction label="Orders" icon={<Home size={20} />} />

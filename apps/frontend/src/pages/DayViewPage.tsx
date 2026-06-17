@@ -1,24 +1,79 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Button, Fab, Typography, Divider, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import {
+  Box, Button, Fab, Typography, Divider, Dialog, DialogTitle, DialogContent, DialogActions,
+  useTheme, useMediaQuery, Paper, Chip, IconButton
+} from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { Plus, ArrowLeft, CalendarDays, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus, ArrowLeft, CalendarDays, RefreshCw, ChefHat, Receipt, Wallet, Clock
+} from 'lucide-react';
 import { getOrders, completeOrder, deleteOrder } from '../api/ordersApi';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
-import StatChip from '../components/StatChip';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
-import StaggerContainer, { StaggerItem } from '../components/animations/StaggerContainer';
 import Toast from '../components/Toast';
 import type { Order } from '../types';
 import { vibrate, haptics } from '../theme/tokens';
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  color?: string;
+}
+
+function StatCard({ icon, label, value, color = '#1B6B3A' }: StatCardProps) {
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        border: 1,
+        borderColor: 'divider',
+        transition: 'box-shadow 0.2s ease',
+        '&:hover': { boxShadow: (t) => t.shadows[2] },
+      }}
+    >
+      <Box
+        sx={{
+          width: 40,
+          height: 40,
+          borderRadius: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: `${color}14`,
+          color: color,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {label}
+        </Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
+          {value}
+        </Typography>
+      </Box>
+    </Paper>
+  );
+}
 
 export default function DayViewPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Order | null>(null);
@@ -28,7 +83,7 @@ export default function DayViewPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', date],
     queryFn: () => getOrders(date!),
-    refetchInterval: 30000, // Auto-refresh every 30s
+    refetchInterval: 30000,
   });
 
   useEffect(() => {
@@ -97,19 +152,21 @@ export default function DayViewPage() {
   if (isLoading && !data) {
     return (
       <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 2, pb: 10 }}>
-        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-          <SkeletonLoader count={3} height={48} sx={{ mb: 2 }} />
-          <SkeletonLoader count={5} height={120} sx={{ mb: 1.5 }} />
+        <Box sx={{ maxWidth: 900, mx: 'auto' }}>
+          <SkeletonLoader count={3} height={56} />
+          <Box sx={{ mt: 3 }}>
+            <SkeletonLoader count={4} height={100} />
+          </Box>
         </Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 10, pt: 1 }}>
-      <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: isDesktop ? 4 : 10, pt: 1 }}>
+      <Box sx={{ maxWidth: 900, mx: 'auto', p: 2 }}>
+        {/* Top bar */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Button
               size="small"
@@ -119,48 +176,98 @@ export default function DayViewPage() {
             >
               Back
             </Button>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <CalendarDays size={16} color="currentColor" style={{ opacity: 0.5 }} />
-              <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'text.primary', letterSpacing: '-0.3px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <CalendarDays size={18} color={theme.palette.primary.main} />
+              <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary', letterSpacing: '-0.3px' }}>
                 {date}
               </Typography>
             </Box>
           </Box>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-              Updated {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Typography>
-            <Button
+            <IconButton
               size="small"
               onClick={handleManualRefresh}
-              sx={{ minWidth: 0, p: 0.5, color: 'text.secondary' }}
+              sx={{ color: 'text.secondary' }}
             >
               <RefreshCw size={16} />
+            </IconButton>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Plus size={16} />}
+              onClick={() => {
+                vibrate(haptics.medium);
+                navigate(`/day/${date}/new`);
+              }}
+              sx={{
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 2,
+                display: { xs: 'none', md: 'flex' },
+              }}
+            >
+              New Order
             </Button>
           </Box>
         </Box>
 
         {/* Stats */}
-        <StaggerContainer sx={{ display: 'flex', gap: 1.5, mb: 3, overflowX: 'auto', pb: 0.5 }}>
-          <StaggerItem>
-            <StatChip label="Orders" value={data?.orders?.length || 0} icon="orders" />
-          </StaggerItem>
-          <StaggerItem>
-            <StatChip label="Revenue" value={`₹${totalRevenue}`} icon="revenue" color="accent" />
-          </StaggerItem>
-          <StaggerItem>
-            <StatChip label="Pending" value={`₹${pendingAmount}`} icon="pending" color="error" />
-          </StaggerItem>
-        </StaggerContainer>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: 1.5,
+            mb: 3,
+          }}
+        >
+          <StatCard
+            icon={<Receipt size={18} />}
+            label="Orders"
+            value={data?.orders?.length || 0}
+            color="#1B6B3A"
+          />
+          <StatCard
+            icon={<Wallet size={18} />}
+            label="Revenue"
+            value={`₹${totalRevenue}`}
+            color="#D97706"
+          />
+          <StatCard
+            icon={<Clock size={18} />}
+            label="Pending"
+            value={`₹${pendingAmount}`}
+            color={pendingAmount > 0 ? '#DC2626' : '#6B7280'}
+          />
+          <StatCard
+            icon={<ChefHat size={18} />}
+            label="Active"
+            value={activeOrders.length}
+            color="#1D4ED8"
+          />
+        </Box>
 
         {/* Active Orders */}
         <Box sx={{ mb: 2 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'success.main' }} />
-            Active Orders ({activeOrders.length})
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'success.main' }} />
+            <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+              Active Orders
+            </Typography>
+            <Chip
+              label={activeOrders.length}
+              size="small"
+              color="success"
+              sx={{ fontWeight: 700, height: 22, fontSize: '0.75rem' }}
+            />
+          </Box>
+
           {activeOrders.length === 0 && (
-            <Box
+            <Paper
               sx={{
                 textAlign: 'center',
                 py: 6,
@@ -171,83 +278,116 @@ export default function DayViewPage() {
                 borderColor: 'divider',
               }}
             >
-              <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', fontWeight: 500 }}>
-                No active orders for this date
+              <Typography sx={{ color: 'text.secondary', fontSize: '1rem', fontWeight: 600, mb: 0.5 }}>
+                No active orders
               </Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mt: 0.5 }}>
-                Tap + to create a new order
+              <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                Tap "New Order" to get started
               </Typography>
-            </Box>
+            </Paper>
           )}
-          <StaggerContainer>
-            {activeOrders.map((order: Order, idx: number) => (
-              <StaggerItem key={order.id}>
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05, type: 'spring', stiffness: 400, damping: 30 }}
-                >
-                  <OrderCard
-                    order={order}
-                    onComplete={handleComplete}
-                    onDelete={handleDelete}
-                  />
-                </motion.div>
-              </StaggerItem>
+
+          <AnimatePresence>
+            {activeOrders.map((order: Order) => (
+              <motion.div
+                key={order.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              >
+                <OrderCard
+                  order={order}
+                  onComplete={handleComplete}
+                  onDelete={handleDelete}
+                />
+              </motion.div>
             ))}
-          </StaggerContainer>
+          </AnimatePresence>
         </Box>
 
         {/* Completed Orders */}
         {completedOrders.length > 0 && (
           <>
-            <Divider sx={{ my: 2, borderColor: 'divider' }} />
+            <Divider sx={{ my: 3, borderColor: 'divider' }} />
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'grey.400' }} />
-                Completed ({completedOrders.length})
-              </Typography>
-              <StaggerContainer>
-                {completedOrders.map((order: Order, idx: number) => (
-                  <StaggerItem key={order.id}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05, type: 'spring', stiffness: 400, damping: 30 }}
-                    >
-                      <OrderCard
-                        order={order}
-                        onComplete={() => {}}
-                        onDelete={handleDelete}
-                      />
-                    </motion.div>
-                  </StaggerItem>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'grey.400' }} />
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+                  Completed
+                </Typography>
+                <Chip
+                  label={completedOrders.length}
+                  size="small"
+                  sx={{ fontWeight: 700, height: 22, fontSize: '0.75rem', backgroundColor: 'grey.100', color: 'grey.600' }}
+                />
+              </Box>
+              <AnimatePresence>
+                {completedOrders.map((order: Order) => (
+                  <motion.div
+                    key={order.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  >
+                    <OrderCard
+                      order={order}
+                      onComplete={() => {}}
+                      onDelete={handleDelete}
+                    />
+                  </motion.div>
                 ))}
-              </StaggerContainer>
+              </AnimatePresence>
             </Box>
           </>
         )}
       </Box>
 
-      {/* FAB */}
-      <Fab
-        color="primary"
-        onClick={() => {
-          vibrate(haptics.medium);
-          navigate(`/day/${date}/new`);
-        }}
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          boxShadow: '0 4px 16px rgba(27,107,58,0.3)',
-          width: 56,
-          height: 56,
-          zIndex: 1000,
-        }}
-      >
-        <Plus size={24} color="#FFFFFF" />
-      </Fab>
+      {/* Mobile FAB */}
+      {!isDesktop && (
+        <Fab
+          color="primary"
+          onClick={() => {
+            vibrate(haptics.medium);
+            navigate(`/day/${date}/new`);
+          }}
+          sx={{
+            position: 'fixed',
+            bottom: 80,
+            right: 24,
+            width: 56,
+            height: 56,
+            zIndex: 1000,
+            boxShadow: '0 4px 16px rgba(27,107,58,0.3)',
+          }}
+        >
+          <Plus size={24} color="#FFFFFF" />
+        </Fab>
+      )}
+
+      {/* Desktop FAB — top right, sticky */}
+      {isDesktop && (
+        <Fab
+          color="primary"
+          onClick={() => {
+            vibrate(haptics.medium);
+            navigate(`/day/${date}/new`);
+          }}
+          sx={{
+            position: 'fixed',
+            top: 80,
+            right: 32,
+            width: 56,
+            height: 56,
+            zIndex: 1000,
+            boxShadow: '0 4px 16px rgba(27,107,58,0.3)',
+          }}
+        >
+          <Plus size={24} color="#FFFFFF" />
+        </Fab>
+      )}
 
       <PaymentModal
         open={!!paymentModalOrder}
@@ -257,7 +397,6 @@ export default function DayViewPage() {
 
       <PaymentSuccessDecoration show={showSuccess} onDone={() => setShowSuccess(false)} />
 
-      {/* Delete Dialog */}
       <Dialog
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
