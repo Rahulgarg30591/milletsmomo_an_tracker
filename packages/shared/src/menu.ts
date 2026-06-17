@@ -5,8 +5,8 @@ export const PREPARATIONS = [
   'Fry',
   'Creamy',
   'Creamy Fry',
-  'Nep. Kothey',
-  'Pan Fried',
+  'Nepalese Kothey',
+  'Pan Fried Gravy',
 ] as const;
 
 export const FULL_PRICES: number[][] = [

@@ -18,14 +18,14 @@ USING (VALUES
   ('Paneer', 'Creamy Fry', 'Paneer Creamy Fry', 149.00, 80.00),
   ('Cheese Corn', 'Creamy Fry', 'Cheese Corn Creamy Fry', 169.00, 90.00),
   ('Platter', 'Creamy Fry', 'Platter Creamy Fry', 149.00, 80.00),
-  ('Veg', 'Nep. Kothey', 'Veg Nep. Kothey', 129.00, 70.00),
-  ('Paneer', 'Nep. Kothey', 'Paneer Nep. Kothey', 139.00, 75.00),
-  ('Cheese Corn', 'Nep. Kothey', 'Cheese Corn Nep. Kothey', 149.00, 80.00),
-  ('Platter', 'Nep. Kothey', 'Platter Nep. Kothey', 139.00, 75.00),
-  ('Veg', 'Pan Fried', 'Veg Pan Fried', 139.00, 75.00),
-  ('Paneer', 'Pan Fried', 'Paneer Pan Fried', 149.00, 80.00),
-  ('Cheese Corn', 'Pan Fried', 'Cheese Corn Pan Fried', 159.00, 85.00),
-  ('Platter', 'Pan Fried', 'Platter Pan Fried', 149.00, 80.00)
+  ('Veg', 'Nepalese Kothey', 'Veg Nepalese Kothey', 129.00, 70.00),
+  ('Paneer', 'Nepalese Kothey', 'Paneer Nepalese Kothey', 139.00, 75.00),
+  ('Cheese Corn', 'Nepalese Kothey', 'Cheese Corn Nepalese Kothey', 149.00, 80.00),
+  ('Platter', 'Nepalese Kothey', 'Platter Nepalese Kothey', 139.00, 75.00),
+  ('Veg', 'Pan Fried Gravy', 'Veg Pan Fried Gravy', 139.00, 75.00),
+  ('Paneer', 'Pan Fried Gravy', 'Paneer Pan Fried Gravy', 149.00, 80.00),
+  ('Cheese Corn', 'Pan Fried Gravy', 'Cheese Corn Pan Fried Gravy', 159.00, 85.00),
+  ('Platter', 'Pan Fried Gravy', 'Platter Pan Fried Gravy', 149.00, 80.00)
 ) AS source (filling, preparation, display_name, full_price, half_price)
 ON target.filling = source.filling AND target.preparation = source.preparation
 WHEN NOT MATCHED THEN

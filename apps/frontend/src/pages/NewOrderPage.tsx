@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, IconButton, Typography, useTheme } from '@mui/material';
+import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChefHat } from 'lucide-react';
+import { ArrowLeft, ChefHat, ShoppingCart } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
@@ -13,6 +13,25 @@ import SelectedItemsList from '../components/SelectedItemsList';
 import TotalBar from '../components/TotalBar';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
+import type { MenuItem } from '../types';
+
+const CATEGORY_ICONS: Record<string, string> = {
+  'Steam': '🍲',
+  'Fry': '🍳',
+  'Creamy': '🥘',
+  'Creamy Fry': '🍤',
+  'Nepalese Kothey': '🥟',
+  'Pan Fried Gravy': '🍛',
+};
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  'Steam': { bg: '#E8F5EE', border: '#1B6B3A', text: '#1B6B3A' },
+  'Fry': { bg: '#FEF3C7', border: '#D97706', text: '#B45309' },
+  'Creamy': { bg: '#F3E8FF', border: '#7C3AED', text: '#6B21A8' },
+  'Creamy Fry': { bg: '#FCE7F3', border: '#DB2777', text: '#9D174D' },
+  'Nepalese Kothey': { bg: '#ECFDF5', border: '#059669', text: '#047857' },
+  'Pan Fried Gravy': { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
+};
 
 function NewOrderContent() {
   const { date } = useParams<{ date: string }>();
@@ -26,6 +45,25 @@ function NewOrderContent() {
     queryKey: ['menu'],
     queryFn: getMenu,
   });
+
+  const groupedItems = useMemo(() => {
+    if (!menuData?.items) return [];
+    const groups = new Map<string, MenuItem[]>();
+    menuData.items.forEach((item: MenuItem) => {
+      const prep = item.preparation || 'Other';
+      if (!groups.has(prep)) groups.set(prep, []);
+      groups.get(prep)!.push(item);
+    });
+    return Array.from(groups.entries());
+  }, [menuData]);
+
+  const totalSelectedItems = useMemo(() => {
+    let total = 0;
+    draft.items.forEach((item) => {
+      total += item.quantity;
+    });
+    return total;
+  }, [draft.items]);
 
   const createMutation = useMutation({
     mutationFn: createOrder,
@@ -85,16 +123,73 @@ function NewOrderContent() {
               {date}
             </Typography>
           </Box>
+          {totalSelectedItems > 0 && (
+            <Chip
+              icon={<ShoppingCart size={14} />}
+              label={`${totalSelectedItems} item${totalSelectedItems > 1 ? 's' : ''}`}
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+          )}
         </Box>
 
-        {/* Menu Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        >
-          <MenuGrid menuItems={menuData?.items || []} />
-        </motion.div>
+        {/* Menu Grid by Category */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {groupedItems.map(([preparation, items], categoryIndex) => {
+            const colors = CATEGORY_COLORS[preparation] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#4B5563' };
+            return (
+              <motion.div
+                key={preparation}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: categoryIndex * 0.08, type: 'spring', stiffness: 400, damping: 30 }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    border: 1.5,
+                    borderColor: colors.border,
+                    backgroundColor: colors.bg,
+                    mb: 1.5,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography sx={{ fontSize: '1.2rem' }}>{CATEGORY_ICONS[preparation] || '🍽️'}</Typography>
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '1rem',
+                        color: colors.text,
+                        letterSpacing: '-0.2px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {preparation}
+                    </Typography>
+                    <Box
+                      sx={{
+                        ml: 'auto',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        backgroundColor: 'rgba(255,255,255,0.6)',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: colors.text,
+                      }}
+                    >
+                      {items.length} items
+                    </Box>
+                  </Box>
+                  <MenuGrid items={items} categoryIndex={categoryIndex} />
+                </Paper>
+              </motion.div>
+            );
+          })}
+        </Box>
 
         {/* Order Config */}
         <Box sx={{ mt: 3, mb: 2 }}>

@@ -4,11 +4,20 @@ import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { vibrate, haptics } from '../theme/tokens';
 
-interface MenuGridProps {
-  menuItems: { id: number; displayName: string; fullPrice: number; halfPrice: number }[];
+interface MenuItem {
+  id: number;
+  displayName: string;
+  fullPrice: number;
+  halfPrice: number;
+  preparation: string;
 }
 
-export default function MenuGrid({ menuItems }: MenuGridProps) {
+interface MenuGridProps {
+  items: MenuItem[];
+  categoryIndex?: number;
+}
+
+export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
   const { addItem, incrementItem, decrementItem, toggleHalf, removeItem, draft } = useOrderDraft();
 
   return (
@@ -17,10 +26,9 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
         gap: 1.5,
-        mb: 2,
       }}
     >
-      {menuItems.map((item, idx) => {
+      {items.map((item, idx) => {
         const draftItem = draft.items.get(item.id);
         const quantity = draftItem?.quantity || 0;
         const isHalf = draftItem?.isHalf || false;
@@ -32,7 +40,12 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
             layout
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.02, type: 'spring', stiffness: 400, damping: 30 }}
+            transition={{ 
+              delay: (categoryIndex * 0.05) + (idx * 0.02), 
+              type: 'spring', 
+              stiffness: 400, 
+              damping: 30 
+            }}
             style={{ display: 'flex' }}
           >
             <Box
