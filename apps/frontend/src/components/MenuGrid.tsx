@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Slice } from 'lucide-react';
@@ -11,19 +11,17 @@ interface MenuGridProps {
 
 export default function MenuGrid({ menuItems }: MenuGridProps) {
   const { addItem, toggleHalf, draft } = useOrderDraft();
-  const [longPressId, setLongPressId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-
-  const handleTouchStart = (itemId: number) => {
+  const handleTouchStart = (itemId: number, e: React.TouchEvent) => {
+    isLongPressRef.current = false;
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     timerRef.current = setTimeout(() => {
-      setLongPressId(itemId);
+      isLongPressRef.current = true;
       toggleHalf(itemId);
       vibrate(haptics.medium);
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
     }, 500);
   };
 
@@ -32,11 +30,29 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    if (longPressId !== itemId) {
+    if (!isLongPressRef.current) {
       addItem(itemId);
       vibrate(haptics.light);
     }
-    setLongPressId(null);
+    isLongPressRef.current = false;
+    touchStartRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || !timerRef.current) return;
+    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    const dy = e.touches[0].clientY - touchStartRef.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      isLongPressRef.current = false;
+    }
+  };
+
+  const handleClick = (itemId: number) => {
+    if (isLongPressRef.current) return;
+    addItem(itemId);
+    vibrate(haptics.light);
   };
 
   const handleContextMenu = (e: React.MouseEvent, itemId: number) => {
@@ -75,11 +91,12 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: idx * 0.02, type: 'spring', stiffness: 400, damping: 30 }}
-            whileTap={{ scale: 0.92 }}
           >
             <Box
-              onTouchStart={() => handleTouchStart(item.id)}
+              onClick={() => handleClick(item.id)}
+              onTouchStart={(e) => handleTouchStart(item.id, e)}
               onTouchEnd={() => handleTouchEnd(item.id)}
+              onTouchMove={handleTouchMove}
               onContextMenu={(e) => handleContextMenu(e, item.id)}
               sx={{
                 position: 'relative',
@@ -90,12 +107,21 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                 borderColor: isActive ? 'primary.main' : 'divider',
                 cursor: 'pointer',
                 userSelect: 'none',
-                touchAction: 'none',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
                 transition: 'all 0.15s ease',
+                '&:active': {
+                  transform: 'scale(0.95)',
+                  backgroundColor: 'primary.light',
+                },
                 '&:hover': {
                   borderColor: 'primary.main',
                   boxShadow: (theme) => theme.shadows[2],
                 },
+                minHeight: 64,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
               }}
             >
               <Typography
@@ -119,7 +145,7 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                 ₹{item.fullPrice}
               </Typography>
 
-              {/* Half toggle — visible on all devices */}
+              {/* Half toggle — visible when item is selected */}
               {isActive && (
                 <Box
                   onClick={(e) => handleHalfToggle(e, item.id)}
@@ -141,6 +167,10 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                     alignItems: 'center',
                     gap: 0.25,
                     transition: 'all 0.15s ease',
+                    zIndex: 2,
+                    '&:active': {
+                      transform: 'translateX(-50%) scale(0.92)',
+                    },
                     '&:hover': {
                       backgroundColor: isHalf ? 'secondary.dark' : 'action.selected',
                     },
@@ -151,6 +181,7 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                 </Box>
               )}
 
+              {/* Quantity badge */}
               {quantity > 0 && (
                 <Box
                   sx={{
@@ -169,12 +200,14 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                     fontWeight: 700,
                     px: 0.5,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    zIndex: 2,
                   }}
                 >
                   {quantity}
                 </Box>
               )}
 
+              {/* Half indicator when not active but half is set (shouldn't happen normally) */}
               {isHalf && !isActive && (
                 <Box
                   sx={{
@@ -190,9 +223,13 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
                     fontSize: '0.6rem',
                     fontWeight: 700,
                     whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    zIndex: 2,
                   }}
                 >
-                  <Slice size={8} style={{ display: 'inline', marginRight: 2 }} />
+                  <Slice size={8} />
                   ½ plate
                 </Box>
               )}
