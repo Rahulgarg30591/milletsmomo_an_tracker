@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/functions/api.js",
   "scripts": {
-    "dev": "tsc && func start",
+    "dev": "tsx watch src/dev-server.ts",
     "build": "tsc",
     "test": "vitest run",
     "db:create": "tsx scripts/create-db.ts",

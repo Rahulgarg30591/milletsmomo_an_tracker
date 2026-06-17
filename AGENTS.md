@@ -8,13 +8,41 @@ Monorepo — `package.json` with `npm workspaces`: `apps/frontend`, `apps/backen
 
 Run all from root unless noted.
 
+### Local (development)
+
 | Command | What |
 |---|---|
-| `npm run dev` | Concurrently starts frontend Vite dev server + backend Functions host |
+| `npm run local:setup` | Start Docker SQL, wait for ready, create DB, run schema + seed |
+| `npm run local:db:wait` | Wait for local SQL Server to accept connections |
+| `npm run local:db:create` | Create local database if not exists |
+| `npm run local:db:migrate` | Run schema.sql + seed.sql on local DB |
+| `npm run local:db:seed` | Re-run seed.sql only on local DB |
+| `npm run local:dev` | Start FE (Vite) + BE (Azure Functions) concurrently |
+| `npm run local:stop` | Stop Docker SQL container |
+| `npm run local:build` | Build both FE + BE for local |
+| `npm run local:build:fe` | Build frontend only for local |
+| `npm run local:build:be` | Build backend only for local |
+
+### Production
+
+| Command | What |
+|---|---|
+| `npm run prod:setup` | Deploy all Azure infra via Bicep (full stack) |
+| `npm run prod:db:migrate` | Run schema.sql + seed.sql on production DB |
+| `npm run prod:db:seed` | Re-run seed.sql only on production DB |
+| `npm run prod:deploy` | Deploy SQL infra only via Bicep |
+| `npm run prod:build` | Build both FE + BE for production |
+| `npm run prod:build:fe` | Build frontend only for production |
+| `npm run prod:build:be` | Build backend only for production |
+
+### General
+
+| Command | What |
+|---|---|
 | `npm test` | Runs tests in all workspaces (`--workspaces --if-present`) |
-| `npm run build` | Builds frontend (tsc + Vite) + backend (tsc) |
 | `npm run lint` | ESLint across `.ts,.tsx` files |
-| `npm run db:migrate` | Runs schema + seed SQL via `apps/backend/scripts/migrate.ts` |
+| `npm run typecheck` | TypeScript type-check all workspaces |
+| `npm run generate-pin-hash` | Generate bcrypt hash for a 4-digit PIN |
 
 Run in a single workspace: `npm run <cmd> --workspace=<workspace>`.
 

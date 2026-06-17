@@ -36,10 +36,12 @@ WHEN NOT MATCHED THEN
 -- Generate hashes: npx tsx apps/backend/scripts/generatePinHash.ts <pin>
 MERGE INTO Users AS target
 USING (VALUES
-  ('staff', 'staff', '$2b$10$.YjkqcktO34k8qGpjus0FebCU3J622hZxRsoQYKgDuqJaLBjzAWT2', 'Cart Staff'),
-  ('admin', 'admin', '$2b$10$7teeUyVzAIUtBFnY5v.xuu5tHjJ9yuE2UVjN5LtQC0uzr/VrNoriW', 'Owner')
+  ('staff', 'staff', '$2b$10$veSawKHMM2U3EV08JXrs/uFmhfLxsHqLvOij6JjB2.1NG6iGsttA2', 'Cart Staff'),
+  ('admin', 'admin', '$2b$10$X6BXobdllogT/2U.nC5qOenrf4WtDxUzV4mhQL2A4u.Ei758dDOTK', 'Owner')
 ) AS source (username, role, pin_hash, display_name)
 ON target.username = source.username
+WHEN MATCHED THEN
+  UPDATE SET pin_hash = source.pin_hash, role = source.role, display_name = source.display_name
 WHEN NOT MATCHED THEN
   INSERT (username, role, pin_hash, display_name)
   VALUES (source.username, source.role, source.pin_hash, source.display_name);

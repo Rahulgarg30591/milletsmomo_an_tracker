@@ -98,8 +98,8 @@ After seeding, two users are available:
 
 | Role | PIN |
 |---|---|
-| Staff | Set in `seed.sql` (default placeholder: `1234`) |
-| Admin | Set in `seed.sql` (default placeholder: `5678`) |
+| Staff | `9865` |
+| Admin | `1703` |
 
 **Change these before deploying to production.**
 
