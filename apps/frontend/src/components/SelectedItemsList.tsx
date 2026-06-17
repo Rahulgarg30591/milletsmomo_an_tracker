@@ -1,45 +1,23 @@
-import { Box, Button, Chip, Typography } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, Plus, X, Slice } from 'lucide-react';
+import { Box, Typography, Button } from '@mui/material';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { getMenuItem, calculateLineTotal } from '../utils/pricing';
-import { vibrate, haptics } from '../theme/tokens';
+import { X } from 'lucide-react';
 
 export default function SelectedItemsList() {
-  const { draft, removeItem, incrementItem, decrementItem, toggleHalf } = useOrderDraft();
+  const { draft, removeItem } = useOrderDraft();
 
   const items = Array.from(draft.items.entries())
     .filter(([, item]) => item.quantity > 0)
     .map(([menuItemId, item]) => {
       const menuItem = getMenuItem(menuItemId);
-      return { menuItemId, ...item, menuItem };
+      const { lineTotal } = calculateLineTotal(menuItemId, item.quantity, item.isHalf);
+      return { menuItemId, ...item, menuItem, lineTotal };
     });
 
-  if (items.length === 0) {
-    return (
-      <Box
-        sx={{
-          py: 6,
-          textAlign: 'center',
-          borderRadius: 4,
-          backgroundColor: 'background.paper',
-          border: '1px dashed',
-          borderColor: 'divider',
-          mb: 2,
-        }}
-      >
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', fontWeight: 500 }}>
-          No items added yet
-        </Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mt: 0.5 }}>
-          Tap the menu grid to add items
-        </Typography>
-      </Box>
-    );
-  }
+  if (items.length === 0) return null;
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 2, mt: 3 }}>
       <Typography
         variant="caption"
         sx={{
@@ -52,145 +30,99 @@ export default function SelectedItemsList() {
           fontSize: '0.7rem',
         }}
       >
-        Selected Items
+        Order Summary ({items.length} item{items.length > 1 ? 's' : ''})
       </Typography>
-      <AnimatePresence>
-        {items.map((item) => {
-          const { lineTotal } = calculateLineTotal(item.menuItemId, item.quantity, item.isHalf);
-          return (
-            <motion.div
-              key={item.menuItemId}
-              initial={{ opacity: 0, x: -12, height: 0 }}
-              animate={{ opacity: 1, x: 0, height: 'auto' }}
-              exit={{ opacity: 0, x: 12, height: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            >
-              <Box
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0.75,
+        }}
+      >
+        {items.map((item) => (
+          <Box
+            key={item.menuItemId}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              py: 1,
+              px: 1.5,
+              borderRadius: 2,
+              backgroundColor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              <Typography
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  py: 1.25,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  '&:last-child': { borderBottom: 0 },
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
               >
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
-                      {item.menuItem?.displayName || 'Unknown'}
-                    </Typography>
-                    {item.isHalf && (
-                      <Chip
-                        size="small"
-                        label="½"
-                        sx={{
-                          height: 20,
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          backgroundColor: 'secondary.light',
-                          color: 'secondary.main',
-                        }}
-                        icon={<Slice size={10} />}
-                      />
-                    )}
-                  </Box>
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      vibrate(haptics.light);
-                      decrementItem(item.menuItemId);
-                    }}
-                    sx={{
-                      minWidth: 28,
-                      width: 28,
-                      height: 28,
-                      p: 0,
-                      borderRadius: '50%',
-                      border: 1,
-                      borderColor: 'divider',
-                      color: 'text.primary',
-                      '&:hover': { backgroundColor: 'action.hover' },
-                    }}
-                  >
-                    <Minus size={14} />
-                  </Button>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', minWidth: 24, textAlign: 'center', color: 'text.primary' }}>
-                    {item.quantity}
-                  </Typography>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      vibrate(haptics.light);
-                      incrementItem(item.menuItemId);
-                    }}
-                    sx={{
-                      minWidth: 28,
-                      width: 28,
-                      height: 28,
-                      p: 0,
-                      borderRadius: '50%',
-                      border: 1,
-                      borderColor: 'divider',
-                      color: 'text.primary',
-                      '&:hover': { backgroundColor: 'action.hover' },
-                    }}
-                  >
-                    <Plus size={14} />
-                  </Button>
-
-                  <Chip
-                    size="small"
-                    onClick={() => {
-                      vibrate(haptics.light);
-                      toggleHalf(item.menuItemId);
-                    }}
-                    label={item.isHalf ? 'Half' : 'Full'}
-                    sx={{
-                      height: 24,
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      backgroundColor: item.isHalf ? 'secondary.light' : 'action.hover',
-                      color: item.isHalf ? 'secondary.main' : 'text.secondary',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: item.isHalf ? 'secondary.light' : 'action.selected',
-                      },
-                    }}
-                  />
-
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', minWidth: 48, textAlign: 'right', color: 'primary.main' }}>
-                    ₹{lineTotal}
-                  </Typography>
-
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      vibrate(haptics.light);
-                      removeItem(item.menuItemId);
-                    }}
-                    sx={{
-                      minWidth: 24,
-                      width: 24,
-                      height: 24,
-                      p: 0,
-                      borderRadius: '50%',
-                      color: 'error.main',
-                      '&:hover': { backgroundColor: 'error.light' },
-                    }}
-                  >
-                    <X size={14} />
-                  </Button>
-                </Box>
-              </Box>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+                {item.menuItem?.displayName || 'Unknown'}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '0.75rem',
+                  color: 'text.secondary',
+                  fontWeight: 500,
+                  flexShrink: 0,
+                }}
+              >
+                ×{item.quantity}
+              </Typography>
+              {item.isHalf && (
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: '#D97706',
+                    backgroundColor: '#FEF3C7',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  ½
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  color: 'primary.main',
+                }}
+              >
+                ₹{item.lineTotal}
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => removeItem(item.menuItemId)}
+                sx={{
+                  minWidth: 24,
+                  width: 24,
+                  height: 24,
+                  p: 0,
+                  borderRadius: '50%',
+                  color: 'error.main',
+                  '&:hover': { backgroundColor: 'error.light' },
+                }}
+              >
+                <X size={12} />
+              </Button>
+            </Box>
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Sparkles, Info } from 'lucide-react';
+import { ArrowLeft, ChefHat } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
@@ -56,8 +56,9 @@ function NewOrderContent() {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 12, pt: 1 }}>
-      <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+      <Box sx={{ maxWidth: 700, mx: 'auto', p: 2 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
           <IconButton
             onClick={() => navigate(`/day/${date}`)}
             sx={{ color: 'text.secondary', mr: 0.5 }}
@@ -69,7 +70,7 @@ function NewOrderContent() {
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1.15rem',
+                fontSize: '1.25rem',
                 color: 'text.primary',
                 letterSpacing: '-0.3px',
                 display: 'flex',
@@ -77,33 +78,16 @@ function NewOrderContent() {
                 gap: 0.75,
               }}
             >
-              <Sparkles size={18} color={theme.palette.primary.main} />
+              <ChefHat size={20} color={theme.palette.primary.main} />
               New Order
+            </Typography>
+            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.25 }}>
+              {date}
             </Typography>
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            mb: 2,
-            px: 1.5,
-            py: 1,
-            borderRadius: 2,
-            backgroundColor: (theme) =>
-              theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(27,107,58,0.04)',
-            border: 1,
-            borderColor: 'divider',
-          }}
-        >
-          <Info size={14} color={theme.palette.text.secondary} />
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.secondary' }}>
-            Tap to add • Long press for half plate • Toggle "½" below each item
-          </Typography>
-        </Box>
-
+        {/* Menu Grid */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -112,8 +96,12 @@ function NewOrderContent() {
           <MenuGrid menuItems={menuData?.items || []} />
         </motion.div>
 
-        <OrderConfigPanel />
+        {/* Order Config */}
+        <Box sx={{ mt: 3, mb: 2 }}>
+          <OrderConfigPanel />
+        </Box>
 
+        {/* Selected Items Summary */}
         <SelectedItemsList />
       </Box>
 

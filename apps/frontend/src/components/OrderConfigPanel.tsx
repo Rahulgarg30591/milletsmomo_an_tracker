@@ -1,11 +1,10 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, Typography, useTheme } from '@mui/material';
 import { Utensils, Package, Banknote, Smartphone, Clock } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
-import { statusColors, darkStatusColors } from '../theme/tokens';
-import { useTheme } from '@mui/material/styles';
+import { vibrate, haptics } from '../theme/tokens';
 
 const typeConfig = [
-  { key: 'dine' as const, label: 'Dine in', icon: <Utensils size={14} /> },
+  { key: 'dine' as const, label: 'Dine In', icon: <Utensils size={14} /> },
   { key: 'pack' as const, label: 'Pack', icon: <Package size={14} /> },
 ];
 
@@ -19,17 +18,21 @@ export default function OrderConfigPanel() {
   const { draft, setOrderType, setPaymentMethod } = useOrderDraft();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
-  const colors = isDark ? darkStatusColors : statusColors;
+
+  const activeBg = isDark ? 'rgba(27,107,58,0.15)' : '#E8F5EE';
+  const activeBorder = '#1B6B3A';
+  const inactiveBg = isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB';
+  const inactiveBorder = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Box sx={{ mb: 1.5 }}>
+    <Box>
+      <Box sx={{ mb: 2 }}>
         <Typography
           variant="caption"
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 0.75,
+            mb: 1,
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -44,21 +47,24 @@ export default function OrderConfigPanel() {
               key={type.key}
               fullWidth
               size="small"
-              onClick={() => setOrderType(type.key)}
+              onClick={() => {
+                vibrate(haptics.light);
+                setOrderType(type.key);
+              }}
               startIcon={type.icon}
               sx={{
                 borderRadius: 3,
-                py: 0.8,
+                py: 1,
                 fontWeight: 600,
-                fontSize: '0.8rem',
+                fontSize: '0.85rem',
                 textTransform: 'none',
-                backgroundColor: draft.orderType === type.key ? colors.dineIn.bg : 'transparent',
-                color: draft.orderType === type.key ? colors.dineIn.fg : 'text.secondary',
+                backgroundColor: draft.orderType === type.key ? activeBg : inactiveBg,
+                color: draft.orderType === type.key ? '#1B6B3A' : 'text.secondary',
                 border: 1.5,
-                borderColor: draft.orderType === type.key ? 'primary.main' : 'divider',
+                borderColor: draft.orderType === type.key ? activeBorder : inactiveBorder,
                 '&:hover': {
-                  backgroundColor: colors.dineIn.bg,
-                  borderColor: 'primary.main',
+                  backgroundColor: activeBg,
+                  borderColor: activeBorder,
                 },
               }}
             >
@@ -74,39 +80,46 @@ export default function OrderConfigPanel() {
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 0.75,
+            mb: 1,
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             fontSize: '0.7rem',
           }}
         >
-          Payment
+          Payment Method
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           {paymentConfig.map((method) => {
-            const colorKey = method.key === 'pending' ? 'pending' : method.key === 'cash' ? 'cash' : 'upi';
-            const c = colors[colorKey];
+            const isActive = draft.paymentMethod === method.key;
+            const isPending = method.key === 'pending';
+            const activeColor = isPending ? '#DC2626' : '#1B6B3A';
+            const activeBg2 = isPending ? '#FEE2E2' : activeBg;
+            const activeBorder2 = isPending ? '#DC2626' : activeBorder;
+
             return (
               <Button
                 key={method.key}
                 fullWidth
                 size="small"
-                onClick={() => setPaymentMethod(method.key)}
+                onClick={() => {
+                  vibrate(haptics.light);
+                  setPaymentMethod(method.key);
+                }}
                 startIcon={method.icon}
                 sx={{
                   borderRadius: 3,
-                  py: 0.8,
+                  py: 1,
                   fontWeight: 600,
-                  fontSize: '0.8rem',
+                  fontSize: '0.85rem',
                   textTransform: 'none',
-                  backgroundColor: draft.paymentMethod === method.key ? c.bg : 'transparent',
-                  color: draft.paymentMethod === method.key ? c.fg : 'text.secondary',
+                  backgroundColor: isActive ? activeBg2 : inactiveBg,
+                  color: isActive ? activeColor : 'text.secondary',
                   border: 1.5,
-                  borderColor: draft.paymentMethod === method.key ? c.fg : 'divider',
+                  borderColor: isActive ? activeBorder2 : inactiveBorder,
                   '&:hover': {
-                    backgroundColor: c.bg,
-                    borderColor: c.fg,
+                    backgroundColor: activeBg2,
+                    borderColor: activeBorder2,
                   },
                 }}
               >

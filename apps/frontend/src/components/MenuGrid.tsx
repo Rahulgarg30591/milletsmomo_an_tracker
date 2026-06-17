@@ -1,7 +1,6 @@
-import { useRef, useCallback } from 'react';
-import { Box, Typography } from '@mui/material';
-import { motion } from 'framer-motion';
-import { Slice } from 'lucide-react';
+import { Box, Typography, Button } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { vibrate, haptics } from '../theme/tokens';
 
@@ -10,72 +9,14 @@ interface MenuGridProps {
 }
 
 export default function MenuGrid({ menuItems }: MenuGridProps) {
-  const { addItem, toggleHalf, draft } = useOrderDraft();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLongPressRef = useRef(false);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  const handleTouchStart = (itemId: number, e: React.TouchEvent) => {
-    isLongPressRef.current = false;
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    timerRef.current = setTimeout(() => {
-      isLongPressRef.current = true;
-      toggleHalf(itemId);
-      vibrate(haptics.medium);
-    }, 500);
-  };
-
-  const handleTouchEnd = (itemId: number) => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (!isLongPressRef.current) {
-      addItem(itemId);
-      vibrate(haptics.light);
-    }
-    isLongPressRef.current = false;
-    touchStartRef.current = null;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || !timerRef.current) return;
-    const dx = e.touches[0].clientX - touchStartRef.current.x;
-    const dy = e.touches[0].clientY - touchStartRef.current.y;
-    if (Math.sqrt(dx * dx + dy * dy) > 10) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-      isLongPressRef.current = false;
-    }
-  };
-
-  const handleClick = (itemId: number) => {
-    if (isLongPressRef.current) return;
-    addItem(itemId);
-    vibrate(haptics.light);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, itemId: number) => {
-    e.preventDefault();
-    toggleHalf(itemId);
-    vibrate(haptics.medium);
-  };
-
-  const handleHalfToggle = useCallback(
-    (e: React.MouseEvent, itemId: number) => {
-      e.stopPropagation();
-      toggleHalf(itemId);
-      vibrate(haptics.medium);
-    },
-    [toggleHalf]
-  );
+  const { addItem, incrementItem, decrementItem, toggleHalf, removeItem, draft } = useOrderDraft();
 
   return (
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 1,
+        gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+        gap: 1.5,
         mb: 2,
       }}
     >
@@ -88,151 +29,288 @@ export default function MenuGrid({ menuItems }: MenuGridProps) {
         return (
           <motion.div
             key={item.id}
-            initial={{ opacity: 0, scale: 0.9 }}
+            layout
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: idx * 0.02, type: 'spring', stiffness: 400, damping: 30 }}
+            style={{ display: 'flex' }}
           >
             <Box
-              onClick={() => handleClick(item.id)}
-              onTouchStart={(e) => handleTouchStart(item.id, e)}
-              onTouchEnd={() => handleTouchEnd(item.id)}
-              onTouchMove={handleTouchMove}
-              onContextMenu={(e) => handleContextMenu(e, item.id)}
               sx={{
                 position: 'relative',
+                width: '100%',
                 p: 1.5,
-                borderRadius: 2.5,
-                backgroundColor: isActive ? 'primary.light' : 'background.paper',
-                border: 1.5,
-                borderColor: isActive ? 'primary.main' : 'divider',
-                cursor: 'pointer',
-                userSelect: 'none',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'all 0.15s ease',
-                '&:active': {
-                  transform: 'scale(0.95)',
-                  backgroundColor: 'primary.light',
-                },
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  boxShadow: (theme) => theme.shadows[2],
-                },
-                minHeight: 64,
+                borderRadius: 3,
+                backgroundColor: isActive ? '#FFF8E1' : 'background.paper',
+                border: 2,
+                borderColor: isActive ? '#F59E0B' : 'divider',
+                transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
+                gap: 1,
+                minHeight: isActive ? 140 : 90,
+                '&:hover': {
+                  borderColor: isActive ? '#F59E0B' : 'primary.light',
+                  boxShadow: isActive ? '0 4px 16px rgba(245,158,11,0.12)' : (theme) => theme.shadows[1],
+                },
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: 'text.primary',
-                  lineHeight: 1.2,
-                  mb: 0.5,
-                }}
-              >
-                {item.displayName}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  color: 'text.secondary',
-                  fontWeight: 500,
-                }}
-              >
-                ₹{item.fullPrice}
-              </Typography>
-
-              {/* Half toggle — visible when item is selected */}
-              {isActive && (
-                <Box
-                  onClick={(e) => handleHalfToggle(e, item.id)}
+              {/* Header row: name + price */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 0.5 }}>
+                <Typography
                   sx={{
-                    position: 'absolute',
-                    bottom: 4,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    px: 0.75,
-                    py: 0.2,
-                    borderRadius: 1,
-                    backgroundColor: isHalf ? 'secondary.main' : 'action.hover',
-                    color: isHalf ? 'secondary.contrastText' : 'text.secondary',
-                    fontSize: '0.55rem',
+                    fontSize: '0.85rem',
                     fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.25,
-                    transition: 'all 0.15s ease',
-                    zIndex: 2,
-                    '&:active': {
-                      transform: 'translateX(-50%) scale(0.92)',
-                    },
-                    '&:hover': {
-                      backgroundColor: isHalf ? 'secondary.dark' : 'action.selected',
-                    },
+                    color: isActive ? '#92400E' : 'text.primary',
+                    lineHeight: 1.2,
+                    flex: 1,
                   }}
                 >
-                  <Slice size={8} />
-                  {isHalf ? '½' : 'Full'}
-                </Box>
-              )}
-
-              {/* Quantity badge */}
-              {quantity > 0 && (
-                <Box
+                  {item.displayName}
+                </Typography>
+                <Typography
                   sx={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    minWidth: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    backgroundColor: 'primary.main',
-                    color: 'primary.contrastText',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     fontSize: '0.75rem',
-                    fontWeight: 700,
-                    px: 0.5,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    zIndex: 2,
+                    fontWeight: 600,
+                    color: isActive ? '#B45309' : 'text.secondary',
+                    flexShrink: 0,
                   }}
                 >
-                  {quantity}
-                </Box>
-              )}
+                  ₹{isHalf ? item.halfPrice : item.fullPrice}
+                </Typography>
+              </Box>
 
-              {/* Half indicator when not active but half is set (shouldn't happen normally) */}
-              {isHalf && !isActive && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: -6,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    px: 1,
-                    py: 0.3,
-                    borderRadius: 1,
-                    backgroundColor: 'secondary.main',
-                    color: 'secondary.contrastText',
-                    fontSize: '0.6rem',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    zIndex: 2,
-                  }}
-                >
-                  <Slice size={8} />
-                  ½ plate
-                </Box>
-              )}
+              {/* Body */}
+              <AnimatePresence mode="wait">
+                {!isActive ? (
+                  <motion.div
+                    key="add"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ marginTop: 'auto' }}
+                  >
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="small"
+                      onClick={() => {
+                        addItem(item.id);
+                        vibrate(haptics.light);
+                      }}
+                      sx={{
+                        borderRadius: 2,
+                        py: 0.6,
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        textTransform: 'none',
+                        backgroundColor: '#F59E0B',
+                        color: '#FFFFFF',
+                        boxShadow: 'none',
+                        '&:hover': { backgroundColor: '#D97706' },
+                        '&:active': { transform: 'scale(0.97)' },
+                      }}
+                    >
+                      <Plus size={14} style={{ marginRight: 4 }} />
+                      Add
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="controls"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      marginTop: 'auto',
+                    }}
+                  >
+                    {/* Quantity row */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          decrementItem(item.id);
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          minWidth: 32,
+                          width: 32,
+                          height: 32,
+                          p: 0,
+                          borderRadius: '50%',
+                          border: 1.5,
+                          borderColor: '#F59E0B',
+                          color: '#B45309',
+                          backgroundColor: '#FFFFFF',
+                          '&:hover': { backgroundColor: '#FEF3C7' },
+                          '&:active': { transform: 'scale(0.92)' },
+                        }}
+                      >
+                        <Minus size={14} />
+                      </Button>
+
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 32,
+                          height: 32,
+                          borderRadius: 1.5,
+                          backgroundColor: '#FEF3C7',
+                          border: 1.5,
+                          borderColor: '#F59E0B',
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '1rem',
+                            color: '#92400E',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {quantity}
+                        </Typography>
+                      </Box>
+
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          incrementItem(item.id);
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          minWidth: 32,
+                          width: 32,
+                          height: 32,
+                          p: 0,
+                          borderRadius: '50%',
+                          border: 1.5,
+                          borderColor: '#F59E0B',
+                          color: '#B45309',
+                          backgroundColor: '#FFFFFF',
+                          '&:hover': { backgroundColor: '#FEF3C7' },
+                          '&:active': { transform: 'scale(0.92)' },
+                        }}
+                      >
+                        <Plus size={14} />
+                      </Button>
+
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          removeItem(item.id);
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          minWidth: 28,
+                          width: 28,
+                          height: 28,
+                          p: 0,
+                          borderRadius: '50%',
+                          color: '#EF4444',
+                          '&:hover': { backgroundColor: '#FEE2E2' },
+                        }}
+                      >
+                        <X size={14} />
+                      </Button>
+                    </Box>
+
+                    {/* Half/Full toggle + line total */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 0.5,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            if (isHalf) toggleHalf(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 0,
+                            px: 1,
+                            py: 0.3,
+                            borderRadius: 1.5,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            backgroundColor: !isHalf ? '#F59E0B' : '#FFFFFF',
+                            color: !isHalf ? '#FFFFFF' : '#6B7280',
+                            border: 1.5,
+                            borderColor: '#F59E0B',
+                            '&:hover': {
+                              backgroundColor: !isHalf ? '#D97706' : '#FEF3C7',
+                            },
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          Full
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            if (!isHalf) toggleHalf(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 0,
+                            px: 1,
+                            py: 0.3,
+                            borderRadius: 1.5,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            backgroundColor: isHalf ? '#F59E0B' : '#FFFFFF',
+                            color: isHalf ? '#FFFFFF' : '#6B7280',
+                            border: 1.5,
+                            borderColor: '#F59E0B',
+                            '&:hover': {
+                              backgroundColor: isHalf ? '#D97706' : '#FEF3C7',
+                            },
+                            lineHeight: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                          }}
+                        >
+                          <Slice size={10} />
+                          ½
+                        </Button>
+                      </Box>
+
+                      <Typography
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          color: '#92400E',
+                        }}
+                      >
+                        ₹{quantity * (isHalf ? item.halfPrice : item.fullPrice)}
+                      </Typography>
+                    </Box>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Box>
           </motion.div>
         );
