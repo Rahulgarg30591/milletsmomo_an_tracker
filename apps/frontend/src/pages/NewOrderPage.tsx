@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, Typography, useTheme } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Sparkles, Info } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
@@ -10,13 +12,15 @@ import OrderConfigPanel from '../components/OrderConfigPanel';
 import SelectedItemsList from '../components/SelectedItemsList';
 import TotalBar from '../components/TotalBar';
 import Toast from '../components/Toast';
+import { vibrate, haptics } from '../theme/tokens';
 
 function NewOrderContent() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { draft, clearDraft, getItemList } = useOrderDraft();
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const theme = useTheme();
 
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
@@ -27,9 +31,14 @@ function NewOrderContent() {
     mutationFn: createOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
-      setToast('Order placed! 🎉');
+      setToast({ message: 'Order placed! 🎉', type: 'success' });
       clearDraft();
+      vibrate(haptics.success);
       navigate(`/day/${date}`);
+    },
+    onError: () => {
+      setToast({ message: 'Failed to place order', type: 'error' });
+      vibrate(haptics.error);
     },
   });
 
@@ -46,25 +55,62 @@ function NewOrderContent() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#F0F4F1', pb: 12 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 12, pt: 1 }}>
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
           <IconButton
             onClick={() => navigate(`/day/${date}`)}
-            sx={{ mr: 1, color: '#374151' }}
+            sx={{ color: 'text.secondary', mr: 0.5 }}
+            aria-label="Go back"
           >
-            ←
+            <ArrowLeft size={20} />
           </IconButton>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#111827', letterSpacing: '-0.3px' }}>
-            New Order
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              sx={{
+                fontWeight: 800,
+                fontSize: '1.15rem',
+                color: 'text.primary',
+                letterSpacing: '-0.3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+              }}
+            >
+              <Sparkles size={18} color={theme.palette.primary.main} />
+              New Order
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            mb: 2,
+            px: 1.5,
+            py: 1,
+            borderRadius: 2,
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(27,107,58,0.04)',
+            border: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Info size={14} color={theme.palette.text.secondary} />
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.secondary' }}>
+            Tap to add • Long press for half plate • Toggle "½" below each item
           </Typography>
         </Box>
 
-        <Box sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', mb: 1 }}>
-          Tap to add • Long press for half plate
-        </Box>
-
-        <MenuGrid menuItems={menuData?.items || []} />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        >
+          <MenuGrid menuItems={menuData?.items || []} />
+        </motion.div>
 
         <OrderConfigPanel />
 
@@ -73,7 +119,7 @@ function NewOrderContent() {
 
       <TotalBar onSubmit={handleSubmit} />
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>
   );
 }

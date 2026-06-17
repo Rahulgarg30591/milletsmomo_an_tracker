@@ -1,0 +1,445 @@
+
+MILLETS MOMO - ORDER TRACKER
+AI CODING AGENT IMPLEMENTATION BRIEF (MASTER SPECIFICATION)
+
+PURPOSE
+Build a production-ready Progressive Web App (PWA) for Millets Momo, a food cart business. The application is an internal order tracking system used by Staff and Admin users. The generated application must closely follow the supplied PRD and preserve the original prototype design while elevating quality, responsiveness, accessibility, animations, and overall UX polish.
+
+================================================================================
+1. PRODUCT OVERVIEW
+================================================================================
+
+Application Type:
+- Progressive Web App (PWA)
+- Installable on Android and iOS
+- Responsive for phone, tablet, and desktop
+
+Business Purpose:
+- Track daily customer orders
+- Record payment status
+- Monitor sales and revenue
+- Provide daily reporting and analytics
+
+Personas:
+
+1. Staff
+   - Login via 4-digit PIN
+   - Select business date
+   - Create and manage orders
+   - Mark orders complete
+   - Resolve pending payments
+
+2. Admin
+   - Login via separate PIN
+   - Access reporting dashboard
+   - Review orders
+   - View revenue and payment analytics
+
+================================================================================
+2. CRITICAL IMPLEMENTATION REQUIREMENT
+================================================================================
+
+This project must NOT be treated as a CRUD demo.
+
+The application should feel like a polished commercial SaaS/mobile application.
+
+Requirements:
+
+- Premium UI quality
+- Smooth micro-interactions
+- Modern visual hierarchy
+- Consistent spacing system
+- Clean typography
+- Excellent accessibility
+- Responsive layouts
+- Fast perceived performance
+- Touch-friendly controls
+- Professional animations
+- High visual clarity
+- Elegant empty states
+- Skeleton loading states
+- Smooth transitions
+- Native-app feel when installed as a PWA
+
+Design quality target:
+Equivalent to modern SaaS products built by senior product teams.
+
+Avoid:
+- Generic Material UI appearance
+- Default component styling
+- Unstyled tables
+- Basic admin-dashboard aesthetics
+- Poor spacing
+- Cluttered layouts
+
+================================================================================
+3. ARCHITECTURE
+================================================================================
+
+Frontend:
+- React 18
+- TypeScript
+- Vite
+- Material UI v5
+- React Router v6
+- React Query
+- Axios
+- PWA via vite-plugin-pwa
+
+Backend:
+- Node.js 20
+- Express.js
+- Azure Functions
+- TypeScript
+
+Database:
+- Azure SQL Database
+
+Authentication:
+- JWT
+- bcrypt PIN hashing
+
+Validation:
+- Zod
+
+Testing:
+- Vitest
+- React Testing Library
+- Jest
+- Supertest
+
+Deployment:
+- Azure Static Web Apps
+- Azure Functions
+- Azure SQL
+
+Repository:
+- Monorepo using npm workspaces
+
+Structure:
+- apps/frontend
+- apps/backend
+- packages/shared
+- docs
+- github workflows
+
+================================================================================
+4. APPLICATION FLOW
+================================================================================
+
+LOGIN
+→ Select role (Staff/Admin)
+→ Enter PIN using PIN pad
+→ Authenticate
+→ Redirect according to role
+
+STAFF FLOW
+
+Date Selection
+→ Choose business date
+→ Quick select Today/Yesterday
+→ Recent days list
+
+Day View
+→ Active Orders
+→ Completed Orders
+→ Summary statistics
+
+New Order
+→ Select items from menu grid
+→ Configure order type
+→ Configure payment type
+→ Review totals
+→ Submit
+
+Order Completion
+→ If payment pending:
+   show payment collection modal
+→ Update payment type
+→ Mark complete
+
+ADMIN FLOW
+
+Admin Dashboard
+→ Select date
+→ View summary cards
+→ View revenue metrics
+→ View item breakdown
+→ View all orders
+
+================================================================================
+5. PAGES
+================================================================================
+
+1. LoginPage
+2. DateSelectPage
+3. DayViewPage
+4. NewOrderPage
+5. AdminDashboardPage
+
+================================================================================
+6. CORE COMPONENTS
+================================================================================
+
+PinPad
+MenuGrid
+OrderConfigPanel
+SelectedItemsList
+TotalBar
+OrderCard
+PaymentModal
+StatChip
+Toast
+ProtectedRoute
+
+================================================================================
+7. MENU SYSTEM
+================================================================================
+
+24 fixed products.
+
+Structure:
+4 Fillings × 6 Preparations
+
+Fillings:
+- Veg
+- Paneer
+- Cheese Corn
+- Platter
+
+Preparations:
+- Steam
+- Fry
+- Creamy
+- Creamy Fry
+- Nep. Kothey
+- Pan Fried
+
+Display Format:
+"{Filling} {Preparation}"
+
+Examples:
+- Veg Steam
+- Paneer Creamy
+- Cheese Corn Pan Fried
+
+Support:
+- Full Plate
+- Half Plate
+- Quantity
+- Line Totals
+
+================================================================================
+8. ORDER MODEL
+================================================================================
+
+Order:
+- id
+- orderDate
+- timeLabel
+- orderType
+- paymentMethod
+- isCompleted
+- totalAmount
+- items
+
+Order Types:
+- Dine In
+- Pack
+
+Payment Types:
+- Cash
+- UPI
+- Pending
+
+Completed orders:
+- Move to completed section
+- Visually de-emphasized
+
+================================================================================
+9. BUSINESS RULES
+================================================================================
+
+- PIN must be exactly 4 digits
+- Order must contain at least one item
+- Quantity >= 1
+- Server recalculates totals
+- Server is source of truth
+- Pending orders require payment resolution before completion
+- Delete order requires confirmation
+- Historical prices must remain preserved
+
+================================================================================
+10. ADMIN DASHBOARD
+================================================================================
+
+Metrics:
+
+- Total Orders
+- Total Revenue
+- Pending Amount
+- Cash Total
+- UPI Total
+
+Breakdowns:
+
+- Per-item quantity
+- Per-item revenue
+- Sorted by quantity descending
+
+Also display:
+- Read-only order list
+
+================================================================================
+11. UI DESIGN SYSTEM
+================================================================================
+
+Visual Style:
+- Clean
+- Modern
+- Mobile-first
+- Premium SaaS
+- Friendly food-business branding
+
+Primary Color:
+#1B6B3A
+
+Background:
+#F0F4F1
+
+Surface:
+#FFFFFF
+
+Rounded corners:
+8px
+12px
+16px
+20px
+
+Use card-based layouts.
+
+Maintain strong visual hierarchy.
+
+================================================================================
+12. ANIMATIONS
+================================================================================
+
+Required:
+
+- Route fade transitions
+- Login pop animation
+- PIN error shake
+- Order card slide-in
+- Modal slide-up
+- Button press scaling
+- Toast transitions
+
+Animations must feel smooth and intentional.
+
+No janky movement.
+
+================================================================================
+13. RESPONSIVE EXPERIENCE
+================================================================================
+
+Phone:
+- Primary target
+- One-handed use
+- Sticky bottom actions
+
+Tablet:
+- Centered content
+- Multi-column dashboards
+
+Desktop:
+- Wider layouts
+- Better information density
+
+================================================================================
+14. SECURITY
+================================================================================
+
+Implement:
+
+- bcrypt PIN storage
+- JWT authentication
+- Helmet
+- CORS restrictions
+- Rate limiting
+- Zod validation
+- Parameterized SQL queries
+- XSS protection
+- HTTPS only
+
+================================================================================
+15. PWA REQUIREMENTS
+================================================================================
+
+Must support:
+
+- Install to home screen
+- Offline app shell
+- Service worker
+- Manifest
+- Lighthouse score 90+
+
+Must work on:
+- Android Chrome
+- iOS Safari
+
+================================================================================
+16. TESTING
+================================================================================
+
+Frontend:
+- Components
+- Pricing
+- Menu interactions
+- Authentication UI
+
+Backend:
+- Authentication
+- Orders
+- Admin APIs
+- Pricing rules
+
+Target:
+- Production quality
+- High coverage
+
+================================================================================
+17. AI AGENT IMPLEMENTATION INSTRUCTIONS
+================================================================================
+
+The coding agent should:
+
+1. Build the full application end-to-end.
+2. Follow the supplied PRD as the source of truth.
+3. Generate production-quality code.
+4. Use TypeScript everywhere.
+5. Maintain strict typing.
+6. Create reusable components.
+7. Build polished UX.
+8. Implement accessibility best practices.
+9. Add tasteful animations.
+10. Create visually refined dashboards.
+11. Follow clean architecture principles.
+12. Produce deployment-ready code.
+13. Include tests.
+14. Include documentation.
+
+FINAL QUALITY BAR
+
+The completed application should look and feel like a professionally funded SaaS/mobile product rather than an internal prototype.
+
+Prioritize:
+- usability
+- clarity
+- responsiveness
+- visual polish
+- maintainability
+- scalability
+- accessibility
+- developer experience
+
+END OF IMPLEMENTATION BRIEF

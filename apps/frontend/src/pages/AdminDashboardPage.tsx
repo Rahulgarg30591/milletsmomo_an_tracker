@@ -1,109 +1,303 @@
-import { useState } from 'react';
-import { Box, Button, TextField, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Chip } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminSummary } from '../api/adminApi';
-import { getToday, formatDateLabel } from '../utils/dateUtils';
-import StatChip from '../components/StatChip';
-import type { Order } from '../types';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const statusColors = {
-  dine: { bg: '#EFF6FF', fg: '#1D4ED8' },
-  pack: { bg: '#FEF3C7', fg: '#D97706' },
-  cash: { bg: '#D1FAE5', fg: '#065F46' },
-  upi: { bg: '#EDE9FE', fg: '#5B21B6' },
-  pending: { bg: '#FEE2E2', fg: '#DC2626' },
-};
+import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package } from 'lucide-react';
+import { getAdminSummary } from '../api/adminApi';
+import { getToday, getYesterday, addDays } from '../utils/dateUtils';
+import StatChip from '../components/StatChip';
+import SkeletonLoader from '../components/animations/SkeletonLoader';
+import StaggerContainer, { StaggerItem } from '../components/animations/StaggerContainer';
+import Toast from '../components/Toast';
+import type { Order } from '../types';
+import { vibrate, haptics } from '../theme/tokens';
 
 export default function AdminDashboardPage() {
-  const [date, setDate] = useState(getToday());
+  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | 'custom'>('today');
+  const [startDate, setStartDate] = useState(getToday());
+  const [endDate, setEndDate] = useState(getToday());
+  const [sortBy, setSortBy] = useState<'quantity' | 'revenue'>('quantity');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'upi' | 'pending'>('all');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const today = getToday();
+    const yesterday = getYesterday();
+    switch (dateRange) {
+      case 'today':
+        setStartDate(today);
+        setEndDate(today);
+        break;
+      case 'yesterday':
+        setStartDate(yesterday);
+        setEndDate(yesterday);
+        break;
+      case '7days':
+        setStartDate(addDays(today, -6));
+        setEndDate(today);
+        break;
+      case '30days':
+        setStartDate(addDays(today, -29));
+        setEndDate(today);
+        break;
+    }
+  }, [dateRange]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['adminSummary', date],
-    queryFn: () => getAdminSummary(date),
+    queryKey: ['adminSummary', startDate, endDate],
+    queryFn: () => getAdminSummary(startDate, endDate),
   });
 
-  return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#F0F4F1', p: 2 }}>
-      <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', mb: 3, color: '#111827', letterSpacing: '-0.3px' }}>
-          Admin Dashboard
-        </Typography>
+  const sortedItems = useMemo(() => {
+    if (!data?.itemBreakdown) return [];
+    const items = [...data.itemBreakdown];
+    items.sort((a, b) => {
+      const aVal = sortBy === 'quantity' ? a.totalQuantity : a.totalRevenue;
+      const bVal = sortBy === 'quantity' ? b.totalQuantity : b.totalRevenue;
+      return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+    return items;
+  }, [data, sortBy, sortDir]);
 
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-          <TextField
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 3,
-                backgroundColor: '#FFFFFF',
-              },
-            }}
-          />
+  const filteredOrders = useMemo(() => {
+    if (!data?.orders) return [];
+    if (filterPayment === 'all') return data.orders;
+    return data.orders.filter((o: Order) => o.paymentMethod === filterPayment);
+  }, [data, filterPayment]);
+
+  const toggleSort = (field: 'quantity' | 'revenue') => {
+    vibrate(haptics.light);
+    if (sortBy === field) {
+      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy(field);
+      setSortDir('desc');
+    }
+  };
+
+  const handleExport = () => {
+    vibrate(haptics.light);
+    setToast({ message: 'Export coming soon!', type: 'success' });
+  };
+
+  return (
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 2, pb: 10, pt: 1 }}>
+      <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              size="small"
+              startIcon={<ArrowLeft size={16} />}
+              onClick={() => navigate('/login')}
+              sx={{ textTransform: 'none', fontWeight: 600, color: 'text.secondary', minWidth: 0, px: 1 }}
+            >
+              Back
+            </Button>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary', letterSpacing: '-0.3px' }}>
+              Dashboard
+            </Typography>
+          </Box>
           <Button
-            variant="contained"
-            onClick={() => setDate(getToday())}
-            sx={{
-              borderRadius: 3,
-              py: 1,
-              textTransform: 'none',
-              fontWeight: 600,
-              backgroundColor: '#1B6B3A',
-            }}
+            size="small"
+            variant="outlined"
+            startIcon={<Download size={16} />}
+            onClick={handleExport}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 3 }}
           >
-            Today
+            Export
           </Button>
         </Box>
 
-        {isLoading && <Typography sx={{ color: '#6B7280' }}>Loading...</Typography>}
+        {/* Date range selector */}
+        <Box sx={{ mb: 3 }}>
+          <ToggleButtonGroup
+            value={dateRange}
+            exclusive
+            onChange={(_e, val) => val && setDateRange(val)}
+            size="small"
+            sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5, '& .MuiToggleButtonGroup-grouped': { borderRadius: 3, border: 0, mx: 0.25 } }}
+          >
+            <ToggleButton value="today">Today</ToggleButton>
+            <ToggleButton value="yesterday">Yesterday</ToggleButton>
+            <ToggleButton value="7days">7 Days</ToggleButton>
+            <ToggleButton value="30days">30 Days</ToggleButton>
+            <ToggleButton value="custom">Custom</ToggleButton>
+          </ToggleButtonGroup>
+
+          {dateRange === 'custom' && (
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+              <TextField
+                type="date"
+                size="small"
+                label="From"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                InputLabelProps={{ shrink: true }}
+              />
+              <Typography sx={{ color: 'text.secondary' }}>to</Typography>
+              <TextField
+                type="date"
+                size="small"
+                label="To"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {isLoading && !data && (
+          <>
+            <SkeletonLoader count={4} height={80} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1.5 }} />
+            <SkeletonLoader count={1} height={300} />
+          </>
+        )}
 
         {data && (
           <>
-            <Box
+            {/* Stats grid */}
+            <StaggerContainer
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' },
+                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
                 gap: 1.5,
                 mb: 3,
               }}
             >
-              <StatChip label="Total Orders" value={data.totalOrders} />
-              <StatChip label="Total Revenue" value={`₹${data.totalRevenue}`} />
-              <StatChip label="Pending" value={`₹${data.pendingAmount}`} color="#DC2626" />
-              <StatChip label="Cash / UPI" value={`₹${data.cashTotal} / ₹${data.upiTotal}`} />
-            </Box>
+              <StaggerItem>
+                <StatChip
+                  label="Total Orders"
+                  value={data.totalOrders}
+                  icon="orders"
+                  color="primary"
+                />
+              </StaggerItem>
+              <StaggerItem>
+                <StatChip
+                  label="Revenue"
+                  value={`₹${data.totalRevenue}`}
+                  icon="revenue"
+                  color="accent"
+                />
+              </StaggerItem>
+              <StaggerItem>
+                <StatChip
+                  label="Pending"
+                  value={`₹${data.pendingAmount}`}
+                  icon="pending"
+                  color="error"
+                />
+              </StaggerItem>
+              <StaggerItem>
+                <StatChip
+                  label="Cash / UPI"
+                  value={`₹${data.cashTotal} / ₹${data.upiTotal}`}
+                  icon="payment"
+                  color="success"
+                />
+              </StaggerItem>
+            </StaggerContainer>
 
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden', mb: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid #F3F4F6' }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#111827' }}>
+            {/* Revenue chart */}
+            <Paper sx={{ borderRadius: 4, p: 3, mb: 3, overflow: 'hidden' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 2 }}>
+                Payment Split
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                <Box
+                  sx={{
+                    width: 120,
+                    height: 120,
+                    borderRadius: '50%',
+                    position: 'relative',
+                    flexShrink: 0,
+                    background: `conic-gradient(
+                      #1B6B3A 0deg ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg,
+                      #5B21B6 ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg,
+                      #DC2626 ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg 360deg
+                    )`,
+                  }}
+                />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#1B6B3A' }} />
+                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      Cash: ₹{data.cashTotal}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#5B21B6' }} />
+                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      UPI: ₹{data.upiTotal}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#DC2626' }} />
+                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      Pending: ₹{data.pendingAmount}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+
+            {/* Item breakdown table */}
+            <Paper sx={{ borderRadius: 4, overflow: 'hidden', mb: 3 }}>
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Item Breakdown
                 </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <IconButton size="small" onClick={() => toggleSort('quantity')} sx={{ color: sortBy === 'quantity' ? 'primary.main' : 'text.secondary' }}>
+                    <ArrowUpDown size={16} />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => toggleSort('revenue')} sx={{ color: sortBy === 'revenue' ? 'primary.main' : 'text.secondary' }}>
+                    <TrendingUp size={16} />
+                  </IconButton>
+                </Box>
               </Box>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
-                    <TableCell sx={{ fontWeight: 700, color: '#374151', fontSize: '0.8rem' }}>Item</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: '#374151', fontSize: '0.8rem' }}>Qty</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: '#374151', fontSize: '0.8rem' }}>Revenue</TableCell>
+                  <TableRow sx={{ backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }}>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Item</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Qty</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Revenue</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.itemBreakdown?.map((item: any, idx: number) => (
-                    <TableRow key={idx} sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                      <TableCell sx={{ fontSize: '0.85rem', color: '#111827' }}>{item.itemName}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#1B6B3A' }}>
+                  {sortedItems.map((item, idx: number) => (
+                    <TableRow
+                      key={idx}
+                      sx={{
+                        '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB' },
+                        transition: 'background-color 0.15s ease',
+                      }}
+                    >
+                      <TableCell sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 500, py: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Package size={14} color="currentColor" style={{ opacity: 0.4 }} />
+                          {item.itemName}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1.5 }}>
                         {item.totalQuantity}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#1B6B3A' }}>
+                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1.5 }}>
                         ₹{item.totalRevenue}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {(!data.itemBreakdown || data.itemBreakdown.length === 0) && (
+                  {sortedItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} sx={{ color: '#9CA3AF', textAlign: 'center', py: 3 }}>
-                        No orders for this date
+                      <TableCell colSpan={3} sx={{ color: 'text.secondary', textAlign: 'center', py: 4, fontSize: '0.9rem' }}>
+                        No orders for this date range
                       </TableCell>
                     </TableRow>
                   )}
@@ -111,14 +305,28 @@ export default function AdminDashboardPage() {
               </Table>
             </Paper>
 
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid #F3F4F6' }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#111827' }}>
-                  Orders for {formatDateLabel(date)}
+            {/* Orders list */}
+            <Paper sx={{ borderRadius: 4, overflow: 'hidden' }}>
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+                  Orders
                 </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {(['all', 'cash', 'upi', 'pending'] as const).map((f) => (
+                    <Chip
+                      key={f}
+                      label={f === 'all' ? 'All' : f}
+                      size="small"
+                      onClick={() => setFilterPayment(f)}
+                      color={filterPayment === f ? 'primary' : 'default'}
+                      variant={filterPayment === f ? 'filled' : 'outlined'}
+                      sx={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.75rem' }}
+                    />
+                  ))}
+                </Box>
               </Box>
               <Box sx={{ p: 2 }}>
-                {data.orders?.map((order: Order) => (
+                {filteredOrders.map((order: Order) => (
                   <Box
                     key={order.id}
                     sx={{
@@ -126,13 +334,19 @@ export default function AdminDashboardPage() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       py: 1.5,
-                      borderBottom: '1px solid #F3F4F6',
+                      borderBottom: 1,
+                      borderColor: 'divider',
                       '&:last-child': { borderBottom: 0 },
+                      '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#F9FAFB' },
+                      transition: 'background-color 0.15s ease',
+                      px: 1,
+                      mx: -1,
+                      borderRadius: 2,
                     }}
                   >
                     <Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#111827' }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
                           {order.timeLabel}
                         </Typography>
                         <Chip
@@ -142,8 +356,8 @@ export default function AdminDashboardPage() {
                             height: 20,
                             fontSize: '0.65rem',
                             fontWeight: 700,
-                            backgroundColor: statusColors[order.orderType].bg,
-                            color: statusColors[order.orderType].fg,
+                            backgroundColor: order.orderType === 'dine' ? '#EFF6FF' : '#FEF3C7',
+                            color: order.orderType === 'dine' ? '#1D4ED8' : '#D97706',
                           }}
                         />
                         <Chip
@@ -153,8 +367,8 @@ export default function AdminDashboardPage() {
                             height: 20,
                             fontSize: '0.65rem',
                             fontWeight: 700,
-                            backgroundColor: statusColors[order.paymentMethod].bg,
-                            color: statusColors[order.paymentMethod].fg,
+                            backgroundColor: order.paymentMethod === 'cash' ? '#D1FAE5' : order.paymentMethod === 'upi' ? '#EDE9FE' : '#FEE2E2',
+                            color: order.paymentMethod === 'cash' ? '#065F46' : order.paymentMethod === 'upi' ? '#5B21B6' : '#DC2626',
                             textTransform: 'capitalize',
                           }}
                         />
@@ -166,24 +380,24 @@ export default function AdminDashboardPage() {
                               height: 20,
                               fontSize: '0.65rem',
                               fontWeight: 700,
-                              backgroundColor: '#F3F4F6',
-                              color: '#6B7280',
+                              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : '#F3F4F6',
+                              color: 'text.secondary',
                             }}
                           />
                         )}
                       </Box>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                         {order.items.map((i) => `${i.quantity}x ${i.itemName}${i.isHalf ? ' (½)' : ''}`).join(', ')}
                       </Typography>
                     </Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#1B6B3A' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: 'primary.main' }}>
                       ₹{order.totalAmount}
                     </Typography>
                   </Box>
                 ))}
-                {(!data.orders || data.orders.length === 0) && (
-                  <Typography sx={{ color: '#9CA3AF', textAlign: 'center', py: 3 }}>
-                    No orders for this date
+                {filteredOrders.length === 0 && (
+                  <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 4, fontSize: '0.9rem' }}>
+                    No orders match the selected filter
                   </Typography>
                 )}
               </Box>
@@ -191,6 +405,8 @@ export default function AdminDashboardPage() {
           </>
         )}
       </Box>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>
   );
 }

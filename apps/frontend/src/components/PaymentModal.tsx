@@ -1,4 +1,8 @@
-import { Box, Button, Paper, Typography } from '@mui/material';
+import { useEffect } from 'react';
+import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
+import { motion } from 'framer-motion';
+import { Banknote, Smartphone, X } from 'lucide-react';
+import { vibrate, haptics } from '../theme/tokens';
 
 interface PaymentModalProps {
   open: boolean;
@@ -7,94 +11,120 @@ interface PaymentModalProps {
 }
 
 export default function PaymentModal({ open, onResolve, onCancel }: PaymentModalProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!open) return;
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   return (
-    <Box
-      sx={{
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{
         position: 'fixed',
         inset: 0,
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        animation: 'fadeIn 0.25s ease',
-        '@keyframes fadeIn': {
-          '0%': { opacity: 0 },
-          '100%': { opacity: 1 },
-        },
+        backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)',
+        backdropFilter: 'blur(4px)',
       }}
+      onClick={onCancel}
     >
-      <Paper
-        sx={{
-          borderRadius: '20px 20px 0 0',
-          p: 3,
-          animation: 'slideUp 0.25s ease',
-          '@keyframes slideUp': {
-            '0%': { transform: 'translateY(100%)' },
-            '100%': { transform: 'translateY(0)' },
-          },
-        }}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 0.5, color: '#111827' }}>
-          Collect Payment
-        </Typography>
-        <Typography sx={{ color: '#6B7280', fontSize: '0.9rem', mb: 3 }}>
-          This order was pending. How did the customer pay?
-        </Typography>
-
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => onResolve('cash')}
-            sx={{
-              borderRadius: 3,
-              py: 1.5,
-              fontWeight: 700,
-              fontSize: '1rem',
-              textTransform: 'none',
-              backgroundColor: '#1B6B3A',
-              '&:hover': { backgroundColor: '#124D29' },
-            }}
-          >
-            💵 Cash
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => onResolve('upi')}
-            sx={{
-              borderRadius: 3,
-              py: 1.5,
-              fontWeight: 700,
-              fontSize: '1rem',
-              textTransform: 'none',
-              backgroundColor: '#1D4ED8',
-              '&:hover': { backgroundColor: '#1E40AF' },
-            }}
-          >
-            📱 UPI
-          </Button>
-        </Box>
-
-        <Button
-          fullWidth
-          variant="outlined"
-          onClick={onCancel}
+        <Paper
           sx={{
-            borderRadius: 3,
-            py: 1.2,
-            fontWeight: 600,
-            textTransform: 'none',
-            borderColor: '#E5E7EB',
-            color: '#6B7280',
+            borderRadius: '24px 24px 0 0',
+            p: 3,
+            background: isDark
+              ? 'linear-gradient(180deg, #1A2B22 0%, #0F1A14 100%)'
+              : 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
           }}
         >
-          Cancel
-        </Button>
-      </Paper>
-    </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: 'text.primary' }}>
+              Collect Payment
+            </Typography>
+            <Button
+              size="small"
+              onClick={onCancel}
+              sx={{ minWidth: 0, p: 0.5, color: 'text.secondary' }}
+            >
+              <X size={20} />
+            </Button>
+          </Box>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem', mb: 3 }}>
+            This order was pending. How did the customer pay?
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <motion.div whileTap={{ scale: 0.97 }} style={{ flex: 1 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                onClick={() => {
+                  vibrate(haptics.medium);
+                  onResolve('cash');
+                }}
+                startIcon={<Banknote size={20} />}
+                sx={{
+                  borderRadius: 3,
+                  py: 1.5,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
+                  boxShadow: '0 4px 14px rgba(27,107,58,0.25)',
+                }}
+              >
+                Cash
+              </Button>
+            </motion.div>
+            <motion.div whileTap={{ scale: 0.97 }} style={{ flex: 1 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                onClick={() => {
+                  vibrate(haptics.medium);
+                  onResolve('upi');
+                }}
+                startIcon={<Smartphone size={20} />}
+                sx={{
+                  borderRadius: 3,
+                  py: 1.5,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #1D4ED8, #3B82F6)',
+                  boxShadow: '0 4px 14px rgba(29,78,216,0.25)',
+                }}
+              >
+                UPI
+              </Button>
+            </motion.div>
+          </Box>
+        </Paper>
+      </motion.div>
+    </motion.div>
   );
 }

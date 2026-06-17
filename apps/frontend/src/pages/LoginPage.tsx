@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Paper, Typography } from '@mui/material';
+import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
+import { motion } from 'framer-motion';
+import { Leaf, Shield, User } from 'lucide-react';
 import PinPad from '../components/PinPad';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../api/authApi';
+import { vibrate, haptics } from '../theme/tokens';
 
 export default function LoginPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff');
@@ -11,6 +14,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login: doLogin } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+
+  useEffect(() => {
+    if (error) {
+      vibrate(haptics.error);
+    }
+  }, [error]);
 
   const handlePinComplete = async (pin: string) => {
     if (loading) return;
@@ -19,6 +29,7 @@ export default function LoginPage() {
     try {
       const res = await login({ role, pin });
       doLogin(res.token, res.role, res.displayName);
+      vibrate(haptics.success);
       if (res.role === 'admin') {
         navigate('/admin');
       } else {
@@ -31,9 +42,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleErrorAck = () => {
+  const handleErrorAck = useCallback(() => {
     setError(false);
-  };
+  }, []);
+
+  const isDark = theme.palette.mode === 'dark';
 
   return (
     <Box
@@ -42,120 +55,166 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F0F4F1',
         p: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        background: isDark
+          ? 'linear-gradient(135deg, #0F1A14 0%, #1A2B22 50%, #2D3A1E 100%)'
+          : 'linear-gradient(135deg, #F0F4F1 0%, #E8F5EE 50%, #FEF3C7 100%)',
       }}
     >
-      <Paper
+      {/* Decorative background elements */}
+      <Box
         sx={{
-          width: '100%',
-          maxWidth: 400,
-          p: 4,
-          borderRadius: 5,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)',
-          animation: 'popIn 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-          '@keyframes popIn': {
-            '0%': { transform: 'scale(0.92)', opacity: 0 },
-            '100%': { transform: 'scale(1)', opacity: 1 },
-          },
+          position: 'absolute',
+          top: '-20%',
+          right: '-10%',
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(27,107,58,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
         }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '-20%',
+          left: '-10%',
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(232,166,74,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <Box
-            sx={{
-              width: 64,
-              height: 64,
-              borderRadius: 4,
-              backgroundColor: '#E8F5EE',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '2rem',
-            }}
-          >
-            🍽
+        <Paper
+          sx={{
+            width: '100%',
+            p: { xs: 3, sm: 4 },
+            borderRadius: 5,
+            background: isDark
+              ? 'rgba(26,43,34,0.85)'
+              : 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: isDark
+              ? '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)'
+              : '0 25px 50px -12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)',
+            border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.04)',
+          }}
+        >
+          {/* Logo */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <motion.div
+              initial={{ scale: 0.8, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.1 }}
+            >
+              <Box
+                sx={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 24px rgba(27,107,58,0.25)',
+                }}
+              >
+                <Leaf size={36} color="#FFFFFF" strokeWidth={2} />
+              </Box>
+            </motion.div>
           </Box>
-        </Box>
 
-        <Typography
-          variant="h1"
-          sx={{
-            fontSize: '1.5rem',
-            fontWeight: 800,
-            textAlign: 'center',
-            mb: 1,
-            color: '#111827',
-            letterSpacing: '-0.5px',
-          }}
-        >
-          Millets Momo
-        </Typography>
-        <Typography
-          sx={{
-            textAlign: 'center',
-            color: '#6B7280',
-            mb: 4,
-            fontSize: '0.95rem',
-          }}
-        >
-          Order Tracker
-        </Typography>
-
-        <Box sx={{ display: 'flex', gap: 1, mb: 4 }}>
-          <Button
-            fullWidth
-            variant={role === 'staff' ? 'contained' : 'outlined'}
-            onClick={() => setRole('staff')}
+          <Typography
+            variant="h1"
             sx={{
-              borderRadius: 3,
-              py: 1.2,
-              fontWeight: 600,
-              textTransform: 'none',
-              backgroundColor: role === 'staff' ? '#1B6B3A' : 'transparent',
-              borderColor: role === 'staff' ? '#1B6B3A' : '#E5E7EB',
-              color: role === 'staff' ? '#FFFFFF' : '#374151',
+              fontSize: '1.5rem',
+              fontWeight: 800,
+              textAlign: 'center',
+              mb: 0.5,
+              color: 'text.primary',
+              letterSpacing: '-0.5px',
             }}
           >
-            Staff
-          </Button>
-          <Button
-            fullWidth
-            variant={role === 'admin' ? 'contained' : 'outlined'}
-            onClick={() => setRole('admin')}
-            sx={{
-              borderRadius: 3,
-              py: 1.2,
-              fontWeight: 600,
-              textTransform: 'none',
-              backgroundColor: role === 'admin' ? '#1B6B3A' : 'transparent',
-              borderColor: role === 'admin' ? '#1B6B3A' : '#E5E7EB',
-              color: role === 'admin' ? '#FFFFFF' : '#374151',
-            }}
-          >
-            Admin
-          </Button>
-        </Box>
-
-        {error && (
+            Millets Momo
+          </Typography>
           <Typography
             sx={{
-              color: '#DC2626',
               textAlign: 'center',
-              mb: 2,
+              color: 'text.secondary',
+              mb: 4,
+              fontSize: '0.95rem',
               fontWeight: 500,
-              fontSize: '0.9rem',
             }}
           >
-            Invalid PIN. Please try again.
+            Order Tracker
           </Typography>
-        )}
 
-        <PinPad
-          onComplete={handlePinComplete}
-          error={error}
-          onErrorAck={handleErrorAck}
-        />
-      </Paper>
+          {/* Role selector */}
+          <Box sx={{ display: 'flex', gap: 1.5, mb: 4 }}>
+            <Button
+              fullWidth
+              variant={role === 'staff' ? 'contained' : 'outlined'}
+              onClick={() => {
+                vibrate(haptics.light);
+                setRole('staff');
+                setError(false);
+              }}
+              sx={{
+                borderRadius: 3,
+                py: 1.4,
+                fontWeight: 600,
+                textTransform: 'none',
+                gap: 1,
+                borderWidth: 2,
+                borderColor: role === 'staff' ? 'primary.main' : 'divider',
+                color: role === 'staff' ? 'primary.contrastText' : 'text.primary',
+              }}
+              startIcon={<User size={18} />}
+            >
+              Staff
+            </Button>
+            <Button
+              fullWidth
+              variant={role === 'admin' ? 'contained' : 'outlined'}
+              onClick={() => {
+                vibrate(haptics.light);
+                setRole('admin');
+                setError(false);
+              }}
+              sx={{
+                borderRadius: 3,
+                py: 1.4,
+                fontWeight: 600,
+                textTransform: 'none',
+                gap: 1,
+                borderWidth: 2,
+                borderColor: role === 'admin' ? 'primary.main' : 'divider',
+                color: role === 'admin' ? 'primary.contrastText' : 'text.primary',
+              }}
+              startIcon={<Shield size={18} />}
+            >
+              Admin
+            </Button>
+          </Box>
+
+          <PinPad
+            onComplete={handlePinComplete}
+            error={error}
+            onErrorAck={handleErrorAck}
+            loading={loading}
+          />
+        </Paper>
+      </motion.div>
     </Box>
   );
 }

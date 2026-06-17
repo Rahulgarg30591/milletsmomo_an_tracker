@@ -1,80 +1,119 @@
-import { Box, Button } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
+import { Utensils, Package, Banknote, Smartphone, Clock } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
+import { statusColors, darkStatusColors } from '../theme/tokens';
+import { useTheme } from '@mui/material/styles';
 
-const statusColors = {
-  dine: { bg: '#EFF6FF', fg: '#1D4ED8', label: '🍽 Dine in' },
-  pack: { bg: '#FEF3C7', fg: '#D97706', label: '📦 Pack' },
-  cash: { bg: '#D1FAE5', fg: '#065F46', label: '💵 Cash' },
-  upi: { bg: '#EDE9FE', fg: '#5B21B6', label: '📱 UPI' },
-  pending: { bg: '#FEE2E2', fg: '#DC2626', label: '⏳ Pending' },
-};
+const typeConfig = [
+  { key: 'dine' as const, label: 'Dine in', icon: <Utensils size={14} /> },
+  { key: 'pack' as const, label: 'Pack', icon: <Package size={14} /> },
+];
+
+const paymentConfig = [
+  { key: 'cash' as const, label: 'Cash', icon: <Banknote size={14} /> },
+  { key: 'upi' as const, label: 'UPI', icon: <Smartphone size={14} /> },
+  { key: 'pending' as const, label: 'Pending', icon: <Clock size={14} /> },
+];
 
 export default function OrderConfigPanel() {
   const { draft, setOrderType, setPaymentMethod } = useOrderDraft();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  const colors = isDark ? darkStatusColors : statusColors;
 
   return (
     <Box sx={{ mb: 2 }}>
       <Box sx={{ mb: 1.5 }}>
-        <Box sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', mb: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            color: 'text.secondary',
+            mb: 0.75,
+            display: 'block',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontSize: '0.7rem',
+          }}
+        >
           Order Type
-        </Box>
+        </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          {(['dine', 'pack'] as const).map((type) => (
+          {typeConfig.map((type) => (
             <Button
-              key={type}
+              key={type.key}
+              fullWidth
               size="small"
-              onClick={() => setOrderType(type)}
+              onClick={() => setOrderType(type.key)}
+              startIcon={type.icon}
               sx={{
-                flex: 1,
                 borderRadius: 3,
                 py: 0.8,
                 fontWeight: 600,
                 fontSize: '0.8rem',
                 textTransform: 'none',
-                backgroundColor: draft.orderType === type ? statusColors[type].bg : 'transparent',
-                color: draft.orderType === type ? statusColors[type].fg : '#6B7280',
-                border: '1.5px solid',
-                borderColor: draft.orderType === type ? statusColors[type].fg : '#E5E7EB',
+                backgroundColor: draft.orderType === type.key ? colors.dineIn.bg : 'transparent',
+                color: draft.orderType === type.key ? colors.dineIn.fg : 'text.secondary',
+                border: 1.5,
+                borderColor: draft.orderType === type.key ? 'primary.main' : 'divider',
                 '&:hover': {
-                  backgroundColor: statusColors[type].bg,
+                  backgroundColor: colors.dineIn.bg,
+                  borderColor: 'primary.main',
                 },
               }}
             >
-              {statusColors[type].label}
+              {type.label}
             </Button>
           ))}
         </Box>
       </Box>
 
       <Box>
-        <Box sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', mb: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            color: 'text.secondary',
+            mb: 0.75,
+            display: 'block',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontSize: '0.7rem',
+          }}
+        >
           Payment
-        </Box>
+        </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          {(['cash', 'upi', 'pending'] as const).map((method) => (
-            <Button
-              key={method}
-              size="small"
-              onClick={() => setPaymentMethod(method)}
-              sx={{
-                flex: 1,
-                borderRadius: 3,
-                py: 0.8,
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                textTransform: 'none',
-                backgroundColor: draft.paymentMethod === method ? statusColors[method].bg : 'transparent',
-                color: draft.paymentMethod === method ? statusColors[method].fg : '#6B7280',
-                border: '1.5px solid',
-                borderColor: draft.paymentMethod === method ? statusColors[method].fg : '#E5E7EB',
-                '&:hover': {
-                  backgroundColor: statusColors[method].bg,
-                },
-              }}
-            >
-              {statusColors[method].label}
-            </Button>
-          ))}
+          {paymentConfig.map((method) => {
+            const colorKey = method.key === 'pending' ? 'pending' : method.key === 'cash' ? 'cash' : 'upi';
+            const c = colors[colorKey];
+            return (
+              <Button
+                key={method.key}
+                fullWidth
+                size="small"
+                onClick={() => setPaymentMethod(method.key)}
+                startIcon={method.icon}
+                sx={{
+                  borderRadius: 3,
+                  py: 0.8,
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                  backgroundColor: draft.paymentMethod === method.key ? c.bg : 'transparent',
+                  color: draft.paymentMethod === method.key ? c.fg : 'text.secondary',
+                  border: 1.5,
+                  borderColor: draft.paymentMethod === method.key ? c.fg : 'divider',
+                  '&:hover': {
+                    backgroundColor: c.bg,
+                    borderColor: c.fg,
+                  },
+                }}
+              >
+                {method.label}
+              </Button>
+            );
+          })}
         </Box>
       </Box>
     </Box>
