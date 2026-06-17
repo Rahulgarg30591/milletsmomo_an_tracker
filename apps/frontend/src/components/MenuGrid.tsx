@@ -10,7 +10,15 @@ interface MenuItem {
   fullPrice: number;
   halfPrice: number;
   preparation: string;
+  filling: string;
 }
+
+const FILLING_COLORS: Record<string, { bg: string; border: string; activeBg: string; activeBorder: string; text: string; btnBg: string; btnHover: string }> = {
+  'Veg': { bg: '#F0FDF4', border: '#86EFAC', activeBg: '#DCFCE7', activeBorder: '#22C55E', text: '#15803D', btnBg: '#22C55E', btnHover: '#16A34A' },
+  'Paneer': { bg: '#FFF7ED', border: '#FDBA74', activeBg: '#FFEDD5', activeBorder: '#F97316', text: '#C2410C', btnBg: '#F97316', btnHover: '#EA580C' },
+  'Cheese Corn': { bg: '#FEFCE8', border: '#FDE047', activeBg: '#FEF9C3', activeBorder: '#EAB308', text: '#A16207', btnBg: '#EAB308', btnHover: '#CA8A04' },
+  'Platter': { bg: '#F3E8FF', border: '#C4B5FD', activeBg: '#EDE9FE', activeBorder: '#8B5CF6', text: '#6B21A8', btnBg: '#8B5CF6', btnHover: '#7C3AED' },
+};
 
 interface MenuGridProps {
   items: MenuItem[];
@@ -25,7 +33,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
-        gap: 1.5,
+        gap: 1,
       }}
     >
       {items.map((item, idx) => {
@@ -33,6 +41,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
         const quantity = draftItem?.quantity || 0;
         const isHalf = draftItem?.isHalf || false;
         const isActive = quantity > 0;
+        const colors = FILLING_COLORS[item.filling] || FILLING_COLORS['Veg'];
 
         return (
           <motion.div
@@ -40,11 +49,11 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
             layout
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ 
-              delay: (categoryIndex * 0.05) + (idx * 0.02), 
-              type: 'spring', 
-              stiffness: 400, 
-              damping: 30 
+            transition={{
+              delay: (categoryIndex * 0.05) + (idx * 0.02),
+              type: 'spring',
+              stiffness: 400,
+              damping: 30
             }}
             style={{ display: 'flex' }}
           >
@@ -52,41 +61,40 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
               sx={{
                 position: 'relative',
                 width: '100%',
-                p: 1.5,
-                borderRadius: 3,
-                backgroundColor: isActive ? '#FFF8E1' : 'background.paper',
-                border: 2,
-                borderColor: isActive ? '#F59E0B' : 'divider',
+                p: 1,
+                borderRadius: 1.5,
+                backgroundColor: isActive ? colors.activeBg : colors.bg,
+                border: 1.5,
+                borderColor: isActive ? colors.activeBorder : colors.border,
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 1,
-                minHeight: isActive ? 140 : 90,
+                gap: 0.5,
+                minHeight: isActive ? 112 : 72,
                 '&:hover': {
-                  borderColor: isActive ? '#F59E0B' : 'primary.light',
-                  boxShadow: isActive ? '0 4px 16px rgba(245,158,11,0.12)' : (theme) => theme.shadows[1],
+                  borderColor: isActive ? colors.activeBorder : colors.border,
+                  boxShadow: isActive ? `0 2px 8px ${colors.activeBorder}20` : (theme) => theme.shadows[1],
                 },
               }}
             >
-              {/* Header row: name + price */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 0.5 }}>
+              {/* Header: centered name + price */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
                 <Typography
                   sx={{
                     fontSize: '0.85rem',
                     fontWeight: 700,
-                    color: isActive ? '#92400E' : 'text.primary',
+                    color: isActive ? colors.text : 'text.primary',
                     lineHeight: 1.2,
-                    flex: 1,
+                    textAlign: 'center',
                   }}
                 >
-                  {item.displayName}
+                  {item.filling}
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                     fontWeight: 600,
-                    color: isActive ? '#B45309' : 'text.secondary',
-                    flexShrink: 0,
+                    color: isActive ? colors.text : 'text.secondary',
                   }}
                 >
                   ₹{isHalf ? item.halfPrice : item.fullPrice}
@@ -113,19 +121,19 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         vibrate(haptics.light);
                       }}
                       sx={{
-                        borderRadius: 2,
-                        py: 0.6,
+                        borderRadius: 1,
+                        py: 0.4,
                         fontWeight: 700,
-                        fontSize: '0.8rem',
+                        fontSize: '0.75rem',
                         textTransform: 'none',
-                        backgroundColor: '#F59E0B',
+                        backgroundColor: colors.btnBg,
                         color: '#FFFFFF',
                         boxShadow: 'none',
-                        '&:hover': { backgroundColor: '#D97706' },
+                        '&:hover': { backgroundColor: colors.btnHover },
                         '&:active': { transform: 'scale(0.97)' },
                       }}
                     >
-                      <Plus size={14} style={{ marginRight: 4 }} />
+                      <Plus size={12} style={{ marginRight: 3 }} />
                       Add
                     </Button>
                   </motion.div>
@@ -139,7 +147,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 8,
+                      gap: 6,
                       marginTop: 'auto',
                     }}
                   >
@@ -149,7 +157,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 1,
+                        gap: 0.75,
                       }}
                     >
                       <Button
@@ -159,20 +167,20 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           vibrate(haptics.light);
                         }}
                         sx={{
-                          minWidth: 32,
-                          width: 32,
-                          height: 32,
+                          minWidth: 26,
+                          width: 26,
+                          height: 26,
                           p: 0,
                           borderRadius: '50%',
                           border: 1.5,
-                          borderColor: '#F59E0B',
-                          color: '#B45309',
+                          borderColor: colors.activeBorder,
+                          color: colors.text,
                           backgroundColor: '#FFFFFF',
-                          '&:hover': { backgroundColor: '#FEF3C7' },
+                          '&:hover': { backgroundColor: colors.activeBg },
                           '&:active': { transform: 'scale(0.92)' },
                         }}
                       >
-                        <Minus size={14} />
+                        <Minus size={12} />
                       </Button>
 
                       <Box
@@ -180,19 +188,19 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          minWidth: 32,
-                          height: 32,
-                          borderRadius: 1.5,
-                          backgroundColor: '#FEF3C7',
+                          minWidth: 26,
+                          height: 26,
+                          borderRadius: 1,
+                          backgroundColor: colors.activeBg,
                           border: 1.5,
-                          borderColor: '#F59E0B',
+                          borderColor: colors.activeBorder,
                         }}
                       >
                         <Typography
                           sx={{
                             fontWeight: 800,
-                            fontSize: '1rem',
-                            color: '#92400E',
+                            fontSize: '0.85rem',
+                            color: colors.text,
                             lineHeight: 1,
                           }}
                         >
@@ -207,20 +215,20 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           vibrate(haptics.light);
                         }}
                         sx={{
-                          minWidth: 32,
-                          width: 32,
-                          height: 32,
+                          minWidth: 26,
+                          width: 26,
+                          height: 26,
                           p: 0,
                           borderRadius: '50%',
                           border: 1.5,
-                          borderColor: '#F59E0B',
-                          color: '#B45309',
+                          borderColor: colors.activeBorder,
+                          color: colors.text,
                           backgroundColor: '#FFFFFF',
-                          '&:hover': { backgroundColor: '#FEF3C7' },
+                          '&:hover': { backgroundColor: colors.activeBg },
                           '&:active': { transform: 'scale(0.92)' },
                         }}
                       >
-                        <Plus size={14} />
+                        <Plus size={12} />
                       </Button>
 
                       <Button
@@ -230,16 +238,16 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           vibrate(haptics.light);
                         }}
                         sx={{
-                          minWidth: 28,
-                          width: 28,
-                          height: 28,
+                          minWidth: 24,
+                          width: 24,
+                          height: 24,
                           p: 0,
                           borderRadius: '50%',
                           color: '#EF4444',
                           '&:hover': { backgroundColor: '#FEE2E2' },
                         }}
                       >
-                        <X size={14} />
+                        <X size={12} />
                       </Button>
                     </Box>
 
@@ -261,20 +269,20 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           }}
                           sx={{
                             minWidth: 0,
-                            px: 1,
-                            py: 0.3,
-                            borderRadius: 1.5,
-                            fontSize: '0.65rem',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            fontSize: '0.6rem',
                             fontWeight: 700,
                             textTransform: 'none',
-                            backgroundColor: !isHalf ? '#F59E0B' : '#FFFFFF',
+                            backgroundColor: !isHalf ? colors.btnBg : '#FFFFFF',
                             color: !isHalf ? '#FFFFFF' : '#6B7280',
                             border: 1.5,
-                            borderColor: '#F59E0B',
+                            borderColor: colors.btnBg,
                             '&:hover': {
-                              backgroundColor: !isHalf ? '#D97706' : '#FEF3C7',
+                              backgroundColor: !isHalf ? colors.btnHover : colors.activeBg,
                             },
-                            lineHeight: 1.5,
+                            lineHeight: 1.4,
                           }}
                         >
                           Full
@@ -287,26 +295,26 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           }}
                           sx={{
                             minWidth: 0,
-                            px: 1,
-                            py: 0.3,
-                            borderRadius: 1.5,
-                            fontSize: '0.65rem',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            fontSize: '0.6rem',
                             fontWeight: 700,
                             textTransform: 'none',
-                            backgroundColor: isHalf ? '#F59E0B' : '#FFFFFF',
+                            backgroundColor: isHalf ? colors.btnBg : '#FFFFFF',
                             color: isHalf ? '#FFFFFF' : '#6B7280',
                             border: 1.5,
-                            borderColor: '#F59E0B',
+                            borderColor: colors.btnBg,
                             '&:hover': {
-                              backgroundColor: isHalf ? '#D97706' : '#FEF3C7',
+                              backgroundColor: isHalf ? colors.btnHover : colors.activeBg,
                             },
-                            lineHeight: 1.5,
+                            lineHeight: 1.4,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 0.25,
                           }}
                         >
-                          <Slice size={10} />
+                          <Slice size={9} />
                           ½
                         </Button>
                       </Box>
@@ -314,8 +322,8 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                       <Typography
                         sx={{
                           fontWeight: 800,
-                          fontSize: '0.9rem',
-                          color: '#92400E',
+                          fontSize: '0.8rem',
+                          color: colors.text,
                         }}
                       >
                         ₹{quantity * (isHalf ? item.halfPrice : item.fullPrice)}

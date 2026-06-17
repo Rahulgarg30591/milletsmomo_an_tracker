@@ -33,7 +33,7 @@ export default function LoginPage() {
       if (res.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/dates');
+        navigate(`/day/${new Date().toISOString().split('T')[0]}`);
       }
     } catch {
       setError(true);

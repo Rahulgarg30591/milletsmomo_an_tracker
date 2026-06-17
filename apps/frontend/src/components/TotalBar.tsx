@@ -18,8 +18,8 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
   return (
     <Box
       sx={{
-        position: 'sticky',
-        bottom: 0,
+        position: 'fixed',
+        bottom: { xs: 56, md: 0 },
         left: 0,
         right: 0,
         zIndex: 10,

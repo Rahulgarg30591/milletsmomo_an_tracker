@@ -9,7 +9,6 @@ import { getToday } from '../utils/dateUtils';
 
 const pageTitles: Record<string, string> = {
   '/login': 'Login',
-  '/dates': 'Select Date',
   '/day': 'Orders',
   '/admin': 'Dashboard',
 };
@@ -51,7 +50,7 @@ export default function AppBarComponent() {
   return (
     <AppBar position="sticky" elevation={0} sx={{ zIndex: 1200 }}>
       <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: 56 }}>
-        <Box 
+        <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
           onClick={handleLogoClick}
         >

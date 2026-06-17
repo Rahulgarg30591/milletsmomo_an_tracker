@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box, Button, Fab, Typography, Divider, Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Button, Fab, Typography, Divider, TextField,
   useTheme, useMediaQuery, Paper, Chip, IconButton
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, ArrowLeft, CalendarDays, RefreshCw, ChefHat, Receipt, Wallet, Clock
+  Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock
 } from 'lucide-react';
-import { getOrders, completeOrder, deleteOrder } from '../api/ordersApi';
+import { getOrders, completeOrder } from '../api/ordersApi';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
@@ -76,7 +76,7 @@ export default function DayViewPage() {
 
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Order | null>(null);
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -106,15 +106,6 @@ export default function DayViewPage() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteOrder(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders', date] });
-      setToast({ message: 'Order removed', type: 'success' });
-      setDeleteConfirm(null);
-    },
-  });
-
   const handleComplete = (order: Order) => {
     if (order.paymentMethod === 'pending') {
       setPaymentModalOrder(order);
@@ -129,19 +120,9 @@ export default function DayViewPage() {
     }
   };
 
-  const handleDelete = (order: Order) => {
-    setDeleteConfirm(order);
-  };
-
-  const confirmDelete = () => {
-    if (deleteConfirm) {
-      deleteMutation.mutate(deleteConfirm.id);
-    }
-  };
-
   const activeOrders = data?.orders?.filter((o: Order) => !o.isCompleted) || [];
   const completedOrders = data?.orders?.filter((o: Order) => o.isCompleted) || [];
-  const totalRevenue = data?.orders?.reduce((sum: number, o: Order) => sum + o.totalAmount, 0) || 0;
+
   const pendingAmount = data?.orders?.reduce((sum: number, o: Order) => sum + (o.paymentMethod === 'pending' ? o.totalAmount : 0), 0) || 0;
 
   const handleManualRefresh = () => {
@@ -151,7 +132,7 @@ export default function DayViewPage() {
 
   if (isLoading && !data) {
     return (
-      <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 2, pb: 10 }}>
+      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: 2, pb: 10 }}>
         <Box sx={{ maxWidth: 900, mx: 'auto' }}>
           <SkeletonLoader count={3} height={56} />
           <Box sx={{ mt: 3 }}>
@@ -163,25 +144,37 @@ export default function DayViewPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: isDesktop ? 4 : 10, pt: 1 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: isDesktop ? 4 : 10, pt: 1 }}>
       <Box sx={{ maxWidth: 900, mx: 'auto', p: 2 }}>
         {/* Top bar */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
+            <CalendarDays size={18} color={theme.palette.primary.main} />
+            <TextField
+              type="date"
+              value={date || ''}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                if (newDate) navigate(`/day/${newDate}`);
+              }}
               size="small"
-              startIcon={<ArrowLeft size={16} />}
-              onClick={() => navigate('/dates')}
-              sx={{ textTransform: 'none', fontWeight: 600, color: 'text.secondary', minWidth: 0, px: 1 }}
-            >
-              Back
-            </Button>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <CalendarDays size={18} color={theme.palette.primary.main} />
-              <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary', letterSpacing: '-0.3px' }}>
-                {date}
-              </Typography>
-            </Box>
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  fontWeight: 800,
+                  fontSize: '1.05rem',
+                  color: 'text.primary',
+                  py: 0.2,
+                  px: 0.5,
+                  width: { xs: 155, sm: 175 },
+                },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                '& .MuiInputBase-input::-webkit-calendar-picker-indicator': {
+                  cursor: 'pointer',
+                  filter: (t) => t.palette.mode === 'dark' ? 'invert(1)' : 'none',
+                },
+              }}
+            />
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -220,7 +213,7 @@ export default function DayViewPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
             gap: 1.5,
             mb: 3,
           }}
@@ -231,12 +224,7 @@ export default function DayViewPage() {
             value={data?.orders?.length || 0}
             color="#1B6B3A"
           />
-          <StatCard
-            icon={<Wallet size={18} />}
-            label="Revenue"
-            value={`₹${totalRevenue}`}
-            color="#D97706"
-          />
+
           <StatCard
             icon={<Clock size={18} />}
             label="Pending"
@@ -300,7 +288,6 @@ export default function DayViewPage() {
                 <OrderCard
                   order={order}
                   onComplete={handleComplete}
-                  onDelete={handleDelete}
                 />
               </motion.div>
             ))}
@@ -335,7 +322,6 @@ export default function DayViewPage() {
                     <OrderCard
                       order={order}
                       onComplete={() => {}}
-                      onDelete={handleDelete}
                     />
                   </motion.div>
                 ))}
@@ -396,35 +382,6 @@ export default function DayViewPage() {
       />
 
       <PaymentSuccessDecoration show={showSuccess} onDone={() => setShowSuccess(false)} />
-
-      <Dialog
-        open={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        PaperProps={{ sx: { borderRadius: 4, mx: 2 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.1rem' }}>Remove this order?</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-            This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button
-            onClick={() => setDeleteConfirm(null)}
-            sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600, color: 'text.secondary' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={confirmDelete}
-            sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 700 }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

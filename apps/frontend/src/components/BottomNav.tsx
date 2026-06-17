@@ -24,7 +24,6 @@ export default function BottomNav() {
 
   let value = 0;
   if (location.pathname.startsWith('/day') && !location.pathname.endsWith('/new')) value = 0;
-  if (location.pathname === '/dates') value = 0;
   if (location.pathname.endsWith('/new')) value = 1;
   if (location.pathname === '/admin') value = 0;
 

@@ -49,6 +49,7 @@ function NewOrderContent() {
   const groupedItems = useMemo(() => {
     if (!menuData?.items) return [];
     const groups = new Map<string, MenuItem[]>();
+    debugger;
     menuData.items.forEach((item: MenuItem) => {
       const prep = item.preparation || 'Other';
       if (!groups.has(prep)) groups.set(prep, []);
@@ -93,7 +94,7 @@ function NewOrderContent() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 12, pt: 1 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 20, md: 14 }, pt: 1 }}>
       <Box sx={{ maxWidth: 700, mx: 'auto', p: 2 }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
@@ -120,7 +121,7 @@ function NewOrderContent() {
               New Order
             </Typography>
             <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.25 }}>
-              {date}
+              {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : ''}
             </Typography>
           </Box>
           {totalSelectedItems > 0 && (
@@ -135,7 +136,7 @@ function NewOrderContent() {
         </Box>
 
         {/* Menu Grid by Category */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {groupedItems.map(([preparation, items], categoryIndex) => {
             const colors = CATEGORY_COLORS[preparation] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#4B5563' };
             return (
@@ -169,20 +170,6 @@ function NewOrderContent() {
                     >
                       {preparation}
                     </Typography>
-                    <Box
-                      sx={{
-                        ml: 'auto',
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        backgroundColor: 'rgba(255,255,255,0.6)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        color: colors.text,
-                      }}
-                    >
-                      {items.length} items
-                    </Box>
                   </Box>
                   <MenuGrid items={items} categoryIndex={categoryIndex} />
                 </Paper>

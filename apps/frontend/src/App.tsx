@@ -10,10 +10,10 @@ import OfflineBanner from './components/OfflineBanner';
 import PageTransition from './components/animations/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import DateSelectPage from './pages/DateSelectPage';
 import DayViewPage from './pages/DayViewPage';
 import NewOrderPage from './pages/NewOrderPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import { getToday } from './utils/dateUtils';
 
 export default function App() {
   const { mode } = useThemeMode();
@@ -29,15 +29,7 @@ export default function App() {
           <PageTransition>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route
-                path="/dates"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <DateSelectPage />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/" element={<Navigate to={`/day/${getToday()}`} replace />} />
               <Route
                 path="/day/:date"
                 element={
@@ -62,7 +54,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
             </Routes>
           </PageTransition>
           <BottomNav />

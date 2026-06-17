@@ -1,13 +1,12 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
-import { Check, Trash2, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck } from 'lucide-react';
+import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck } from 'lucide-react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
 
 interface OrderCardProps {
   order: Order;
   onComplete: (order: Order) => void;
-  onDelete: (order: Order) => void;
 }
 
 const typeIcons = {
@@ -21,7 +20,7 @@ const paymentIcons = {
   pending: <Clock size={12} />,
 };
 
-export default function OrderCard({ order, onComplete, onDelete }: OrderCardProps) {
+export default function OrderCard({ order, onComplete }: OrderCardProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const colors = isDark ? darkStatusColors : statusColors;
@@ -133,33 +132,14 @@ export default function OrderCard({ order, onComplete, onDelete }: OrderCardProp
               >
                 <Check size={18} />
               </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  vibrate(haptics.light);
-                  onDelete(order);
-                }}
-                aria-label="Delete order"
-                sx={{
-                  minWidth: 36,
-                  height: 36,
-                  p: 0,
-                  borderRadius: 2,
-                  backgroundColor: 'error.light',
-                  color: 'error.main',
-                  '&:hover': { backgroundColor: 'error.main', color: '#FFFFFF' },
-                  '&:focus-visible': { outline: '2px solid', outlineColor: 'error.main', outlineOffset: 2 },
-                }}
-              >
-                <Trash2 size={18} />
-              </Button>
+
             </Box>
           )}
         </Box>
 
         <Box sx={{ mb: 1.5 }}>
           {order.items.map((item, idx) => (
-            <Typography key={idx} sx={{ fontSize: '0.85rem', color: 'text.secondary', lineHeight: 1.6, fontWeight: 500 }}>
+            <Typography key={idx} sx={{ fontSize: '0.95rem', color: 'text.secondary', lineHeight: 1.6, fontWeight: 500 }}>
               {item.quantity}x {item.itemName}
               {item.isHalf && (
                 <Box component="span" sx={{ color: 'secondary.main', fontWeight: 700, ml: 0.5 }}>

@@ -1,6 +1,6 @@
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Divider } from '@mui/material';
 import { useOrderDraft } from '../context/OrderDraftContext';
-import { getMenuItem, calculateLineTotal } from '../utils/pricing';
+import { getMenuItem, calculateLineTotal, calculateOrderTotal } from '../utils/pricing';
 import { X } from 'lucide-react';
 
 export default function SelectedItemsList() {
@@ -13,6 +13,8 @@ export default function SelectedItemsList() {
       const { lineTotal } = calculateLineTotal(menuItemId, item.quantity, item.isHalf);
       return { menuItemId, ...item, menuItem, lineTotal };
     });
+
+  const total = calculateOrderTotal(items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })));
 
   if (items.length === 0) return null;
 
@@ -122,6 +124,15 @@ export default function SelectedItemsList() {
             </Box>
           </Box>
         ))}
+      </Box>
+      <Divider sx={{ my: 1.5 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>
+          Total
+        </Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: 'primary.main' }}>
+          ₹{total}
+        </Typography>
       </Box>
     </Box>
   );
