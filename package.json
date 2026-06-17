@@ -10,10 +10,16 @@
     "packages/*"
   ],
   "scripts": {
+    "local:setup": "docker compose up -d sqlserver && cross-env NODE_ENV=development npm run db:wait -w apps/backend && cross-env NODE_ENV=development npm run db:create -w apps/backend && cross-env NODE_ENV=development npm run db:migrate -w apps/backend",
+    "local:dev": "concurrently -n fe,be -c cyan,green \"npm run dev:frontend\" \"cross-env NODE_ENV=development npm run dev -w apps/backend\"",
+    "local:stop": "docker compose down",
+    "prod:setup": "cross-env NODE_ENV=production npm run db:migrate -w apps/backend",
+    "prod:deploy": "bash infra/deploy-sql.sh",
     "dev": "concurrently -n fe,be -c cyan,green \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "npm run dev -w apps/frontend",
     "dev:backend": "npm run dev -w apps/backend",
     "build": "npm run build -w apps/frontend && npm run build -w apps/backend",
+    "build:production": "cross-env NODE_ENV=production npm run build",
     "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p apps/backend/tsconfig.json && tsc --noEmit -p apps/frontend/tsconfig.json",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint . --ext .ts,.tsx",
@@ -23,6 +29,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
     "eslint": "^9.22.0",
     "prettier": "^3.5.3",
     "typescript": "^5.7.3",

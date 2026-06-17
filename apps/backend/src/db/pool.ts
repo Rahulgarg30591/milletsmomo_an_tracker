@@ -5,12 +5,38 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function loadEnvConfig() {
+  const env = process.env.NODE_ENV || 'development';
+  const envFile = env === 'production' ? '.env.production' : '.env.development';
+  const searchPaths = [
+    path.resolve(__dirname, '..', envFile),
+    path.resolve(process.cwd(), envFile),
+    path.resolve(process.cwd(), 'apps/backend', envFile),
+  ];
+  for (const envPath of searchPaths) {
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIndex = trimmed.indexOf('=');
+        if (eqIndex === -1) continue;
+        const key = trimmed.slice(0, eqIndex).trim();
+        const value = trimmed.slice(eqIndex + 1).trim();
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+      return;
+    }
+  }
+}
+
 function loadLocalSettings() {
   if (process.env.SQL_SERVER) return;
   const settingsPath = path.resolve(__dirname, '../../local.settings.json');
   if (!fs.existsSync(settingsPath)) return;
-  const raw = fs.readFileSync(settingsPath, 'utf-8');
-  const values = JSON.parse(raw).Values || {};
+  const values = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')).Values || {};
   for (const [key, value] of Object.entries(values)) {
     if (!process.env[key] && typeof value === 'string') {
       process.env[key] = value;
@@ -18,6 +44,7 @@ function loadLocalSettings() {
   }
 }
 
+loadEnvConfig();
 loadLocalSettings();
 
 const config: sql.config = {

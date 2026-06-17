@@ -8,6 +8,8 @@
     "dev": "tsc && func start",
     "build": "tsc",
     "test": "vitest run",
+    "db:create": "tsx scripts/create-db.ts",
+    "db:wait": "tsx scripts/wait-for-sql.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
