@@ -28,15 +28,15 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
           theme.palette.mode === 'dark' ? 'rgba(15,26,20,0.85)' : 'rgba(255,255,255,0.85)',
         borderTop: 1,
         borderColor: 'divider',
-        p: 2,
+        p: 1.5,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 2,
+        gap: 1.5,
       }}
     >
       <Box>
-        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500, mb: 0.25 }}>
+        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, mb: 0.25 }}>
           Total Amount
         </Typography>
         <AnimatePresence mode="wait">
@@ -49,7 +49,7 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
           >
             <Typography
               sx={{
-                fontSize: '1.5rem',
+                fontSize: '1.35rem',
                 fontWeight: 800,
                 color: 'text.primary',
                 letterSpacing: '-0.3px',
@@ -72,11 +72,11 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
           size="large"
           endIcon={<ArrowRight size={18} />}
           sx={{
-            borderRadius: 3,
-            px: 4,
-            py: 1.2,
+            borderRadius: 1,
+            px: 3.5,
+            py: 1,
             fontWeight: 700,
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             textTransform: 'none',
             background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
             boxShadow: '0 4px 14px rgba(27,107,58,0.25)',

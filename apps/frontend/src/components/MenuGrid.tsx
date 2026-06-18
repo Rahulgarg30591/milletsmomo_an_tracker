@@ -2,6 +2,7 @@ import { Box, Typography, Button } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
+import { calculateLineTotal } from '../utils/pricing';
 import { vibrate, haptics } from '../theme/tokens';
 
 interface MenuItem {
@@ -26,22 +27,24 @@ interface MenuGridProps {
 }
 
 export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
-  const { addItem, incrementItem, decrementItem, toggleHalf, removeItem, draft } = useOrderDraft();
+  const { addItem, incrementItem, decrementItem, removeItem, setFull, setHalf, setCustom, draft } = useOrderDraft();
 
   return (
     <Box
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
-        gap: 1,
+        gap: 0.75,
       }}
     >
       {items.map((item, idx) => {
         const draftItem = draft.items.get(item.id);
         const quantity = draftItem?.quantity || 0;
         const isHalf = draftItem?.isHalf || false;
+        const isCustom = draftItem?.isCustom || false;
         const isActive = quantity > 0;
         const colors = FILLING_COLORS[item.filling] || FILLING_COLORS['Veg'];
+        const { lineTotal } = isActive ? calculateLineTotal(item.id, quantity, isHalf, isCustom) : { lineTotal: 0 };
 
         return (
           <motion.div
@@ -61,16 +64,16 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
               sx={{
                 position: 'relative',
                 width: '100%',
-                p: 1,
-                borderRadius: 1.5,
+                p: 0.75,
+                borderRadius: 1,
                 backgroundColor: isActive ? colors.activeBg : colors.bg,
                 border: 1.5,
                 borderColor: isActive ? colors.activeBorder : colors.border,
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 0.5,
-                minHeight: isActive ? 112 : 72,
+                gap: 0.25,
+                minHeight: isActive ? (isCustom ? 106 : 82) : 64,
                 '&:hover': {
                   borderColor: isActive ? colors.activeBorder : colors.border,
                   boxShadow: isActive ? `0 2px 8px ${colors.activeBorder}20` : (theme) => theme.shadows[1],
@@ -81,7 +84,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
                 <Typography
                   sx={{
-                    fontSize: '0.85rem',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
                     color: isActive ? colors.text : 'text.primary',
                     lineHeight: 1.2,
@@ -92,12 +95,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: '0.7rem',
+                    fontSize: '0.65rem',
                     fontWeight: 600,
                     color: isActive ? colors.text : 'text.secondary',
                   }}
                 >
-                  ₹{isHalf ? item.halfPrice : item.fullPrice}
+                  ₹{item.fullPrice} • ₹{item.halfPrice}
                 </Typography>
               </Box>
 
@@ -122,9 +125,9 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                       }}
                       sx={{
                         borderRadius: 1,
-                        py: 0.4,
+                        py: 0.3,
                         fontWeight: 700,
-                        fontSize: '0.75rem',
+                        fontSize: '0.7rem',
                         textTransform: 'none',
                         backgroundColor: colors.btnBg,
                         color: '#FFFFFF',
@@ -147,111 +150,11 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 6,
+                      gap: 3,
                       marginTop: 'auto',
                     }}
                   >
-                    {/* Quantity row */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 0.75,
-                      }}
-                    >
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          decrementItem(item.id);
-                          vibrate(haptics.light);
-                        }}
-                        sx={{
-                          minWidth: 26,
-                          width: 26,
-                          height: 26,
-                          p: 0,
-                          borderRadius: '50%',
-                          border: 1.5,
-                          borderColor: colors.activeBorder,
-                          color: colors.text,
-                          backgroundColor: '#FFFFFF',
-                          '&:hover': { backgroundColor: colors.activeBg },
-                          '&:active': { transform: 'scale(0.92)' },
-                        }}
-                      >
-                        <Minus size={12} />
-                      </Button>
-
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: 26,
-                          height: 26,
-                          borderRadius: 1,
-                          backgroundColor: colors.activeBg,
-                          border: 1.5,
-                          borderColor: colors.activeBorder,
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: '0.85rem',
-                            color: colors.text,
-                            lineHeight: 1,
-                          }}
-                        >
-                          {quantity}
-                        </Typography>
-                      </Box>
-
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          incrementItem(item.id);
-                          vibrate(haptics.light);
-                        }}
-                        sx={{
-                          minWidth: 26,
-                          width: 26,
-                          height: 26,
-                          p: 0,
-                          borderRadius: '50%',
-                          border: 1.5,
-                          borderColor: colors.activeBorder,
-                          color: colors.text,
-                          backgroundColor: '#FFFFFF',
-                          '&:hover': { backgroundColor: colors.activeBg },
-                          '&:active': { transform: 'scale(0.92)' },
-                        }}
-                      >
-                        <Plus size={12} />
-                      </Button>
-
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          removeItem(item.id);
-                          vibrate(haptics.light);
-                        }}
-                        sx={{
-                          minWidth: 24,
-                          width: 24,
-                          height: 24,
-                          p: 0,
-                          borderRadius: '50%',
-                          color: '#EF4444',
-                          '&:hover': { backgroundColor: '#FEE2E2' },
-                        }}
-                      >
-                        <X size={12} />
-                      </Button>
-                    </Box>
-
-                    {/* Half/Full toggle + line total */}
+                    {/* Full / Half / Custom toggle + line total + remove */}
                     <Box
                       sx={{
                         display: 'flex',
@@ -264,7 +167,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         <Button
                           size="small"
                           onClick={() => {
-                            if (isHalf) toggleHalf(item.id);
+                            setFull(item.id);
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -275,12 +178,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             fontSize: '0.6rem',
                             fontWeight: 700,
                             textTransform: 'none',
-                            backgroundColor: !isHalf ? colors.btnBg : '#FFFFFF',
-                            color: !isHalf ? '#FFFFFF' : '#6B7280',
+                            backgroundColor: !isHalf && !isCustom ? colors.btnBg : '#FFFFFF',
+                            color: !isHalf && !isCustom ? '#FFFFFF' : '#6B7280',
                             border: 1.5,
                             borderColor: colors.btnBg,
                             '&:hover': {
-                              backgroundColor: !isHalf ? colors.btnHover : colors.activeBg,
+                              backgroundColor: !isHalf && !isCustom ? colors.btnHover : colors.activeBg,
                             },
                             lineHeight: 1.4,
                           }}
@@ -290,7 +193,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         <Button
                           size="small"
                           onClick={() => {
-                            if (!isHalf) toggleHalf(item.id);
+                            setHalf(item.id);
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -301,12 +204,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             fontSize: '0.6rem',
                             fontWeight: 700,
                             textTransform: 'none',
-                            backgroundColor: isHalf ? colors.btnBg : '#FFFFFF',
-                            color: isHalf ? '#FFFFFF' : '#6B7280',
+                            backgroundColor: isHalf && !isCustom ? colors.btnBg : '#FFFFFF',
+                            color: isHalf && !isCustom ? '#FFFFFF' : '#6B7280',
                             border: 1.5,
                             borderColor: colors.btnBg,
                             '&:hover': {
-                              backgroundColor: isHalf ? colors.btnHover : colors.activeBg,
+                              backgroundColor: isHalf && !isCustom ? colors.btnHover : colors.activeBg,
                             },
                             lineHeight: 1.4,
                             display: 'flex',
@@ -317,18 +220,150 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           <Slice size={9} />
                           ½
                         </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setCustom(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 0,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            backgroundColor: isCustom ? colors.btnBg : '#FFFFFF',
+                            color: isCustom ? '#FFFFFF' : '#6B7280',
+                            border: 1.5,
+                            borderColor: colors.btnBg,
+                            '&:hover': {
+                              backgroundColor: isCustom ? colors.btnHover : colors.activeBg,
+                            },
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Custom
+                        </Button>
                       </Box>
 
-                      <Typography
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            color: colors.text,
+                          }}
+                        >
+                          ₹{lineTotal}
+                        </Typography>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            removeItem(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 22,
+                            width: 22,
+                            height: 22,
+                            p: 0,
+                            borderRadius: '50%',
+                            color: '#EF4444',
+                            '&:hover': { backgroundColor: '#FEE2E2' },
+                          }}
+                        >
+                          <X size={12} />
+                        </Button>
+                      </Box>
+                    </Box>
+
+                    {/* Quantity row - only when custom */}
+                    {isCustom && (
+                      <Box
                         sx={{
-                          fontWeight: 800,
-                          fontSize: '0.8rem',
-                          color: colors.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 0.5,
                         }}
                       >
-                        ₹{quantity * (isHalf ? item.halfPrice : item.fullPrice)}
-                      </Typography>
-                    </Box>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            decrementItem(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 24,
+                            width: 24,
+                            height: 24,
+                            p: 0,
+                            borderRadius: '50%',
+                            border: 1.5,
+                            borderColor: colors.activeBorder,
+                            color: colors.text,
+                            backgroundColor: '#FFFFFF',
+                            '&:hover': { backgroundColor: colors.activeBg },
+                            '&:active': { transform: 'scale(0.92)' },
+                          }}
+                        >
+                          <Minus size={12} />
+                        </Button>
+
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 24,
+                            height: 24,
+                            borderRadius: 1,
+                            backgroundColor: colors.activeBg,
+                            border: 1.5,
+                            borderColor: colors.activeBorder,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.8rem',
+                              color: colors.text,
+                              lineHeight: 1,
+                            }}
+                          >
+                            {quantity}
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            incrementItem(item.id);
+                            vibrate(haptics.light);
+                          }}
+                          sx={{
+                            minWidth: 24,
+                            width: 24,
+                            height: 24,
+                            p: 0,
+                            borderRadius: '50%',
+                            border: 1.5,
+                            borderColor: colors.activeBorder,
+                            color: colors.text,
+                            backgroundColor: '#FFFFFF',
+                            '&:hover': { backgroundColor: colors.activeBg },
+                            '&:active': { transform: 'scale(0.92)' },
+                          }}
+                        >
+                          <Plus size={12} />
+                        </Button>
+
+                        {/* Spacer to align with toggle row remove button */}
+                        <Box sx={{ width: 22, height: 22 }} />
+                      </Box>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

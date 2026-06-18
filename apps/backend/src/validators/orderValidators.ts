@@ -11,7 +11,7 @@ export const createOrderSchema = z.object({
       z.object({
         menuItemId: z.number().int().positive(),
         quantity: z.number().int().positive(),
-        isHalf: z.boolean(),
+        isHalf: z.boolean().optional().default(false),
       }),
     )
     .min(1, 'At least one item is required'),

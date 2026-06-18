@@ -17,8 +17,29 @@ export function computeLineTotal(
       status: 400,
     });
   }
-  const unitPrice = isHalf ? item.halfPrice : item.fullPrice;
-  return { unitPrice, lineTotal: unitPrice * quantity };
+  // Half plate preset: exactly 3 momos at half price
+  if (isHalf && quantity === 3) {
+    return { unitPrice: item.halfPrice, lineTotal: item.halfPrice };
+  }
+  // Full plate preset: exactly 6 momos at full price (not half, not custom)
+  if (!isHalf && quantity === 6) {
+    return { unitPrice: item.fullPrice, lineTotal: item.fullPrice };
+  }
+  // Custom quantity pricing
+  const fullPlates = Math.floor(quantity / 6);
+  const remainder = quantity % 6;
+  let lineTotal: number;
+  if (remainder === 0) {
+    lineTotal = fullPlates * item.fullPrice;
+  } else if (remainder <= 4) {
+    const perMomo = Math.round(item.halfPrice / 3);
+    lineTotal = fullPlates * item.fullPrice + remainder * perMomo;
+  } else {
+    // remainder === 5
+    const perMomo = Math.round(item.fullPrice / 6);
+    lineTotal = fullPlates * item.fullPrice + 5 * perMomo;
+  }
+  return { unitPrice: Math.round(item.halfPrice / 3), lineTotal };
 }
 
 export function computeOrderTotal(

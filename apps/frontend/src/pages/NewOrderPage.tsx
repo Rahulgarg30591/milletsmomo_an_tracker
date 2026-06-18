@@ -49,7 +49,6 @@ function NewOrderContent() {
   const groupedItems = useMemo(() => {
     if (!menuData?.items) return [];
     const groups = new Map<string, MenuItem[]>();
-    debugger;
     menuData.items.forEach((item: MenuItem) => {
       const prep = item.preparation || 'Other';
       if (!groups.has(prep)) groups.set(prep, []);
@@ -89,15 +88,15 @@ function NewOrderContent() {
       orderDate: date!,
       orderType: draft.orderType,
       paymentMethod: draft.paymentMethod,
-      items,
+      items: items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })),
     });
   };
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 20, md: 14 }, pt: 1 }}>
-      <Box sx={{ maxWidth: 700, mx: 'auto', p: 2 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 18, md: 12 }, pt: 0.5 }}>
+      <Box sx={{ maxWidth: 700, mx: 'auto', p: 1.5 }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
           <IconButton
             onClick={() => navigate(`/day/${date}`)}
             sx={{ color: 'text.secondary', mr: 0.5 }}
@@ -109,7 +108,7 @@ function NewOrderContent() {
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1.25rem',
+                fontSize: '1.15rem',
                 color: 'text.primary',
                 letterSpacing: '-0.3px',
                 display: 'flex',
@@ -120,14 +119,14 @@ function NewOrderContent() {
               <ChefHat size={20} color={theme.palette.primary.main} />
               New Order
             </Typography>
-            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.25 }}>
+            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25 }}>
               {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : ''}
             </Typography>
           </Box>
           {totalSelectedItems > 0 && (
             <Chip
               icon={<ShoppingCart size={14} />}
-              label={`${totalSelectedItems} item${totalSelectedItems > 1 ? 's' : ''}`}
+              label={`${totalSelectedItems} momo${totalSelectedItems > 1 ? 's' : ''}`}
               color="primary"
               size="small"
               sx={{ fontWeight: 700 }}
@@ -136,7 +135,7 @@ function NewOrderContent() {
         </Box>
 
         {/* Menu Grid by Category */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {groupedItems.map(([preparation, items], categoryIndex) => {
             const colors = CATEGORY_COLORS[preparation] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#4B5563' };
             return (
@@ -149,20 +148,20 @@ function NewOrderContent() {
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 2,
-                    borderRadius: 3,
+                    p: 1.5,
+                    borderRadius: 1,
                     border: 1.5,
                     borderColor: colors.border,
                     backgroundColor: colors.bg,
-                    mb: 1.5,
+                    mb: 1,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                    <Typography sx={{ fontSize: '1.2rem' }}>{CATEGORY_ICONS[preparation] || '🍽️'}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography sx={{ fontSize: '1.1rem' }}>{CATEGORY_ICONS[preparation] || '🍽️'}</Typography>
                     <Typography
                       sx={{
                         fontWeight: 800,
-                        fontSize: '1rem',
+                        fontSize: '0.9rem',
                         color: colors.text,
                         letterSpacing: '-0.2px',
                         textTransform: 'uppercase',
@@ -179,7 +178,7 @@ function NewOrderContent() {
         </Box>
 
         {/* Order Config */}
-        <Box sx={{ mt: 3, mb: 2 }}>
+        <Box sx={{ mt: 2, mb: 1.5 }}>
           <OrderConfigPanel />
         </Box>
 

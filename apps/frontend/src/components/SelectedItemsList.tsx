@@ -10,22 +10,22 @@ export default function SelectedItemsList() {
     .filter(([, item]) => item.quantity > 0)
     .map(([menuItemId, item]) => {
       const menuItem = getMenuItem(menuItemId);
-      const { lineTotal } = calculateLineTotal(menuItemId, item.quantity, item.isHalf);
+      const { lineTotal } = calculateLineTotal(menuItemId, item.quantity, item.isHalf, item.isCustom);
       return { menuItemId, ...item, menuItem, lineTotal };
     });
 
-  const total = calculateOrderTotal(items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })));
+  const total = calculateOrderTotal(items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf, isCustom: i.isCustom })));
 
   if (items.length === 0) return null;
 
   return (
-    <Box sx={{ mb: 2, mt: 3 }}>
+    <Box sx={{ mb: 1, mt: 2 }}>
       <Typography
         variant="caption"
         sx={{
           fontWeight: 700,
           color: 'text.secondary',
-          mb: 1,
+          mb: 0.5,
           display: 'block',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
@@ -38,7 +38,7 @@ export default function SelectedItemsList() {
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.75,
+          gap: 0.5,
         }}
       >
         {items.map((item) => (
@@ -48,9 +48,9 @@ export default function SelectedItemsList() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              py: 1,
-              px: 1.5,
-              borderRadius: 2,
+              py: 0.75,
+              px: 1,
+              borderRadius: 1,
               backgroundColor: 'background.paper',
               border: 1,
               borderColor: 'divider',
@@ -60,7 +60,7 @@ export default function SelectedItemsList() {
               <Typography
                 sx={{
                   fontWeight: 600,
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   color: 'text.primary',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -71,7 +71,7 @@ export default function SelectedItemsList() {
               </Typography>
               <Typography
                 sx={{
-                  fontSize: '0.75rem',
+                  fontSize: '0.7rem',
                   color: 'text.secondary',
                   fontWeight: 500,
                   flexShrink: 0,
@@ -79,7 +79,7 @@ export default function SelectedItemsList() {
               >
                 ×{item.quantity}
               </Typography>
-              {item.isHalf && (
+              {item.isHalf && !item.isCustom && (
                 <Typography
                   sx={{
                     fontSize: '0.65rem',
@@ -95,12 +95,28 @@ export default function SelectedItemsList() {
                   ½
                 </Typography>
               )}
+              {item.isCustom && (
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: '#7C3AED',
+                    backgroundColor: '#EDE9FE',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  Custom
+                </Typography>
+              )}
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   color: 'primary.main',
                 }}
               >
@@ -110,9 +126,9 @@ export default function SelectedItemsList() {
                 size="small"
                 onClick={() => removeItem(item.menuItemId)}
                 sx={{
-                  minWidth: 24,
-                  width: 24,
-                  height: 24,
+                  minWidth: 22,
+                  width: 22,
+                  height: 22,
                   p: 0,
                   borderRadius: '50%',
                   color: 'error.main',
@@ -125,12 +141,12 @@ export default function SelectedItemsList() {
           </Box>
         ))}
       </Box>
-      <Divider sx={{ my: 1.5 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>
+      <Divider sx={{ my: 1 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
           Total
         </Typography>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: 'primary.main' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'primary.main' }}>
           ₹{total}
         </Typography>
       </Box>

@@ -26,13 +26,13 @@ export default function OrderConfigPanel() {
 
   return (
     <Box>
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 1.5 }}>
         <Typography
           variant="caption"
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 1,
+            mb: 0.5,
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -41,7 +41,7 @@ export default function OrderConfigPanel() {
         >
           Order Type
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.75 }}>
           {typeConfig.map((type) => (
             <Button
               key={type.key}
@@ -53,10 +53,10 @@ export default function OrderConfigPanel() {
               }}
               startIcon={type.icon}
               sx={{
-                borderRadius: 3,
-                py: 1,
+                borderRadius: 1,
+                py: 0.75,
                 fontWeight: 600,
-                fontSize: '0.85rem',
+                fontSize: '0.8rem',
                 textTransform: 'none',
                 backgroundColor: draft.orderType === type.key ? activeBg : inactiveBg,
                 color: draft.orderType === type.key ? '#1B6B3A' : 'text.secondary',
@@ -80,7 +80,7 @@ export default function OrderConfigPanel() {
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 1,
+            mb: 0.5,
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -89,7 +89,7 @@ export default function OrderConfigPanel() {
         >
           Payment Method
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.75 }}>
           {paymentConfig.map((method) => {
             const isActive = draft.paymentMethod === method.key;
             const isPending = method.key === 'pending';
@@ -108,10 +108,10 @@ export default function OrderConfigPanel() {
                 }}
                 startIcon={method.icon}
                 sx={{
-                  borderRadius: 3,
-                  py: 1,
+                  borderRadius: 1,
+                  py: 0.75,
                   fontWeight: 600,
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   textTransform: 'none',
                   backgroundColor: isActive ? activeBg2 : inactiveBg,
                   color: isActive ? activeColor : 'text.secondary',

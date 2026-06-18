@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 interface DraftItem {
   quantity: number;
   isHalf: boolean;
+  isCustom: boolean;
 }
 
 interface OrderDraft {
@@ -17,11 +18,13 @@ interface OrderDraftContextType {
   removeItem: (menuItemId: number) => void;
   incrementItem: (menuItemId: number) => void;
   decrementItem: (menuItemId: number) => void;
-  toggleHalf: (menuItemId: number) => void;
+  setFull: (menuItemId: number) => void;
+  setHalf: (menuItemId: number) => void;
+  setCustom: (menuItemId: number) => void;
   setOrderType: (type: 'dine' | 'pack') => void;
   setPaymentMethod: (method: 'cash' | 'upi' | 'pending') => void;
   clearDraft: () => void;
-  getItemList: () => { menuItemId: number; quantity: number; isHalf: boolean }[];
+  getItemList: () => { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[];
   getTotalItems: () => number;
 }
 
@@ -41,9 +44,9 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
       const next = new Map(prev.items);
       const existing = next.get(menuItemId);
       if (existing) {
-        next.set(menuItemId, { ...existing, quantity: existing.quantity + 1 });
+        next.set(menuItemId, { ...existing, quantity: existing.quantity + 6 });
       } else {
-        next.set(menuItemId, { quantity: 1, isHalf: false });
+        next.set(menuItemId, { quantity: 6, isHalf: false, isCustom: false });
       }
       return { ...prev, items: next };
     });
@@ -83,12 +86,34 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
-  const toggleHalf = useCallback((menuItemId: number) => {
+  const setFull = useCallback((menuItemId: number) => {
     setDraft((prev) => {
       const next = new Map(prev.items);
       const existing = next.get(menuItemId);
       if (existing) {
-        next.set(menuItemId, { ...existing, isHalf: !existing.isHalf });
+        next.set(menuItemId, { ...existing, isHalf: false, isCustom: false, quantity: 6 });
+      }
+      return { ...prev, items: next };
+    });
+  }, []);
+
+  const setHalf = useCallback((menuItemId: number) => {
+    setDraft((prev) => {
+      const next = new Map(prev.items);
+      const existing = next.get(menuItemId);
+      if (existing) {
+        next.set(menuItemId, { ...existing, isHalf: true, isCustom: false, quantity: 3 });
+      }
+      return { ...prev, items: next };
+    });
+  }, []);
+
+  const setCustom = useCallback((menuItemId: number) => {
+    setDraft((prev) => {
+      const next = new Map(prev.items);
+      const existing = next.get(menuItemId);
+      if (existing && !existing.isCustom) {
+        next.set(menuItemId, { ...existing, isCustom: true, isHalf: false, quantity: 1 });
       }
       return { ...prev, items: next };
     });
@@ -107,9 +132,9 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const getItemList = useCallback(() => {
-    const list: { menuItemId: number; quantity: number; isHalf: boolean }[] = [];
+    const list: { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[] = [];
     draft.items.forEach((item, menuItemId) => {
-      list.push({ menuItemId, quantity: item.quantity, isHalf: item.isHalf });
+      list.push({ menuItemId, quantity: item.quantity, isHalf: item.isHalf, isCustom: item.isCustom });
     });
     return list;
   }, [draft.items]);
@@ -130,7 +155,9 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         removeItem,
         incrementItem,
         decrementItem,
-        toggleHalf,
+        setFull,
+        setHalf,
+        setCustom,
         setOrderType,
         setPaymentMethod,
         clearDraft,
