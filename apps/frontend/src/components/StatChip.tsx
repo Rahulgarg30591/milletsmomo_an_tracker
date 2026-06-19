@@ -11,26 +11,57 @@ const iconMap: Record<string, React.ReactNode> = {
   accent: <Package size={18} />,
 };
 
-const colorMap: Record<string, { bg: string; fg: string; gradient: string }> = {
+const colorMap: Record<string, { bg: string; fg: string; gradient: string; glow?: string }> = {
   primary: {
     bg: 'rgba(27,107,58,0.08)',
     fg: '#1B6B3A',
     gradient: 'linear-gradient(135deg, rgba(27,107,58,0.08) 0%, rgba(45,138,78,0.04) 100%)',
+    glow: '',
   },
   accent: {
     bg: 'rgba(232,166,74,0.08)',
     fg: '#D97706',
     gradient: 'linear-gradient(135deg, rgba(232,166,74,0.08) 0%, rgba(217,119,6,0.04) 100%)',
+    glow: '',
   },
   error: {
     bg: 'rgba(220,38,38,0.08)',
     fg: '#DC2626',
     gradient: 'linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(185,28,28,0.04) 100%)',
+    glow: '',
   },
   success: {
     bg: 'rgba(45,138,78,0.08)',
     fg: '#2D8A4E',
     gradient: 'linear-gradient(135deg, rgba(45,138,78,0.08) 0%, rgba(6,95,70,0.04) 100%)',
+    glow: '',
+  },
+};
+
+const darkColorMap: Record<string, { bg: string; fg: string; gradient: string; glow: string }> = {
+  primary: {
+    bg: 'rgba(74,222,128,0.10)',
+    fg: '#4ADE80',
+    gradient: 'linear-gradient(135deg, rgba(74,222,128,0.12) 0%, rgba(45,138,78,0.06) 100%)',
+    glow: '0 0 12px rgba(74,222,128,0.15)',
+  },
+  accent: {
+    bg: 'rgba(251,191,36,0.10)',
+    fg: '#FBBF24',
+    gradient: 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(217,119,6,0.06) 100%)',
+    glow: '0 0 12px rgba(251,191,36,0.15)',
+  },
+  error: {
+    bg: 'rgba(248,113,113,0.10)',
+    fg: '#F87171',
+    gradient: 'linear-gradient(135deg, rgba(248,113,113,0.12) 0%, rgba(185,28,28,0.06) 100%)',
+    glow: '0 0 12px rgba(248,113,113,0.15)',
+  },
+  success: {
+    bg: 'rgba(74,222,128,0.10)',
+    fg: '#4ADE80',
+    gradient: 'linear-gradient(135deg, rgba(74,222,128,0.12) 0%, rgba(6,95,70,0.06) 100%)',
+    glow: '0 0 12px rgba(74,222,128,0.15)',
   },
 };
 
@@ -44,7 +75,7 @@ interface StatChipProps {
 export default function StatChip({ label, value, icon, color = 'primary' }: StatChipProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
-  const colors = colorMap[color];
+  const colors = isDark ? darkColorMap[color] : colorMap[color];
   const iconEl = icon ? iconMap[icon] || iconMap[color] : iconMap[color];
 
   return (
@@ -54,12 +85,13 @@ export default function StatChip({ label, value, icon, color = 'primary' }: Stat
           p: 1.5,
           borderRadius: 2,
           background: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
-          boxShadow: (theme) => theme.shadows[1],
+          boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.06)' : (theme) => theme.shadows[1],
           border: 1,
-          borderColor: 'divider',
-          transition: 'box-shadow 0.2s ease',
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'divider',
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
           '&:hover': {
-            boxShadow: (theme) => theme.shadows[3],
+            boxShadow: isDark ? colors.glow : (theme) => theme.shadows[3],
+            borderColor: isDark ? colors.bg : 'divider',
           },
           display: 'flex',
           alignItems: 'center',
@@ -78,6 +110,7 @@ export default function StatChip({ label, value, icon, color = 'primary' }: Stat
             justifyContent: 'center',
             color: colors.fg,
             flexShrink: 0,
+            boxShadow: isDark ? colors.glow : 'none',
           }}
         >
           {iconEl}

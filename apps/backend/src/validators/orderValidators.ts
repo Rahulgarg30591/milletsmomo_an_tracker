@@ -23,4 +23,5 @@ export const completeOrderSchema = z.object({
 
 export const dateQuerySchema = z.object({
   date: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
+  endDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)').optional(),
 });

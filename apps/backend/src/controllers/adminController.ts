@@ -8,8 +8,8 @@ export async function getSummary(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { date } = dateQuerySchema.parse(req.query);
-    const result = await adminService.getSummary(date);
+    const { date, endDate } = dateQuerySchema.parse(req.query);
+    const result = await adminService.getSummary(date, endDate);
     res.json(result);
   } catch (err: any) {
     if (err.name === 'ZodError') {

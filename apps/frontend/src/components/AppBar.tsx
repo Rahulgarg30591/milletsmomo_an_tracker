@@ -115,12 +115,15 @@ export default function AppBarComponent() {
             <Chip
               label={auth.role}
               size="small"
-              color={auth.role === 'admin' ? 'secondary' : 'primary'}
               sx={{
                 fontWeight: 600,
                 textTransform: 'capitalize',
                 fontSize: '0.75rem',
                 height: 24,
+                backgroundColor: auth.role === 'admin' ? 'rgba(251,191,36,0.12)' : 'rgba(27,107,58,0.12)',
+                color: auth.role === 'admin' ? '#FBBF24' : '#4ADE80',
+                border: '1px solid',
+                borderColor: auth.role === 'admin' ? 'rgba(251,191,36,0.2)' : 'rgba(27,107,58,0.2)',
               }}
             />
           )}

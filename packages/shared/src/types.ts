@@ -55,6 +55,7 @@ export interface CreateOrderRequest {
 
 export interface AdminSummary {
   date: string;
+  endDate: string | null;
   totalOrders: number;
   totalRevenue: number;
   pendingAmount: number;

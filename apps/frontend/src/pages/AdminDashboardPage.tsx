@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup, useTheme } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package } from 'lucide-react';
 import { getAdminSummary } from '../api/adminApi';
@@ -11,9 +11,12 @@ import SkeletonLoader from '../components/animations/SkeletonLoader';
 import StaggerContainer, { StaggerItem } from '../components/animations/StaggerContainer';
 import Toast from '../components/Toast';
 import type { Order } from '../types';
-import { vibrate, haptics } from '../theme/tokens';
+import { vibrate, haptics, statusColors, darkStatusColors } from '../theme/tokens';
 
 export default function AdminDashboardPage() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  const sc = isDark ? darkStatusColors : statusColors;
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | 'custom'>('today');
   const [startDate, setStartDate] = useState(getToday());
   const [endDate, setEndDate] = useState(getToday());
@@ -80,11 +83,36 @@ export default function AdminDashboardPage() {
 
   const handleExport = () => {
     vibrate(haptics.light);
-    setToast({ message: 'Export coming soon!', type: 'success' });
+    if (!filteredOrders.length) {
+      setToast({ message: 'No orders to export', type: 'error' });
+      return;
+    }
+    const rows = [
+      ['Time', 'Type', 'Payment', 'Status', 'Items', 'Amount'],
+      ...filteredOrders.map((o: Order) => [
+        o.timeLabel,
+        o.orderType === 'dine' ? 'Dine' : 'Pack',
+        o.paymentMethod,
+        o.isCompleted ? 'Completed' : 'Pending',
+        o.items.map((i) => `${i.quantity}x ${i.itemName}${i.isHalf ? ' (½)' : ''}`).join(', '),
+        `₹${o.totalAmount}`,
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `orders_${startDate}_to_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setToast({ message: 'CSV exported!', type: 'success' });
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 1.5, pb: 10, pt: 1 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 1.5, pb: 2, pt: 1, overflowY: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}>
       <Box sx={{ maxWidth: 960, mx: 'auto' }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
@@ -206,7 +234,14 @@ export default function AdminDashboardPage() {
             </StaggerContainer>
 
             {/* Revenue chart */}
-            <Paper sx={{ borderRadius: 2, p: 2, mb: 2, overflow: 'hidden' }}>
+            <Paper sx={{
+              borderRadius: 2,
+              p: 2,
+              mb: 2,
+              overflow: 'hidden',
+              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+            }}>
               <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 1.5 }}>
                 Payment Split
               </Typography>
@@ -218,28 +253,29 @@ export default function AdminDashboardPage() {
                     borderRadius: '50%',
                     position: 'relative',
                     flexShrink: 0,
+                    boxShadow: isDark ? '0 0 24px rgba(45,138,78,0.15)' : 'none',
                     background: `conic-gradient(
-                      #1B6B3A 0deg ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg,
-                      #5B21B6 ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg,
-                      #DC2626 ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg 360deg
+                      ${isDark ? '#2D8A4E' : '#1B6B3A'} 0deg ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg,
+                      ${isDark ? '#7C5CFF' : '#5B21B6'} ${(data.cashTotal / (data.totalRevenue || 1)) * 360}deg ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg,
+                      ${isDark ? '#E85757' : '#DC2626'} ${((data.cashTotal + data.upiTotal) / (data.totalRevenue || 1)) * 360}deg 360deg
                     )`,
                   }}
                 />
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#1B6B3A' }} />
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: isDark ? '#2D8A4E' : '#1B6B3A' }} />
                     <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
                       Cash: ₹{data.cashTotal}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#5B21B6' }} />
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: isDark ? '#7C5CFF' : '#5B21B6' }} />
                     <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
                       UPI: ₹{data.upiTotal}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: '#DC2626' }} />
+                    <Box sx={{ width: 12, height: 12, borderRadius: 1, backgroundColor: isDark ? '#E85757' : '#DC2626' }} />
                     <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
                       Pending: ₹{data.pendingAmount}
                     </Typography>
@@ -249,7 +285,13 @@ export default function AdminDashboardPage() {
             </Paper>
 
             {/* Item breakdown table */}
-            <Paper sx={{ borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+            <Paper sx={{
+              borderRadius: 2,
+              overflow: 'hidden',
+              mb: 2,
+              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+            }}>
               <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Item Breakdown
@@ -265,7 +307,7 @@ export default function AdminDashboardPage() {
               </Box>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }}>
+                  <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }}>
                     <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Item</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Qty</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>Revenue</TableCell>
@@ -276,7 +318,7 @@ export default function AdminDashboardPage() {
                     <TableRow
                       key={idx}
                       sx={{
-                        '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB' },
+                        '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' },
                         transition: 'background-color 0.15s ease',
                       }}
                     >
@@ -306,7 +348,12 @@ export default function AdminDashboardPage() {
             </Paper>
 
             {/* Orders list */}
-            <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <Paper sx={{
+              borderRadius: 2,
+              overflow: 'hidden',
+              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+            }}>
               <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Orders
@@ -337,7 +384,7 @@ export default function AdminDashboardPage() {
                       borderBottom: 1,
                       borderColor: 'divider',
                       '&:last-child': { borderBottom: 0 },
-                      '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#F9FAFB' },
+                      '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' },
                       transition: 'background-color 0.15s ease',
                       px: 0.5,
                       mx: -0.5,
@@ -356,8 +403,8 @@ export default function AdminDashboardPage() {
                             height: 20,
                             fontSize: '0.65rem',
                             fontWeight: 700,
-                            backgroundColor: order.orderType === 'dine' ? '#EFF6FF' : '#FEF3C7',
-                            color: order.orderType === 'dine' ? '#1D4ED8' : '#D97706',
+                            backgroundColor: order.orderType === 'dine' ? sc.dineIn.bg : sc.pack.bg,
+                            color: order.orderType === 'dine' ? sc.dineIn.fg : sc.pack.fg,
                           }}
                         />
                         <Chip
@@ -367,8 +414,8 @@ export default function AdminDashboardPage() {
                             height: 20,
                             fontSize: '0.65rem',
                             fontWeight: 700,
-                            backgroundColor: order.paymentMethod === 'cash' ? '#D1FAE5' : order.paymentMethod === 'upi' ? '#EDE9FE' : '#FEE2E2',
-                            color: order.paymentMethod === 'cash' ? '#065F46' : order.paymentMethod === 'upi' ? '#5B21B6' : '#DC2626',
+                            backgroundColor: order.paymentMethod === 'cash' ? sc.cash.bg : order.paymentMethod === 'upi' ? sc.upi.bg : sc.pending.bg,
+                            color: order.paymentMethod === 'cash' ? sc.cash.fg : order.paymentMethod === 'upi' ? sc.upi.fg : sc.pending.fg,
                             textTransform: 'capitalize',
                           }}
                         />
@@ -380,8 +427,8 @@ export default function AdminDashboardPage() {
                               height: 20,
                               fontSize: '0.65rem',
                               fontWeight: 700,
-                              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : '#F3F4F6',
-                              color: 'text.secondary',
+                              backgroundColor: sc.completed.bg,
+                              color: sc.completed.fg,
                             }}
                           />
                         )}
