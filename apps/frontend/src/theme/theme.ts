@@ -8,40 +8,40 @@ export function getTheme(mode: 'light' | 'dark' = 'light') {
     palette: {
       mode,
       primary: {
-        main: palette.primary.light,
-        light: isDark ? '#2D8A4E' : palette.primary.light,
+        main: isDark ? '#4ADE80' : palette.primary.light,
+        light: isDark ? '#5EE890' : palette.primary.light,
         dark: isDark ? '#0F2E1A' : palette.primary.dark,
-        contrastText: palette.primary.contrast,
+        contrastText: isDark ? '#FFFFFF' : palette.primary.contrast,
       },
       secondary: {
-        main: palette.accent.main,
+        main: isDark ? '#FBBF24' : palette.accent.main,
         light: isDark ? '#FCD34D' : palette.accent.light,
         dark: isDark ? '#78350F' : palette.accent.dark,
-        contrastText: palette.accent.contrast,
+        contrastText: isDark ? '#FFFFFF' : palette.accent.contrast,
       },
       error: {
-        main: palette.semantic.error,
-        light: isDark ? '#450A0A' : palette.semantic.errorLight,
+        main: isDark ? '#F87171' : palette.semantic.error,
+        light: isDark ? '#2A1010' : palette.semantic.errorLight,
       },
       info: {
-        main: palette.semantic.info,
-        light: isDark ? '#172554' : palette.semantic.infoLight,
+        main: isDark ? '#60A5FA' : palette.semantic.info,
+        light: isDark ? '#0F172A' : palette.semantic.infoLight,
       },
       success: {
-        main: palette.semantic.success,
-        light: isDark ? '#064E3B' : palette.semantic.successLight,
+        main: isDark ? '#4ADE80' : palette.semantic.success,
+        light: isDark ? '#0F1A14' : palette.semantic.successLight,
       },
       warning: {
-        main: palette.semantic.warning,
-        light: isDark ? '#451A03' : palette.semantic.warningLight,
+        main: isDark ? '#FBBF24' : palette.semantic.warning,
+        light: isDark ? '#1A1A1E' : palette.semantic.warningLight,
       },
       background: {
-        default: isDark ? '#0F1A14' : '#F0F4F1',
-        paper: isDark ? '#1A2B22' : '#FFFFFF',
+        default: isDark ? '#1C1C22' : '#F0F4F1',
+        paper: isDark ? '#25252D' : '#FFFFFF',
       },
       grey: palette.grey,
       text: {
-        primary: isDark ? '#F0FDF4' : '#111827',
+        primary: isDark ? '#E8E8EC' : '#111827',
         secondary: isDark ? '#9CA3AF' : '#6B7280',
       },
     },
@@ -115,7 +115,7 @@ export function getTheme(mode: 'light' | 'dark' = 'light') {
         styleOverrides: {
           root: {
             background: isDark
-              ? 'rgba(15,26,20,0.85)'
+              ? 'rgba(28,28,34,0.9)'
               : 'rgba(255,255,255,0.85)',
             backdropFilter: 'blur(12px)',
             boxShadow: 'none',
@@ -127,7 +127,7 @@ export function getTheme(mode: 'light' | 'dark' = 'light') {
         styleOverrides: {
           root: {
             background: isDark
-              ? 'rgba(15,26,20,0.9)'
+              ? 'rgba(28,28,34,0.95)'
               : 'rgba(255,255,255,0.9)',
             backdropFilter: 'blur(12px)',
             borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,

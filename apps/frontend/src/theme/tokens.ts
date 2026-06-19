@@ -44,11 +44,11 @@ export const gradients = {
   primary: 'linear-gradient(135deg, #1B6B3A 0%, #15803D 50%, #124D29 100%)',
   accent: 'linear-gradient(135deg, #E8A64A 0%, #D97706 100%)',
   hero: 'linear-gradient(135deg, #F0F4F1 0%, #E8F5EE 50%, #FEF3C7 100%)',
-  heroDark: 'linear-gradient(135deg, #0F1A14 0%, #1A2B22 50%, #2D3A1E 100%)',
+  heroDark: 'linear-gradient(135deg, #1C1C22 0%, #25252D 50%, #1E1E24 100%)',
   surface: 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
-  surfaceDark: 'linear-gradient(180deg, #1A2B22 0%, #0F1A14 100%)',
+  surfaceDark: 'linear-gradient(180deg, #25252D 0%, #1C1C22 100%)',
   cardHover: 'linear-gradient(135deg, #FFFFFF 0%, #F0F4F1 100%)',
-  cardHoverDark: 'linear-gradient(135deg, #1A2B22 0%, #243830 100%)',
+  cardHoverDark: 'linear-gradient(135deg, #25252D 0%, #2E2E36 100%)',
 } as const;
 
 export const shadows = {
@@ -71,12 +71,12 @@ export const statusColors = {
 } as const;
 
 export const darkStatusColors = {
-  dineIn: { bg: '#172554', fg: '#93C5FD', label: 'Dine in' },
-  pack: { bg: '#451A03', fg: '#FCD34D', label: 'Pack' },
-  cash: { bg: '#064E3B', fg: '#6EE7B7', label: 'Cash' },
-  upi: { bg: '#3B0764', fg: '#C4B5FD', label: 'UPI' },
-  pending: { bg: '#450A0A', fg: '#FCA5A5', label: 'Pending' },
-  completed: { bg: '#1F2937', fg: '#9CA3AF', label: 'Done' },
+  dineIn: { bg: '#1E2A4A', fg: '#8CB4E8', label: 'Dine in' },
+  pack: { bg: '#3D2E1A', fg: '#E8C46C', label: 'Pack' },
+  cash: { bg: '#1A3D2A', fg: '#8CE8B4', label: 'Cash' },
+  upi: { bg: '#2E1A4A', fg: '#C4A8E8', label: 'UPI' },
+  pending: { bg: '#3D1A1A', fg: '#E8A8A8', label: 'Pending' },
+  completed: { bg: '#2A2A32', fg: '#9CA3AF', label: 'Done' },
 } as const;
 
 export const animations = {

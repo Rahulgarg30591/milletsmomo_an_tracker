@@ -70,9 +70,10 @@ export default function AppBarComponent() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                color: '#FFFFFF',
               }}
             >
-              <Leaf size={18} color="#FFFFFF" />
+              <Leaf size={18} color="currentColor" />
             </Box>
           </motion.div>
           <Typography

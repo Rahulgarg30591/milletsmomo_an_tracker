@@ -28,16 +28,16 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
           theme.palette.mode === 'dark' ? 'rgba(15,26,20,0.85)' : 'rgba(255,255,255,0.85)',
         borderTop: 1,
         borderColor: 'divider',
-        p: 1.5,
+        p: { xs: 1, md: 1.5 },
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 1.5,
+        gap: { xs: 1, md: 1.5 },
       }}
     >
       <Box>
-        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, mb: 0.25 }}>
-          Total Amount
+        <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'text.secondary', fontWeight: 500, mb: { xs: 0.125, md: 0.25 }, lineHeight: 1 }}>
+          Total
         </Typography>
         <AnimatePresence mode="wait">
           <motion.div
@@ -49,7 +49,7 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
           >
             <Typography
               sx={{
-                fontSize: '1.35rem',
+                fontSize: { xs: '1.15rem', md: '1.5rem' },
                 fontWeight: 800,
                 color: 'text.primary',
                 letterSpacing: '-0.3px',
@@ -69,14 +69,14 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
             vibrate(haptics.medium);
             onSubmit();
           }}
-          size="large"
-          endIcon={<ArrowRight size={18} />}
+          size="small"
+          endIcon={<ArrowRight size={16} />}
           sx={{
-            borderRadius: 1,
-            px: 3.5,
-            py: 1,
+            borderRadius: { xs: 0.75, md: 1 },
+            px: { xs: 2.5, md: 4 },
+            py: { xs: 0.75, md: 1 },
             fontWeight: 700,
-            fontSize: '0.95rem',
+            fontSize: { xs: '0.85rem', md: '1rem' },
             textTransform: 'none',
             background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
             boxShadow: '0 4px 14px rgba(27,107,58,0.25)',
@@ -85,10 +85,12 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
               boxShadow: 'none',
               color: 'rgba(255,255,255,0.7)',
             },
+            minHeight: 0,
+            lineHeight: 1.2,
           }}
         >
-          <ShoppingBag size={18} style={{ marginRight: 8 }} />
-          Place Order
+          <ShoppingBag size={16} style={{ marginRight: 6 }} />
+          Place
         </Button>
       </motion.div>
     </Box>

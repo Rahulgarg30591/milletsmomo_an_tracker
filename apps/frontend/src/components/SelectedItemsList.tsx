@@ -1,10 +1,12 @@
-import { Box, Typography, Button, Divider } from '@mui/material';
+import { Box, Typography, Button, Divider, useTheme } from '@mui/material';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { getMenuItem, calculateLineTotal, calculateOrderTotal } from '../utils/pricing';
 import { X } from 'lucide-react';
 
 export default function SelectedItemsList() {
   const { draft, removeItem } = useOrderDraft();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   const items = Array.from(draft.items.entries())
     .filter(([, item]) => item.quantity > 0)
@@ -19,26 +21,26 @@ export default function SelectedItemsList() {
   if (items.length === 0) return null;
 
   return (
-    <Box sx={{ mb: 1, mt: 2 }}>
+    <Box sx={{ mb: { xs: 0.5, md: 1 }, mt: { xs: 1.25, md: 2 } }}>
       <Typography
         variant="caption"
         sx={{
           fontWeight: 700,
           color: 'text.secondary',
-          mb: 0.5,
+          mb: { xs: 0.375, md: 0.5 },
           display: 'block',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
-          fontSize: '0.7rem',
+          fontSize: { xs: '0.6rem', md: '0.7rem' },
         }}
       >
-        Order Summary ({items.length} item{items.length > 1 ? 's' : ''})
+        Summary ({items.length} item{items.length > 1 ? 's' : ''})
       </Typography>
       <Box
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 0.5,
+          gap: { xs: 0.375, md: 0.5 },
         }}
       >
         {items.map((item) => (
@@ -48,19 +50,19 @@ export default function SelectedItemsList() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              py: 0.75,
-              px: 1,
-              borderRadius: 1,
+              py: { xs: 0.5, md: 0.75 },
+              px: { xs: 0.75, md: 1 },
+              borderRadius: { xs: 0.75, md: 1 },
               backgroundColor: 'background.paper',
-              border: 1,
+              border: { xs: 1, md: 1.5 },
               borderColor: 'divider',
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1 }, minWidth: 0 }}>
               <Typography
                 sx={{
                   fontWeight: 600,
-                  fontSize: '0.8rem',
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
                   color: 'text.primary',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -71,7 +73,7 @@ export default function SelectedItemsList() {
               </Typography>
               <Typography
                 sx={{
-                  fontSize: '0.7rem',
+                  fontSize: { xs: '0.65rem', md: '0.75rem' },
                   color: 'text.secondary',
                   fontWeight: 500,
                   flexShrink: 0,
@@ -82,14 +84,15 @@ export default function SelectedItemsList() {
               {item.isHalf && !item.isCustom && (
                 <Typography
                   sx={{
-                    fontSize: '0.65rem',
+                    fontSize: { xs: '0.6rem', md: '0.7rem' },
                     fontWeight: 700,
-                    color: '#D97706',
-                    backgroundColor: '#FEF3C7',
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 1,
+                    color: isDark ? '#FBBF24' : '#D97706',
+                    backgroundColor: isDark ? '#3D2E1A' : '#FEF3C7',
+                    px: { xs: 0.5, md: 0.75 },
+                    py: { xs: 0.125, md: 0.25 },
+                    borderRadius: { xs: 0.75, md: 1 },
                     flexShrink: 0,
+                    lineHeight: 1,
                   }}
                 >
                   ½
@@ -98,25 +101,26 @@ export default function SelectedItemsList() {
               {item.isCustom && (
                 <Typography
                   sx={{
-                    fontSize: '0.65rem',
+                    fontSize: { xs: '0.6rem', md: '0.7rem' },
                     fontWeight: 700,
-                    color: '#7C3AED',
-                    backgroundColor: '#EDE9FE',
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 1,
+                    color: isDark ? '#C4A8E8' : '#7C3AED',
+                    backgroundColor: isDark ? '#2E1A4A' : '#EDE9FE',
+                    px: { xs: 0.5, md: 0.75 },
+                    py: { xs: 0.125, md: 0.25 },
+                    borderRadius: { xs: 0.75, md: 1 },
                     flexShrink: 0,
+                    lineHeight: 1,
                   }}
                 >
-                  Custom
+                  Cst
                 </Typography>
               )}
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1 }, flexShrink: 0 }}>
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: '0.8rem',
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
                   color: 'primary.main',
                 }}
               >
@@ -126,27 +130,27 @@ export default function SelectedItemsList() {
                 size="small"
                 onClick={() => removeItem(item.menuItemId)}
                 sx={{
-                  minWidth: 22,
-                  width: 22,
-                  height: 22,
+                  minWidth: { xs: 18, md: 22 },
+                  width: { xs: 18, md: 22 },
+                  height: { xs: 18, md: 22 },
                   p: 0,
                   borderRadius: '50%',
                   color: 'error.main',
                   '&:hover': { backgroundColor: 'error.light' },
                 }}
               >
-                <X size={12} />
+                <X size={10} />
               </Button>
             </Box>
           </Box>
         ))}
       </Box>
-      <Divider sx={{ my: 1 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
+      <Divider sx={{ my: { xs: 0.75, md: 1 } }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 0.75, md: 1 } }}>
+        <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.primary' }}>
           Total
         </Typography>
-        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'primary.main' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', md: '1.1rem' }, color: 'primary.main' }}>
           ₹{total}
         </Typography>
       </Box>

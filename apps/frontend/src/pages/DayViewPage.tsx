@@ -26,29 +26,29 @@ interface StatCardProps {
 }
 
 function StatCard({ icon, label, value, color = '#1B6B3A' }: StatCardProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   return (
     <Paper
       sx={{
-        p: 2,
-        borderRadius: 3,
+        p: { xs: 1.25, md: 1.5 },
+        borderRadius: { xs: 1, md: 1.25 },
         display: 'flex',
         alignItems: 'center',
-        gap: 1.5,
+        gap: { xs: 1, md: 1.25 },
         border: 1,
         borderColor: 'divider',
-        transition: 'box-shadow 0.2s ease',
-        '&:hover': { boxShadow: (t) => t.shadows[2] },
       }}
     >
       <Box
         sx={{
-          width: 40,
-          height: 40,
-          borderRadius: 2.5,
+          width: { xs: 32, md: 36 },
+          height: { xs: 32, md: 36 },
+          borderRadius: { xs: 1.5, md: 2 },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: `${color}14`,
+          backgroundColor: isDark ? `${color}30` : `${color}14`,
           color: color,
           flexShrink: 0,
         }}
@@ -56,10 +56,10 @@ function StatCard({ icon, label, value, color = '#1B6B3A' }: StatCardProps) {
         {icon}
       </Box>
       <Box>
-        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.65rem' }, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {label}
         </Typography>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1rem', md: '1.15rem' }, color: 'text.primary', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
           {value}
         </Typography>
       </Box>
@@ -132,11 +132,11 @@ export default function DayViewPage() {
 
   if (isLoading && !data) {
     return (
-      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: 2, pb: 10 }}>
-        <Box sx={{ maxWidth: 900, mx: 'auto' }}>
-          <SkeletonLoader count={3} height={56} />
-          <Box sx={{ mt: 3 }}>
-            <SkeletonLoader count={4} height={100} />
+      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 6 } }}>
+        <Box sx={{ maxWidth: { xs: '100%', md: 900 }, mx: 'auto' }}>
+          <SkeletonLoader count={3} height={48} />
+          <Box sx={{ mt: { xs: 1.5, md: 2 } }}>
+            <SkeletonLoader count={4} height={80} />
           </Box>
         </Box>
       </Box>
@@ -144,12 +144,12 @@ export default function DayViewPage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: isDesktop ? 4 : 10, pt: 1 }}>
-      <Box sx={{ maxWidth: 900, mx: 'auto', p: 2 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 8, md: 4 }, pt: { xs: 0.5, md: 1 } }}>
+      <Box sx={{ maxWidth: { xs: '100%', md: 900 }, mx: 'auto', p: { xs: 1, md: 2 } }}>
         {/* Top bar */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CalendarDays size={18} color={theme.palette.primary.main} />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1.5, md: 2 }, flexWrap: 'wrap', gap: { xs: 0.5, md: 1 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1 } }}>
+            <CalendarDays size={16} color={theme.palette.primary.main} />
             <TextField
               type="date"
               value={date || ''}
@@ -160,13 +160,13 @@ export default function DayViewPage() {
               size="small"
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
+                  borderRadius: 1,
                   fontWeight: 800,
-                  fontSize: '1.05rem',
+                  fontSize: { xs: '0.95rem', md: '1.05rem' },
                   color: 'text.primary',
-                  py: 0.2,
-                  px: 0.5,
-                  width: { xs: 155, sm: 175 },
+                  py: 0.1,
+                  px: 0.4,
+                  width: { xs: 140, sm: 155, md: 175 },
                 },
                 '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
                 '& .MuiInputBase-input::-webkit-calendar-picker-indicator': {
@@ -177,34 +177,38 @@ export default function DayViewPage() {
             />
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1 } }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: { xs: '0.65rem', md: '0.7rem' } }}>
               {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Typography>
             <IconButton
               size="small"
               onClick={handleManualRefresh}
-              sx={{ color: 'text.secondary' }}
+              sx={{ color: 'text.secondary', p: { xs: 0.4, md: 0.5 } }}
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={14} />
             </IconButton>
             <Button
               variant="contained"
               size="small"
-              startIcon={<Plus size={16} />}
+              startIcon={<Plus size={14} />}
               onClick={() => {
                 vibrate(haptics.medium);
                 navigate(`/day/${date}/new`);
               }}
               sx={{
-                borderRadius: 3,
+                borderRadius: 1,
                 textTransform: 'none',
                 fontWeight: 700,
-                px: 2,
+                px: { xs: 1.5, md: 2 },
+                py: { xs: 0.5, md: 0.6 },
+                fontSize: { xs: '0.75rem', md: '0.85rem' },
                 display: { xs: 'none', md: 'flex' },
+                minHeight: 0,
+                lineHeight: 1.2,
               }}
             >
-              New Order
+              New
             </Button>
           </Box>
         </Box>
@@ -213,44 +217,44 @@ export default function DayViewPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
-            gap: 1.5,
-            mb: 3,
+            gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
+            gap: { xs: 0.75, md: 1 },
+            mb: { xs: 1.5, md: 2 },
           }}
         >
           <StatCard
-            icon={<Receipt size={18} />}
+            icon={<Receipt size={14} />}
             label="Orders"
             value={data?.orders?.length || 0}
-            color="#1B6B3A"
+            color="#4ADE80"
           />
 
           <StatCard
-            icon={<Clock size={18} />}
+            icon={<Clock size={14} />}
             label="Pending"
             value={`₹${pendingAmount}`}
-            color={pendingAmount > 0 ? '#DC2626' : '#6B7280'}
+            color={pendingAmount > 0 ? '#F87171' : '#9CA3AF'}
           />
           <StatCard
-            icon={<ChefHat size={18} />}
+            icon={<ChefHat size={14} />}
             label="Active"
             value={activeOrders.length}
-            color="#1D4ED8"
+            color="#60A5FA"
           />
         </Box>
 
         {/* Active Orders */}
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'success.main' }} />
-            <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
-              Active Orders
+        <Box sx={{ mb: { xs: 1, md: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 }, mb: { xs: 1, md: 1.25 } }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'success.main' }} />
+            <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1rem' }, color: 'text.primary' }}>
+              Active
             </Typography>
             <Chip
               label={activeOrders.length}
               size="small"
               color="success"
-              sx={{ fontWeight: 700, height: 22, fontSize: '0.75rem' }}
+              sx={{ fontWeight: 700, height: { xs: 20, md: 22 }, fontSize: { xs: '0.65rem', md: '0.75rem' } }}
             />
           </Box>
 
@@ -258,19 +262,19 @@ export default function DayViewPage() {
             <Paper
               sx={{
                 textAlign: 'center',
-                py: 6,
-                px: 2,
-                borderRadius: 4,
+                py: { xs: 4, md: 5 },
+                px: { xs: 1, md: 2 },
+                borderRadius: { xs: 1, md: 1.5 },
                 backgroundColor: 'background.paper',
                 border: '1px dashed',
                 borderColor: 'divider',
               }}
             >
-              <Typography sx={{ color: 'text.secondary', fontSize: '1rem', fontWeight: 600, mb: 0.5 }}>
+              <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.85rem', md: '1rem' }, fontWeight: 600, mb: 0.25 }}>
                 No active orders
               </Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                Tap "New Order" to get started
+              <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
+                Tap "New Order" to start
               </Typography>
             </Paper>
           )}
@@ -280,9 +284,9 @@ export default function DayViewPage() {
               <motion.div
                 key={order.id}
                 layout
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
+                exit={{ opacity: 0, x: -16, transition: { duration: 0.2 } }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               >
                 <OrderCard
@@ -297,17 +301,17 @@ export default function DayViewPage() {
         {/* Completed Orders */}
         {completedOrders.length > 0 && (
           <>
-            <Divider sx={{ my: 3, borderColor: 'divider' }} />
+            <Divider sx={{ my: { xs: 1.5, md: 2 }, borderColor: 'divider' }} />
             <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'grey.400' }} />
-                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 }, mb: { xs: 1, md: 1.25 } }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'grey.400' }} />
+                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1rem' }, color: 'text.primary' }}>
                   Completed
                 </Typography>
                 <Chip
                   label={completedOrders.length}
                   size="small"
-                  sx={{ fontWeight: 700, height: 22, fontSize: '0.75rem', backgroundColor: 'grey.100', color: 'grey.600' }}
+                  sx={{ fontWeight: 700, height: { xs: 20, md: 22 }, fontSize: { xs: '0.65rem', md: '0.75rem' }, backgroundColor: 'grey.100', color: 'grey.600' }}
                 />
               </Box>
               <AnimatePresence>
@@ -315,7 +319,7 @@ export default function DayViewPage() {
                   <motion.div
                     key={order.id}
                     layout
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   >
@@ -341,19 +345,19 @@ export default function DayViewPage() {
           }}
           sx={{
             position: 'fixed',
-            bottom: 80,
-            right: 24,
-            width: 56,
-            height: 56,
+            bottom: 72,
+            right: 16,
+            width: 48,
+            height: 48,
             zIndex: 1000,
             boxShadow: '0 4px 16px rgba(27,107,58,0.3)',
           }}
         >
-          <Plus size={24} color="#FFFFFF" />
+          <Plus size={20} color="currentColor" />
         </Fab>
       )}
 
-      {/* Desktop FAB — top right, sticky */}
+      {/* Desktop FAB */}
       {isDesktop && (
         <Fab
           color="primary"
@@ -364,14 +368,14 @@ export default function DayViewPage() {
           sx={{
             position: 'fixed',
             top: 80,
-            right: 32,
-            width: 56,
-            height: 56,
+            right: 24,
+            width: 48,
+            height: 48,
             zIndex: 1000,
             boxShadow: '0 4px 16px rgba(27,107,58,0.3)',
           }}
         >
-          <Plus size={24} color="#FFFFFF" />
+          <Plus size={20} color="currentColor" />
         </Fab>
       )}
 

@@ -50,15 +50,15 @@ export default function PaymentModal({ open, onResolve, onCancel }: PaymentModal
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Paper
-          sx={{
-            borderRadius: '24px 24px 0 0',
-            p: 3,
-            background: isDark
-              ? 'linear-gradient(180deg, #1A2B22 0%, #0F1A14 100%)'
-              : 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
-          }}
-        >
+          <Paper
+            sx={{
+              borderRadius: '24px 24px 0 0',
+              p: 3,
+              background: isDark
+                ? 'linear-gradient(180deg, #25252D 0%, #1C1C22 100%)'
+                : 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
+            }}
+          >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: 'text.primary' }}>
               Collect Payment

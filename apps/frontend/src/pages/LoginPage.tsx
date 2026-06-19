@@ -59,7 +59,7 @@ export default function LoginPage() {
         position: 'relative',
         overflow: 'hidden',
         background: isDark
-          ? 'linear-gradient(135deg, #0F1A14 0%, #1A2B22 50%, #2D3A1E 100%)'
+          ? 'linear-gradient(135deg, #1C1C22 0%, #25252D 50%, #1E1E24 100%)'
           : 'linear-gradient(135deg, #F0F4F1 0%, #E8F5EE 50%, #FEF3C7 100%)',
       }}
     >
@@ -72,7 +72,9 @@ export default function LoginPage() {
           width: 400,
           height: 400,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(27,107,58,0.08) 0%, transparent 70%)',
+          background: isDark
+            ? 'radial-gradient(circle, rgba(74,222,128,0.10) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(27,107,58,0.08) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -84,7 +86,9 @@ export default function LoginPage() {
           width: 400,
           height: 400,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(232,166,74,0.08) 0%, transparent 70%)',
+          background: isDark
+            ? 'radial-gradient(circle, rgba(251,191,36,0.10) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(232,166,74,0.08) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -101,7 +105,7 @@ export default function LoginPage() {
             p: { xs: 3, sm: 4 },
             borderRadius: 5,
             background: isDark
-              ? 'rgba(26,43,34,0.85)'
+              ? 'rgba(37,37,45,0.85)'
               : 'rgba(255,255,255,0.85)',
             backdropFilter: 'blur(20px)',
             boxShadow: isDark
@@ -127,9 +131,10 @@ export default function LoginPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 8px 24px rgba(27,107,58,0.25)',
+                  color: '#FFFFFF',
                 }}
               >
-                <Leaf size={36} color="#FFFFFF" strokeWidth={2} />
+                <Leaf size={36} color="currentColor" strokeWidth={2} />
               </Box>
             </motion.div>
           </Box>

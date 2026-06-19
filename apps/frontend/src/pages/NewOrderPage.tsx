@@ -24,13 +24,22 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Pan Fried Gravy': '🍛',
 };
 
-const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string }> = {
   'Steam': { bg: '#E8F5EE', border: '#1B6B3A', text: '#1B6B3A' },
   'Fry': { bg: '#FEF3C7', border: '#D97706', text: '#B45309' },
   'Creamy': { bg: '#F3E8FF', border: '#7C3AED', text: '#6B21A8' },
   'Creamy Fry': { bg: '#FCE7F3', border: '#DB2777', text: '#9D174D' },
   'Nepalese Kothey': { bg: '#ECFDF5', border: '#059669', text: '#047857' },
   'Pan Fried Gravy': { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
+};
+
+const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: string }> = {
+  'Steam': { bg: '#1A2E20', border: '#2D8A4E', text: '#4ADE80' },
+  'Fry': { bg: '#3D2E1A', border: '#D97706', text: '#FBBF24' },
+  'Creamy': { bg: '#2E1A4A', border: '#7C3AED', text: '#C4A8E8' },
+  'Creamy Fry': { bg: '#3D1A2E', border: '#DB2777', text: '#E8A8C8' },
+  'Nepalese Kothey': { bg: '#1A3D2A', border: '#2D8A4E', text: '#8CE8B4' },
+  'Pan Fried Gravy': { bg: '#1A2E4A', border: '#2563EB', text: '#8CB4E8' },
 };
 
 function NewOrderContent() {
@@ -40,6 +49,9 @@ function NewOrderContent() {
   const { draft, clearDraft, getItemList } = useOrderDraft();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  const CATEGORY_COLORS = isDark ? CATEGORY_COLORS_DARK : CATEGORY_COLORS_LIGHT;
 
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
@@ -93,78 +105,79 @@ function NewOrderContent() {
   };
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 18, md: 12 }, pt: 0.5 }}>
-      <Box sx={{ maxWidth: 700, mx: 'auto', p: 1.5 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 14, md: 12 }, pt: 0.25 }}>
+      <Box sx={{ maxWidth: { xs: '100%', md: 720 }, mx: 'auto', px: { xs: 0.75, md: 2 }, py: { xs: 0.75, md: 1.5 } }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, md: 2 }, gap: { xs: 0.5, md: 1 } }}>
           <IconButton
             onClick={() => navigate(`/day/${date}`)}
-            sx={{ color: 'text.secondary', mr: 0.5 }}
+            sx={{ color: 'text.secondary', p: { xs: 0.5, md: 0.75 }, mr: { xs: 0.25, md: 0.5 } }}
             aria-label="Go back"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={18} />
           </IconButton>
           <Box sx={{ flex: 1 }}>
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1.15rem',
+                fontSize: { xs: '1rem', md: '1.25rem' },
                 color: 'text.primary',
                 letterSpacing: '-0.3px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.75,
+                gap: { xs: 0.5, md: 0.75 },
               }}
             >
-              <ChefHat size={20} color={theme.palette.primary.main} />
+              <ChefHat size={18} color={theme.palette.primary.main} />
               New Order
             </Typography>
-            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25 }}>
+            <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.8rem' }, color: 'text.secondary', mt: 0.125 }}>
               {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : ''}
             </Typography>
           </Box>
           {totalSelectedItems > 0 && (
             <Chip
-              icon={<ShoppingCart size={14} />}
+              icon={<ShoppingCart size={12} />}
               label={`${totalSelectedItems} momo${totalSelectedItems > 1 ? 's' : ''}`}
               color="primary"
               size="small"
-              sx={{ fontWeight: 700 }}
+              sx={{ fontWeight: 700, fontSize: { xs: '0.65rem', md: '0.75rem' }, height: { xs: 22, md: 26 } }}
             />
           )}
         </Box>
 
         {/* Menu Grid by Category */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.75, md: 1.5 } }}>
           {groupedItems.map(([preparation, items], categoryIndex) => {
-            const colors = CATEGORY_COLORS[preparation] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#4B5563' };
+            const colors = CATEGORY_COLORS[preparation] || { bg: isDark ? '#2A2A32' : '#F3F4F6', border: isDark ? '#9CA3AF' : '#9CA3AF', text: isDark ? '#9CA3AF' : '#4B5563' };
             return (
               <motion.div
                 key={preparation}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: categoryIndex * 0.08, type: 'spring', stiffness: 400, damping: 30 }}
+                transition={{ delay: categoryIndex * 0.05, type: 'spring', stiffness: 400, damping: 30 }}
               >
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 1.5,
-                    borderRadius: 1,
-                    border: 1.5,
+                    p: { xs: 1, md: 1.5 },
+                    borderRadius: { xs: 0.75, md: 1 },
+                    border: { xs: 1, md: 1.5 },
                     borderColor: colors.border,
                     backgroundColor: colors.bg,
-                    mb: 1,
+                    mb: { xs: 0.5, md: 1 },
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography sx={{ fontSize: '1.1rem' }}>{CATEGORY_ICONS[preparation] || '🍽️'}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1 }, mb: { xs: 0.75, md: 1 } }}>
+                    <Typography sx={{ fontSize: { xs: '1rem', md: '1.2rem' }, lineHeight: 1 }}>{CATEGORY_ICONS[preparation] || '🍽️'}</Typography>
                     <Typography
                       sx={{
                         fontWeight: 800,
-                        fontSize: '0.9rem',
+                        fontSize: { xs: '0.8rem', md: '1rem' },
                         color: colors.text,
                         letterSpacing: '-0.2px',
                         textTransform: 'uppercase',
+                        lineHeight: 1,
                       }}
                     >
                       {preparation}
@@ -178,7 +191,7 @@ function NewOrderContent() {
         </Box>
 
         {/* Order Config */}
-        <Box sx={{ mt: 2, mb: 1.5 }}>
+        <Box sx={{ mt: { xs: 1.5, md: 2.5 }, mb: { xs: 1, md: 1.5 } }}>
           <OrderConfigPanel />
         </Box>
 

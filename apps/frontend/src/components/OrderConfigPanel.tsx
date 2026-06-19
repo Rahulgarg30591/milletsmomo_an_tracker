@@ -4,14 +4,14 @@ import { useOrderDraft } from '../context/OrderDraftContext';
 import { vibrate, haptics } from '../theme/tokens';
 
 const typeConfig = [
-  { key: 'dine' as const, label: 'Dine In', icon: <Utensils size={14} /> },
-  { key: 'pack' as const, label: 'Pack', icon: <Package size={14} /> },
+  { key: 'dine' as const, label: 'Dine', icon: <Utensils size={12} /> },
+  { key: 'pack' as const, label: 'Pack', icon: <Package size={12} /> },
 ];
 
 const paymentConfig = [
-  { key: 'cash' as const, label: 'Cash', icon: <Banknote size={14} /> },
-  { key: 'upi' as const, label: 'UPI', icon: <Smartphone size={14} /> },
-  { key: 'pending' as const, label: 'Pending', icon: <Clock size={14} /> },
+  { key: 'cash' as const, label: 'Cash', icon: <Banknote size={12} /> },
+  { key: 'upi' as const, label: 'UPI', icon: <Smartphone size={12} /> },
+  { key: 'pending' as const, label: 'Pending', icon: <Clock size={12} /> },
 ];
 
 export default function OrderConfigPanel() {
@@ -19,58 +19,67 @@ export default function OrderConfigPanel() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
-  const activeBg = isDark ? 'rgba(27,107,58,0.15)' : '#E8F5EE';
-  const activeBorder = '#1B6B3A';
-  const inactiveBg = isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB';
-  const inactiveBorder = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
+  // Active / inactive colors that work on both light and dark
+  const activeBg = isDark ? '#1A3D2A' : '#E8F5EE';
+  const activeBorder = isDark ? '#4ADE80' : '#1B6B3A';
+  const activeColor = isDark ? '#4ADE80' : '#1B6B3A';
+  const inactiveBg = isDark ? '#2A2A32' : '#F9FAFB';
+  const inactiveBorder = isDark ? '#3D3D44' : '#E5E7EB';
+  const inactiveColor = isDark ? '#9CA3AF' : '#6B7280';
 
   return (
     <Box>
-      <Box sx={{ mb: 1.5 }}>
+      <Box sx={{ mb: { xs: 1, md: 1.5 } }}>
         <Typography
           variant="caption"
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 0.5,
+            mb: { xs: 0.375, md: 0.5 },
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            fontSize: '0.7rem',
+            fontSize: { xs: '0.6rem', md: '0.7rem' },
           }}
         >
-          Order Type
+          Type
         </Typography>
-        <Box sx={{ display: 'flex', gap: 0.75 }}>
-          {typeConfig.map((type) => (
-            <Button
-              key={type.key}
-              fullWidth
-              size="small"
-              onClick={() => {
-                vibrate(haptics.light);
-                setOrderType(type.key);
-              }}
-              startIcon={type.icon}
-              sx={{
-                borderRadius: 1,
-                py: 0.75,
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                textTransform: 'none',
-                backgroundColor: draft.orderType === type.key ? activeBg : inactiveBg,
-                color: draft.orderType === type.key ? '#1B6B3A' : 'text.secondary',
-                border: 1.5,
-                borderColor: draft.orderType === type.key ? activeBorder : inactiveBorder,
-                '&:hover': {
-                  backgroundColor: activeBg,
-                  borderColor: activeBorder,
-                },
-              }}
-            >
-              {type.label}
-            </Button>
-          ))}
+        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 0.75 } }}>
+          {typeConfig.map((type) => {
+            const isActive = draft.orderType === type.key;
+            return (
+              <Button
+                key={type.key}
+                fullWidth
+                size="small"
+                onClick={() => {
+                  vibrate(haptics.light);
+                  setOrderType(type.key);
+                }}
+                startIcon={type.icon}
+                sx={{
+                  borderRadius: { xs: 0.75, md: 1 },
+                  py: { xs: 0.5, md: 0.75 },
+                  fontWeight: 600,
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
+                  textTransform: 'none',
+                  backgroundColor: isActive ? activeBg : inactiveBg,
+                  color: isActive ? activeColor : inactiveColor,
+                  border: { xs: 1, md: 1.5 },
+                  borderColor: isActive ? activeBorder : inactiveBorder,
+                  '&:hover': {
+                    backgroundColor: activeBg,
+                    borderColor: activeBorder,
+                    color: activeColor,
+                  },
+                  minHeight: 0,
+                  lineHeight: 1.2,
+                }}
+              >
+                {type.label}
+              </Button>
+            );
+          })}
         </Box>
       </Box>
 
@@ -80,22 +89,29 @@ export default function OrderConfigPanel() {
           sx={{
             fontWeight: 700,
             color: 'text.secondary',
-            mb: 0.5,
+            mb: { xs: 0.375, md: 0.5 },
             display: 'block',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            fontSize: '0.7rem',
+            fontSize: { xs: '0.6rem', md: '0.7rem' },
           }}
         >
-          Payment Method
+          Payment
         </Typography>
-        <Box sx={{ display: 'flex', gap: 0.75 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 0.75 } }}>
           {paymentConfig.map((method) => {
             const isActive = draft.paymentMethod === method.key;
             const isPending = method.key === 'pending';
-            const activeColor = isPending ? '#DC2626' : '#1B6B3A';
-            const activeBg2 = isPending ? '#FEE2E2' : activeBg;
-            const activeBorder2 = isPending ? '#DC2626' : activeBorder;
+
+            const activeColor2 = isPending
+              ? (isDark ? '#F87171' : '#DC2626')
+              : activeColor;
+            const activeBg2 = isPending
+              ? (isDark ? '#3D1A1A' : '#FEE2E2')
+              : activeBg;
+            const activeBorder2 = isPending
+              ? (isDark ? '#F87171' : '#DC2626')
+              : activeBorder;
 
             return (
               <Button
@@ -108,19 +124,22 @@ export default function OrderConfigPanel() {
                 }}
                 startIcon={method.icon}
                 sx={{
-                  borderRadius: 1,
-                  py: 0.75,
+                  borderRadius: { xs: 0.75, md: 1 },
+                  py: { xs: 0.5, md: 0.75 },
                   fontWeight: 600,
-                  fontSize: '0.8rem',
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
                   textTransform: 'none',
                   backgroundColor: isActive ? activeBg2 : inactiveBg,
-                  color: isActive ? activeColor : 'text.secondary',
-                  border: 1.5,
+                  color: isActive ? activeColor2 : inactiveColor,
+                  border: { xs: 1, md: 1.5 },
                   borderColor: isActive ? activeBorder2 : inactiveBorder,
                   '&:hover': {
                     backgroundColor: activeBg2,
                     borderColor: activeBorder2,
+                    color: activeColor2,
                   },
+                  minHeight: 0,
+                  lineHeight: 1.2,
                 }}
               >
                 {method.label}
