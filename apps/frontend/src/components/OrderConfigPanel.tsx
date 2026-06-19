@@ -26,29 +26,46 @@ export default function OrderConfigPanel() {
   const itemList = Array.from(items.entries()).map(([menuItemId, item]) => ({ menuItemId, ...item }));
   const total = calculateOrderTotal(itemList);
 
-  const [cashVal, setCashVal] = useState<string>(String(draft.cashAmount || Math.round(total / 2)));
-  const [upiVal, setUpiVal] = useState<string>(String(draft.upiAmount || Math.round(total / 2)));
+  const [cashVal, setCashVal] = useState<string>('');
+  const [upiVal, setUpiVal] = useState<string>('');
 
-  // Auto-update split amounts when total changes or split is selected
+  // Reset to blank when switching away from split
   useEffect(() => {
-    if (draft.paymentMethod === 'split') {
-      const cash = parseFloat(cashVal) || 0;
-      const upi = parseFloat(upiVal) || 0;
+    if (draft.paymentMethod !== 'split') {
+      setCashVal('');
+      setUpiVal('');
+    }
+  }, [draft.paymentMethod]);
+
+  const handleCashChange = (val: string) => {
+    setCashVal(val);
+    const cash = parseFloat(val);
+    if (!isNaN(cash) && total > 0) {
+      const upi = Math.max(0, total - cash);
+      setUpiVal(String(upi));
       setSplitAmounts(cash, upi);
+    } else {
+      setUpiVal('');
+      setSplitAmounts(0, 0);
     }
-  }, [cashVal, upiVal, draft.paymentMethod]);
+  };
 
-  // Reset defaults when switching to split
-  useEffect(() => {
-    if (draft.paymentMethod === 'split') {
-      const half = Math.round(total / 2);
-      setCashVal(String(half));
-      setUpiVal(String(total - half));
-      setSplitAmounts(half, total - half);
+  const handleUpiChange = (val: string) => {
+    setUpiVal(val);
+    const upi = parseFloat(val);
+    if (!isNaN(upi) && total > 0) {
+      const cash = Math.max(0, total - upi);
+      setCashVal(String(cash));
+      setSplitAmounts(cash, upi);
+    } else {
+      setCashVal('');
+      setSplitAmounts(0, 0);
     }
-  }, [draft.paymentMethod === 'split']);
+  };
 
-  const isSplitValid = Math.abs((parseFloat(cashVal) || 0) + (parseFloat(upiVal) || 0) - total) < 0.01;
+  const cashNum = parseFloat(cashVal);
+  const upiNum = parseFloat(upiVal);
+  const isSplitValid = !isNaN(cashNum) && !isNaN(upiNum) && Math.abs(cashNum + upiNum - total) < 0.01;
 
   // Active / inactive colors that work on both light and dark
   const activeBg = isDark ? '#1A3D2A' : '#E8F5EE';
@@ -199,7 +216,7 @@ export default function OrderConfigPanel() {
                 component="input"
                 type="number"
                 value={cashVal}
-                onChange={(e) => setCashVal(e.target.value)}
+                onChange={(e) => handleCashChange(e.target.value)}
                 sx={{
                   width: '100%',
                   textAlign: 'center',
@@ -228,7 +245,7 @@ export default function OrderConfigPanel() {
                 component="input"
                 type="number"
                 value={upiVal}
-                onChange={(e) => setUpiVal(e.target.value)}
+                onChange={(e) => handleUpiChange(e.target.value)}
                 sx={{
                   width: '100%',
                   textAlign: 'center',

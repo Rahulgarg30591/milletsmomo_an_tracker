@@ -15,14 +15,38 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [showSplit, setShowSplit] = useState(false);
-  const [cashVal, setCashVal] = useState<string>(String(Math.round(totalAmount / 2)));
-  const [upiVal, setUpiVal] = useState<string>(String(Math.round(totalAmount / 2)));
+  const [cashVal, setCashVal] = useState<string>('');
+  const [upiVal, setUpiVal] = useState<string>('');
 
   useEffect(() => {
-    const half = Math.round(totalAmount / 2);
-    setCashVal(String(half));
-    setUpiVal(String(totalAmount - half));
-  }, [totalAmount]);
+    if (open) {
+      setShowSplit(false);
+      setCashVal('');
+      setUpiVal('');
+    }
+  }, [open, totalAmount]);
+
+  const handleCashChange = (val: string) => {
+    setCashVal(val);
+    const cash = parseFloat(val);
+    if (!isNaN(cash) && totalAmount > 0) {
+      const upi = Math.max(0, totalAmount - cash);
+      setUpiVal(String(upi));
+    } else {
+      setUpiVal('');
+    }
+  };
+
+  const handleUpiChange = (val: string) => {
+    setUpiVal(val);
+    const upi = parseFloat(val);
+    if (!isNaN(upi) && totalAmount > 0) {
+      const cash = Math.max(0, totalAmount - upi);
+      setCashVal(String(cash));
+    } else {
+      setCashVal('');
+    }
+  };
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -176,7 +200,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                     component="input"
                     type="number"
                     value={cashVal}
-                    onChange={(e) => setCashVal(e.target.value)}
+                    onChange={(e) => handleCashChange(e.target.value)}
                     sx={{
                       width: '100%',
                       textAlign: 'center',
@@ -207,7 +231,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                     component="input"
                     type="number"
                     value={upiVal}
-                    onChange={(e) => setUpiVal(e.target.value)}
+                    onChange={(e) => handleUpiChange(e.target.value)}
                     sx={{
                       width: '100%',
                       textAlign: 'center',
