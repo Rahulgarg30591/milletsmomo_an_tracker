@@ -51,8 +51,8 @@ export default function StatChip({ label, value, icon, color = 'primary' }: Stat
     <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 30 }}>
       <Box
         sx={{
-          p: 2,
-          borderRadius: 3,
+          p: 1.5,
+          borderRadius: 2,
           background: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
           boxShadow: (theme) => theme.shadows[1],
           border: 1,
@@ -63,15 +63,15 @@ export default function StatChip({ label, value, icon, color = 'primary' }: Stat
           },
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
+          gap: 1,
           minWidth: 0,
         }}
       >
         <Box
           sx={{
-            width: 40,
-            height: 40,
-            borderRadius: 2.5,
+            width: 36,
+            height: 36,
+            borderRadius: 2,
             background: colors.gradient,
             display: 'flex',
             alignItems: 'center',

@@ -37,7 +37,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO Users AS target
 USING (VALUES
   ('staff', 'staff', '$2b$10$veSawKHMM2U3EV08JXrs/uFmhfLxsHqLvOij6JjB2.1NG6iGsttA2', 'Cart Staff'),
-  ('admin', 'admin', '$2b$10$X6BXobdllogT/2U.nC5qOenrf4WtDxUzV4mhQL2A4u.Ei758dDOTK', 'Owner')
+  ('admin', 'admin', '$2b$10$nQTAqER/jcLsoC0nYyl2OeOXt7fZ0tqXRhwSl3MBxRGIgVLnkjtrO', 'Owner')
 ) AS source (username, role, pin_hash, display_name)
 ON target.username = source.username
 WHEN MATCHED THEN

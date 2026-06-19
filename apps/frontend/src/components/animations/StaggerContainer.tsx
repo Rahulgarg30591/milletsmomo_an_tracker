@@ -16,25 +16,25 @@ export default function StaggerContainer({
   sx?: SxProps<Theme>;
 }) {
   return (
-    <Box sx={sx}>
-      <motion.div
-        className={className}
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: { opacity: 0 },
-          visible: {
-            opacity: 1,
-            transition: {
-              staggerChildren: animations.stagger.staggerChildren,
-              delayChildren: delay || animations.stagger.delayChildren,
-            },
+    <motion.div
+      className={className}
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: {
+            staggerChildren: animations.stagger.staggerChildren,
+            delayChildren: delay || animations.stagger.delayChildren,
           },
-        }}
-      >
+        },
+      }}
+    >
+      <Box sx={sx}>
         {children}
-      </motion.div>
-    </Box>
+      </Box>
+    </motion.div>
   );
 }
 

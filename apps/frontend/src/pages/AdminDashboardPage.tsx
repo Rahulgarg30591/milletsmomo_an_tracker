@@ -84,10 +84,10 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 2, pb: 10, pt: 1 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 1.5, pb: 10, pt: 1 }}>
       <Box sx={{ maxWidth: 960, mx: 'auto' }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Button
               size="small"
@@ -106,20 +106,20 @@ export default function AdminDashboardPage() {
             variant="outlined"
             startIcon={<Download size={16} />}
             onClick={handleExport}
-            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 3 }}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
           >
             Export
           </Button>
         </Box>
 
         {/* Date range selector */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2 }}>
           <ToggleButtonGroup
             value={dateRange}
             exclusive
             onChange={(_e, val) => val && setDateRange(val)}
             size="small"
-            sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5, '& .MuiToggleButtonGroup-grouped': { borderRadius: 3, border: 0, mx: 0.25 } }}
+            sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5, '& .MuiToggleButtonGroup-grouped': { borderRadius: 2, border: 0, mx: 0.25 } }}
           >
             <ToggleButton value="today">Today</ToggleButton>
             <ToggleButton value="yesterday">Yesterday</ToggleButton>
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
                 label="From"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputLabelProps={{ shrink: true }}
               />
               <Typography sx={{ color: 'text.secondary' }}>to</Typography>
@@ -146,7 +146,7 @@ export default function AdminDashboardPage() {
                 label="To"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
 
         {isLoading && !data && (
           <>
-            <SkeletonLoader count={4} height={80} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1.5 }} />
+            <SkeletonLoader count={4} height={64} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1 }} />
             <SkeletonLoader count={1} height={300} />
           </>
         )}
@@ -166,9 +166,9 @@ export default function AdminDashboardPage() {
             <StaggerContainer
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
-                gap: 1.5,
-                mb: 3,
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                gap: 1,
+                mb: 2,
               }}
             >
               <StaggerItem>
@@ -206,8 +206,8 @@ export default function AdminDashboardPage() {
             </StaggerContainer>
 
             {/* Revenue chart */}
-            <Paper sx={{ borderRadius: 4, p: 3, mb: 3, overflow: 'hidden' }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 2 }}>
+            <Paper sx={{ borderRadius: 2, p: 2, mb: 2, overflow: 'hidden' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 1.5 }}>
                 Payment Split
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
@@ -249,8 +249,8 @@ export default function AdminDashboardPage() {
             </Paper>
 
             {/* Item breakdown table */}
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden', mb: 3 }}>
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Paper sx={{ borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Item Breakdown
                 </Typography>
@@ -280,16 +280,16 @@ export default function AdminDashboardPage() {
                         transition: 'background-color 0.15s ease',
                       }}
                     >
-                      <TableCell sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 500, py: 1.5 }}>
+                      <TableCell sx={{ fontSize: '0.85rem', color: 'text.primary', fontWeight: 500, py: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Package size={14} color="currentColor" style={{ opacity: 0.4 }} />
                           {item.itemName}
                         </Box>
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1.5 }}>
+                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1 }}>
                         {item.totalQuantity}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1.5 }}>
+                      <TableCell align="right" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main', py: 1 }}>
                         ₹{item.totalRevenue}
                       </TableCell>
                     </TableRow>
@@ -306,8 +306,8 @@ export default function AdminDashboardPage() {
             </Paper>
 
             {/* Orders list */}
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden' }}>
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Orders
                 </Typography>
@@ -325,7 +325,7 @@ export default function AdminDashboardPage() {
                   ))}
                 </Box>
               </Box>
-              <Box sx={{ p: 2 }}>
+              <Box sx={{ p: 1.5 }}>
                 {filteredOrders.map((order: Order) => (
                   <Box
                     key={order.id}
@@ -333,15 +333,15 @@ export default function AdminDashboardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      py: 1.5,
+                      py: 1,
                       borderBottom: 1,
                       borderColor: 'divider',
                       '&:last-child': { borderBottom: 0 },
                       '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#F9FAFB' },
                       transition: 'background-color 0.15s ease',
-                      px: 1,
-                      mx: -1,
-                      borderRadius: 2,
+                      px: 0.5,
+                      mx: -0.5,
+                      borderRadius: 1,
                     }}
                   >
                     <Box>
