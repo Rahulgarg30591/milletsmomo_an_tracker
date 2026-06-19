@@ -45,3 +45,22 @@ WHEN MATCHED THEN
 WHEN NOT MATCHED THEN
   INSERT (username, role, pin_hash, display_name)
   VALUES (source.username, source.role, source.pin_hash, source.display_name);
+
+-- Supply items (8 items: 3 momo packets + 5 sauces/dips)
+MERGE INTO SupplyItems AS target
+USING (VALUES
+  ('veg_packet', 'momo_packet', 138.00, 24, 'Veg Momo Packet (24 Pcs)'),
+  ('paneer_packet', 'momo_packet', 158.00, 24, 'Paneer Momo Packet (24 Pcs)'),
+  ('cheese_corn_packet', 'momo_packet', 198.00, 24, 'CheeseCorn Momo Packet (24 Pcs)'),
+  ('red_sauce', 'sauce', 80.00, 1, 'Red Sauce'),
+  ('chipotle', 'dip', 220.00, 1, 'Chipotle'),
+  ('schezwan_sauce', 'sauce', 170.00, 1, 'Schezwan Sauce'),
+  ('oregano', 'dip', 370.00, 1, 'Oregano'),
+  ('molten_cheese', 'dip', 160.00, 1, 'Molten Cheese')
+) AS source (name, category, unit_price, pieces_per, display_name)
+ON target.name = source.name
+WHEN MATCHED THEN
+  UPDATE SET category = source.category, unit_price = source.unit_price, pieces_per = source.pieces_per, display_name = source.display_name
+WHEN NOT MATCHED THEN
+  INSERT (name, category, unit_price, pieces_per, display_name)
+  VALUES (source.name, source.category, source.unit_price, source.pieces_per, source.display_name);

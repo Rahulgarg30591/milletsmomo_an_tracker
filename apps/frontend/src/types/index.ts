@@ -50,3 +50,91 @@ export interface AdminSummary {
   itemBreakdown: { itemName: string; totalQuantity: number; totalRevenue: number }[];
   orders: Order[];
 }
+
+export interface SupplyItem {
+  id: number;
+  name: string;
+  category: 'momo_packet' | 'sauce' | 'dip';
+  unitPrice: number;
+  piecesPer: number;
+  displayName: string;
+}
+
+export interface SupplyOrderItem {
+  supplyItemId: number;
+  name: string;
+  displayName: string;
+  category: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  piecesPer: number;
+}
+
+export interface SupplyOrder {
+  id: number;
+  orderDate: string;
+  totalCost: number;
+  createdBy: number;
+  createdAt: string;
+  items: SupplyOrderItem[];
+}
+
+export interface CreateSupplyOrderRequest {
+  orderDate: string;
+  items: { supplyItemId: number; quantity: number }[];
+}
+
+export interface SupplyOrderLog {
+  id: number;
+  orderDate: string;
+  action: 'CREATE' | 'UPDATE';
+  createdBy: number;
+  createdAt: string;
+  itemSummary: string;
+  displayName: string;
+}
+
+export interface SupplyVerificationItem {
+  supplyItemId: number;
+  displayName: string;
+  category: string;
+  expectedQty: number;
+  actualQty: number | null;
+  hasConflict: boolean;
+  unitPrice: number;
+  piecesPer: number;
+}
+
+export interface SupplyVerification {
+  orderDate: string;
+  items: SupplyVerificationItem[];
+  isFullyVerified: boolean;
+  conflictCount: number;
+}
+
+export interface CreateSupplyVerificationRequest {
+  orderDate: string;
+  items: { supplyItemId: number; expectedQty: number; actualQty: number }[];
+}
+
+export interface ClosingStockItem {
+  supplyItemId: number;
+  displayName: string;
+  category: string;
+  piecesPer: number;
+  packetsLeft: number;
+  piecesLeft: number;
+  totalPiecesLeft: number;
+}
+
+export interface ClosingStock {
+  orderDate: string;
+  items: ClosingStockItem[];
+  isSubmitted: boolean;
+}
+
+export interface CreateClosingStockRequest {
+  orderDate: string;
+  items: { supplyItemId: number; packetsLeft: number; piecesLeft: number }[];
+}

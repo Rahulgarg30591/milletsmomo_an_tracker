@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup, useTheme } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck } from 'lucide-react';
 import { getAdminSummary } from '../api/adminApi';
-import { getToday, getYesterday, addDays } from '../utils/dateUtils';
+import { listSupplyOrders } from '../api/supplyApi';
+import { getToday, getYesterday, addDays, formatDateLabel } from '../utils/dateUtils';
 import StatChip from '../components/StatChip';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import StaggerContainer, { StaggerItem } from '../components/animations/StaggerContainer';
@@ -52,6 +53,11 @@ export default function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['adminSummary', startDate, endDate],
     queryFn: () => getAdminSummary(startDate, endDate),
+  });
+
+  const { data: supplyOrders = [] } = useQuery({
+    queryKey: ['supplyOrders', startDate, endDate],
+    queryFn: () => listSupplyOrders(startDate, endDate),
   });
 
   const sortedItems = useMemo(() => {
@@ -129,15 +135,26 @@ export default function AdminDashboardPage() {
               Dashboard
             </Typography>
           </Box>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<Download size={16} />}
-            onClick={handleExport}
-            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-          >
-            Export
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Truck size={16} />}
+              onClick={() => navigate(`/admin/supply?date=${startDate}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Supply
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Download size={16} />}
+              onClick={handleExport}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Export
+            </Button>
+          </Box>
         </Box>
 
         {/* Date range selector */}
@@ -232,6 +249,77 @@ export default function AdminDashboardPage() {
                 />
               </StaggerItem>
             </StaggerContainer>
+
+            {/* Supply Orders */}
+            <Paper sx={{
+              borderRadius: 2,
+              overflow: 'hidden',
+              mb: 2,
+              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+            }}>
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Truck size={16} style={{ color: isDark ? '#4ADE80' : '#1B6B3A' }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+                    Supply Orders
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => navigate(`/admin/supply?date=${startDate}`)}
+                  sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.8rem', minWidth: 0, px: 1 }}
+                >
+                  + New
+                </Button>
+              </Box>
+              <Box sx={{ p: 1.5, pt: 0.5 }}>
+                {supplyOrders.length > 0 ? supplyOrders.map((order) => {
+                  const momos = order.items
+                    .filter((i) => i.category === 'momo_packet')
+                    .reduce((sum, i) => sum + i.quantity * i.piecesPer, 0);
+                  return (
+                    <Box
+                      key={order.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 1,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        '&:last-child': { borderBottom: 0 },
+                        cursor: 'pointer',
+                        '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' },
+                        borderRadius: 1,
+                        px: 0.5,
+                        mx: -0.5,
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      onClick={() => navigate(`/admin/supply?date=${order.orderDate}`)}
+                    >
+                      <Box>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
+                          {formatDateLabel(order.orderDate)}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                          {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                          {momos > 0 && ` · ${momos} momos`}
+                        </Typography>
+                      </Box>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: 'primary.main' }}>
+                        ₹{order.totalCost.toLocaleString()}
+                      </Typography>
+                    </Box>
+                  );
+                }) : (
+                  <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 2, fontSize: '0.85rem' }}>
+                    No supply orders for this period
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
 
             {/* Revenue chart */}
             <Paper sx={{

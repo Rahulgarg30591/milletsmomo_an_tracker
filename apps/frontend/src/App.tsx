@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage';
 import DayViewPage from './pages/DayViewPage';
 import NewOrderPage from './pages/NewOrderPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import SupplyOrderPage from './pages/SupplyOrderPage';
 import { getToday } from './utils/dateUtils';
 
 export default function App() {
@@ -51,6 +52,14 @@ export default function App() {
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/supply"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <SupplyOrderPage />
                   </ProtectedRoute>
                 }
               />
