@@ -1,6 +1,6 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
-import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck } from 'lucide-react';
+import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split } from 'lucide-react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
 
@@ -17,6 +17,7 @@ const typeIcons = {
 const paymentIcons = {
   cash: <Banknote size={10} />,
   upi: <Smartphone size={10} />,
+  split: <Split size={10} />,
   pending: <Clock size={10} />,
 };
 
@@ -25,7 +26,13 @@ export default function OrderCard({ order, onComplete }: OrderCardProps) {
   const isDark = theme.palette.mode === 'dark';
   const colors = isDark ? darkStatusColors : statusColors;
   const typeConfig = colors[order.orderType === 'dine' ? 'dineIn' : 'pack'];
-  const paymentConfig = colors[order.paymentMethod === 'pending' ? 'pending' : order.paymentMethod === 'cash' ? 'cash' : 'upi'];
+  const getPaymentConfig = () => {
+    if (order.paymentMethod === 'pending') return colors.pending;
+    if (order.paymentMethod === 'cash') return colors.cash;
+    if (order.paymentMethod === 'upi') return colors.upi;
+    return colors.split || colors.cash;
+  };
+  const paymentConfig = getPaymentConfig();
   const isCompleted = order.isCompleted;
 
   return (
@@ -90,8 +97,18 @@ export default function OrderCard({ order, onComplete }: OrderCardProps) {
               }}
             >
               {paymentIcons[order.paymentMethod]}
-              {order.paymentMethod}
+              {order.paymentMethod === 'split' ? 'Split' : order.paymentMethod}
             </Box>
+            {order.paymentMethod === 'split' && (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Box sx={{ px: 0.5, py: 0.2, borderRadius: 1, backgroundColor: isDark ? '#1A3D2A' : '#D1FAE5', color: isDark ? '#8CE8B4' : '#065F46', fontSize: { xs: '0.6rem', md: '0.7rem' }, fontWeight: 700, lineHeight: 1.2 }}>
+                  ₹{order.cashAmount} cash
+                </Box>
+                <Box sx={{ px: 0.5, py: 0.2, borderRadius: 1, backgroundColor: isDark ? '#2E1A4A' : '#EDE9FE', color: isDark ? '#C4A8E8' : '#5B21B6', fontSize: { xs: '0.6rem', md: '0.7rem' }, fontWeight: 700, lineHeight: 1.2 }}>
+                  ₹{order.upiAmount} upi
+                </Box>
+              </Box>
+            )}
           </Box>
 
           {isCompleted ? (

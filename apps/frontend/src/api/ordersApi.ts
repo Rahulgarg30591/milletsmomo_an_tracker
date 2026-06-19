@@ -8,15 +8,17 @@ export async function getOrders(date: string) {
 export async function createOrder(data: {
   orderDate: string;
   orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'pending';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+  cashAmount?: number;
+  upiAmount?: number;
   items: { menuItemId: number; quantity: number; isHalf: boolean }[];
 }) {
   const res = await client.post('/orders', data);
   return res.data;
 }
 
-export async function completeOrder(id: number, paymentMethod?: 'cash' | 'upi') {
-  const res = await client.patch(`/orders/${id}/complete`, { paymentMethod });
+export async function completeOrder(id: number, paymentMethod?: 'cash' | 'upi' | 'split', cashAmount?: number, upiAmount?: number) {
+  const res = await client.patch(`/orders/${id}/complete`, { paymentMethod, cashAmount, upiAmount });
   return res.data;
 }
 

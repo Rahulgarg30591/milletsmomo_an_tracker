@@ -22,7 +22,7 @@ export async function getOrders(date: string) {
   request.input('orderDate', sql.Date, date);
 
   const ordersResult = await request.query(
-    `SELECT id, order_date, time_label, order_type, payment_method, is_completed, total_amount, created_by, created_at, completed_at
+    `SELECT id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by, created_at, completed_at
      FROM Orders WHERE order_date = @orderDate ORDER BY id DESC`,
   );
 
@@ -42,6 +42,8 @@ export async function getOrders(date: string) {
       paymentMethod: order.payment_method,
       isCompleted: !!order.is_completed,
       totalAmount: order.total_amount,
+      cashAmount: order.cash_amount,
+      upiAmount: order.upi_amount,
       items: itemsResult.recordset.map((item: any) => ({
         menuItemId: item.menu_item_id,
         itemName: item.item_name,
@@ -62,6 +64,8 @@ export async function createOrder(
     orderDate: string;
     orderType: string;
     paymentMethod: string;
+    cashAmount?: number;
+    upiAmount?: number;
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   },
 ) {
@@ -69,6 +73,18 @@ export async function createOrder(
   const id = Date.now();
   const timeLabel = formatTimeLabel(new Date());
   const totalAmount = computeOrderTotal(data.items);
+
+  // Compute cash/upi amounts based on payment method
+  let cashAmount = 0;
+  let upiAmount = 0;
+  if (data.paymentMethod === 'cash') {
+    cashAmount = totalAmount;
+  } else if (data.paymentMethod === 'upi') {
+    upiAmount = totalAmount;
+  } else if (data.paymentMethod === 'split') {
+    cashAmount = data.cashAmount ?? 0;
+    upiAmount = data.upiAmount ?? 0;
+  }
 
   const transaction = pool.transaction();
   await transaction.begin();
@@ -81,11 +97,13 @@ export async function createOrder(
     orderRequest.input('orderType', sql.NVarChar, data.orderType);
     orderRequest.input('paymentMethod', sql.NVarChar, data.paymentMethod);
     orderRequest.input('totalAmount', sql.Decimal(8, 2), totalAmount);
+    orderRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
+    orderRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
     orderRequest.input('createdBy', sql.Int, userId);
 
     await orderRequest.query(
-      `INSERT INTO Orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, created_by)
-       VALUES (@id, @orderDate, @timeLabel, @orderType, @paymentMethod, 0, @totalAmount, @createdBy)`,
+      `INSERT INTO Orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by)
+       VALUES (@id, @orderDate, @timeLabel, @orderType, @paymentMethod, 0, @totalAmount, @cashAmount, @upiAmount, @createdBy)`,
     );
 
     for (const item of data.items) {
@@ -139,13 +157,15 @@ export async function createOrder(
 export async function completeOrder(
   id: number,
   paymentMethod?: string,
+  cashAmount?: number,
+  upiAmount?: number,
 ) {
   const pool = await getPool();
   const request = pool.request();
   request.input('id', sql.BigInt, id);
 
   const check = await request.query(
-    'SELECT id, payment_method, is_completed FROM Orders WHERE id = @id',
+    'SELECT id, payment_method, is_completed, total_amount FROM Orders WHERE id = @id',
   );
   if (check.recordset.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
@@ -165,9 +185,27 @@ export async function completeOrder(
 
   if (paymentMethod) {
     updateRequest.input('paymentMethod', sql.NVarChar, paymentMethod);
-    await updateRequest.query(
-      `UPDATE Orders SET is_completed = 1, completed_at = SYSUTCDATETIME(), payment_method = @paymentMethod WHERE id = @id`,
-    );
+    let query = `UPDATE Orders SET is_completed = 1, completed_at = SYSUTCDATETIME(), payment_method = @paymentMethod`;
+    
+    if (paymentMethod === 'split') {
+      const total = order.total_amount;
+      const cash = cashAmount ?? 0;
+      const upi = upiAmount ?? (total - cash);
+      updateRequest.input('cashAmount', sql.Decimal(8, 2), cash);
+      updateRequest.input('upiAmount', sql.Decimal(8, 2), upi);
+      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+    } else if (paymentMethod === 'cash') {
+      updateRequest.input('cashAmount', sql.Decimal(8, 2), order.total_amount);
+      updateRequest.input('upiAmount', sql.Decimal(8, 2), 0);
+      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+    } else if (paymentMethod === 'upi') {
+      updateRequest.input('cashAmount', sql.Decimal(8, 2), 0);
+      updateRequest.input('upiAmount', sql.Decimal(8, 2), order.total_amount);
+      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+    }
+    
+    query += ` WHERE id = @id`;
+    await updateRequest.query(query);
   } else {
     await updateRequest.query(
       `UPDATE Orders SET is_completed = 1, completed_at = SYSUTCDATETIME() WHERE id = @id`,

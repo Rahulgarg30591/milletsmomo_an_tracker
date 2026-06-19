@@ -36,9 +36,11 @@ CREATE TABLE Orders (
   order_date      DATE          NOT NULL,
   time_label      NVARCHAR(20)  NOT NULL,
   order_type      NVARCHAR(10)  NOT NULL CHECK (order_type IN ('dine','pack')),
-  payment_method  NVARCHAR(10)  NOT NULL CHECK (payment_method IN ('cash','upi','pending')),
+  payment_method  NVARCHAR(10)  NOT NULL CHECK (payment_method IN ('cash','upi','split','pending')),
   is_completed    BIT           NOT NULL DEFAULT 0,
   total_amount    DECIMAL(8,2)  NOT NULL,
+  cash_amount     DECIMAL(8,2)  NOT NULL DEFAULT 0,
+  upi_amount      DECIMAL(8,2)  NOT NULL DEFAULT 0,
   created_by      INT           NULL REFERENCES Users(id),
   created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
   completed_at    DATETIME2     NULL

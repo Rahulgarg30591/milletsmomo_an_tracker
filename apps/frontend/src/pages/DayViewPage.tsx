@@ -107,8 +107,8 @@ export default function DayViewPage() {
   }, [data]);
 
   const completeMutation = useMutation({
-    mutationFn: ({ id, paymentMethod }: { id: number; paymentMethod?: 'cash' | 'upi' }) =>
-      completeOrder(id, paymentMethod),
+    mutationFn: ({ id, paymentMethod, cashAmount, upiAmount }: { id: number; paymentMethod?: 'cash' | 'upi' | 'split'; cashAmount?: number; upiAmount?: number }) =>
+      completeOrder(id, paymentMethod, cashAmount, upiAmount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       setToast({ message: 'Order completed!', type: 'success' });
@@ -122,8 +122,6 @@ export default function DayViewPage() {
     },
   });
 
-
-
   const handleComplete = (order: Order) => {
     if (order.paymentMethod === 'pending') {
       setPaymentModalOrder(order);
@@ -132,9 +130,9 @@ export default function DayViewPage() {
     }
   };
 
-  const handlePaymentResolve = (method: 'cash' | 'upi') => {
+  const handlePaymentResolve = (method: 'cash' | 'upi' | 'split', cashAmount?: number, upiAmount?: number) => {
     if (paymentModalOrder) {
-      completeMutation.mutate({ id: paymentModalOrder.id, paymentMethod: method });
+      completeMutation.mutate({ id: paymentModalOrder.id, paymentMethod: method, cashAmount, upiAmount });
     }
   };
 
@@ -488,6 +486,7 @@ export default function DayViewPage() {
 
       <PaymentModal
         open={!!paymentModalOrder}
+        totalAmount={paymentModalOrder?.totalAmount || 0}
         onResolve={handlePaymentResolve}
         onCancel={() => setPaymentModalOrder(null)}
       />

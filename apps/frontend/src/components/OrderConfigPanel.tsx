@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Box, Button, Typography, useTheme } from '@mui/material';
-import { Utensils, Package, Banknote, Smartphone, Clock } from 'lucide-react';
+import { Utensils, Package, Banknote, Smartphone, Clock, Split } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
+import { calculateOrderTotal } from '../utils/pricing';
 import { vibrate, haptics } from '../theme/tokens';
 
 const typeConfig = [
@@ -11,13 +13,42 @@ const typeConfig = [
 const paymentConfig = [
   { key: 'cash' as const, label: 'Cash', icon: <Banknote size={12} /> },
   { key: 'upi' as const, label: 'UPI', icon: <Smartphone size={12} /> },
+  { key: 'split' as const, label: 'Split', icon: <Split size={12} /> },
   { key: 'pending' as const, label: 'Pending', icon: <Clock size={12} /> },
 ];
 
 export default function OrderConfigPanel() {
-  const { draft, setOrderType, setPaymentMethod } = useOrderDraft();
+  const { draft, setOrderType, setPaymentMethod, setSplitAmounts } = useOrderDraft();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+
+  const items = draft.items;
+  const itemList = Array.from(items.entries()).map(([menuItemId, item]) => ({ menuItemId, ...item }));
+  const total = calculateOrderTotal(itemList);
+
+  const [cashVal, setCashVal] = useState<string>(String(draft.cashAmount || Math.round(total / 2)));
+  const [upiVal, setUpiVal] = useState<string>(String(draft.upiAmount || Math.round(total / 2)));
+
+  // Auto-update split amounts when total changes or split is selected
+  useEffect(() => {
+    if (draft.paymentMethod === 'split') {
+      const cash = parseFloat(cashVal) || 0;
+      const upi = parseFloat(upiVal) || 0;
+      setSplitAmounts(cash, upi);
+    }
+  }, [cashVal, upiVal, draft.paymentMethod]);
+
+  // Reset defaults when switching to split
+  useEffect(() => {
+    if (draft.paymentMethod === 'split') {
+      const half = Math.round(total / 2);
+      setCashVal(String(half));
+      setUpiVal(String(total - half));
+      setSplitAmounts(half, total - half);
+    }
+  }, [draft.paymentMethod === 'split']);
+
+  const isSplitValid = Math.abs((parseFloat(cashVal) || 0) + (parseFloat(upiVal) || 0) - total) < 0.01;
 
   // Active / inactive colors that work on both light and dark
   const activeBg = isDark ? '#1A3D2A' : '#E8F5EE';
@@ -147,6 +178,84 @@ export default function OrderConfigPanel() {
             );
           })}
         </Box>
+
+        {/* Split payment inputs */}
+        {draft.paymentMethod === 'split' && total > 0 && (
+          <Box sx={{
+            mt: 1,
+            p: { xs: 1, md: 1.25 },
+            borderRadius: { xs: 0.75, md: 1 },
+            border: `1px solid ${isSplitValid ? (isDark ? 'rgba(45,138,78,0.2)' : 'rgba(27,107,58,0.15)') : (isDark ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.15)')}`,
+            background: isSplitValid ? (isDark ? 'rgba(45,138,78,0.04)' : 'rgba(27,107,58,0.03)') : (isDark ? 'rgba(220,38,38,0.04)' : 'rgba(220,38,38,0.03)'),
+            display: 'flex',
+            gap: { xs: 1, md: 1.5 },
+            alignItems: 'center',
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.7rem' }, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.375 }}>
+                Cash ₹
+              </Typography>
+              <Box
+                component="input"
+                type="number"
+                value={cashVal}
+                onChange={(e) => setCashVal(e.target.value)}
+                sx={{
+                  width: '100%',
+                  textAlign: 'center',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  py: 0.5,
+                  px: 0.75,
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`,
+                  borderRadius: 1,
+                  background: 'transparent',
+                  color: 'inherit',
+                  outline: 'none',
+                  '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
+                  '-moz-appearance': 'textfield',
+                }}
+              />
+            </Box>
+            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'text.secondary', mt: 1.5 }}>
+              +
+            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.7rem' }, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.375 }}>
+                UPI ₹
+              </Typography>
+              <Box
+                component="input"
+                type="number"
+                value={upiVal}
+                onChange={(e) => setUpiVal(e.target.value)}
+                sx={{
+                  width: '100%',
+                  textAlign: 'center',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  py: 0.5,
+                  px: 0.75,
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`,
+                  borderRadius: 1,
+                  background: 'transparent',
+                  color: 'inherit',
+                  outline: 'none',
+                  '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
+                  '-moz-appearance': 'textfield',
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', mt: 1.5 }}>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: isSplitValid ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626'), textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {isSplitValid ? '✓' : '!'}
+              </Typography>
+              <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 500 }}>
+                ₹{total}
+              </Typography>
+            </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   );

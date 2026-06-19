@@ -66,6 +66,7 @@ export const statusColors = {
   pack: { bg: '#FEF3C7', fg: '#D97706', label: 'Pack' },
   cash: { bg: '#D1FAE5', fg: '#065F46', label: 'Cash' },
   upi: { bg: '#EDE9FE', fg: '#5B21B6', label: 'UPI' },
+  split: { bg: '#F3E8FF', fg: '#7C3AED', label: 'Split' },
   pending: { bg: '#FEE2E2', fg: '#DC2626', label: 'Pending' },
   completed: { bg: '#F3F4F6', fg: '#6B7280', label: 'Done' },
 } as const;
@@ -75,6 +76,7 @@ export const darkStatusColors = {
   pack: { bg: '#3D2E1A', fg: '#E8C46C', label: 'Pack' },
   cash: { bg: '#1A3D2A', fg: '#8CE8B4', label: 'Cash' },
   upi: { bg: '#2E1A4A', fg: '#C4A8E8', label: 'UPI' },
+  split: { bg: '#2E1A4A', fg: '#C4A8E8', label: 'Split' },
   pending: { bg: '#3D1A1A', fg: '#E8A8A8', label: 'Pending' },
   completed: { bg: '#2A2A32', fg: '#9CA3AF', label: 'Done' },
 } as const;

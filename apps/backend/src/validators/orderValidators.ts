@@ -5,7 +5,9 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 export const createOrderSchema = z.object({
   orderDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
   orderType: z.enum(['dine', 'pack']),
-  paymentMethod: z.enum(['cash', 'upi', 'pending']),
+  paymentMethod: z.enum(['cash', 'upi', 'split', 'pending']),
+  cashAmount: z.number().min(0).optional(),
+  upiAmount: z.number().min(0).optional(),
   items: z
     .array(
       z.object({
@@ -18,7 +20,9 @@ export const createOrderSchema = z.object({
 });
 
 export const completeOrderSchema = z.object({
-  paymentMethod: z.enum(['cash', 'upi']).optional(),
+  paymentMethod: z.enum(['cash', 'upi', 'split']).optional(),
+  cashAmount: z.number().min(0).optional(),
+  upiAmount: z.number().min(0).optional(),
 });
 
 export const dateQuerySchema = z.object({

@@ -21,9 +21,11 @@ export interface Order {
   orderDate: string;
   timeLabel: string;
   orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'pending';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
   isCompleted: boolean;
   totalAmount: number;
+  cashAmount: number;
+  upiAmount: number;
   items: OrderItem[];
 }
 
@@ -49,7 +51,9 @@ export interface LoginResponse {
 export interface CreateOrderRequest {
   orderDate: string;
   orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'pending';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+  cashAmount?: number;
+  upiAmount?: number;
   items: { menuItemId: number; quantity: number; isHalf: boolean }[];
 }
 

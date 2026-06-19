@@ -36,7 +36,11 @@ export async function createOrder(
     const result = await ordersService.createOrder(userId, data);
 
     const totalItems = data.items.reduce((sum, i) => sum + i.quantity, 0);
-    const details = `Order #${result.id} created: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${data.paymentMethod}`;
+    let paymentDetails: string = data.paymentMethod;
+    if (data.paymentMethod === 'split') {
+      paymentDetails = `split (₹${data.cashAmount} cash + ₹${data.upiAmount} upi)`;
+    }
+    const details = `Order #${result.id} created: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${paymentDetails}`;
     await staffLogService.createLog(data.orderDate, 'order_create', userId, details);
 
     res.status(201).json(result);
@@ -62,7 +66,9 @@ export async function completeOrder(
     }
     const body = completeOrderSchema.safeParse(req.body);
     const paymentMethod = body.success ? body.data.paymentMethod : undefined;
-    const result = await ordersService.completeOrder(id, paymentMethod);
+    const cashAmount = body.success ? body.data.cashAmount : undefined;
+    const upiAmount = body.success ? body.data.upiAmount : undefined;
+    const result = await ordersService.completeOrder(id, paymentMethod, cashAmount, upiAmount);
     res.json(result);
   } catch (err: any) {
     next(err);

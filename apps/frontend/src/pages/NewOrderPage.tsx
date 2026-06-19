@@ -96,12 +96,19 @@ function NewOrderContent() {
     const items = getItemList();
     if (items.length === 0) return;
 
-    createMutation.mutate({
+    const payload: any = {
       orderDate: date!,
       orderType: draft.orderType,
       paymentMethod: draft.paymentMethod,
       items: items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })),
-    });
+    };
+
+    if (draft.paymentMethod === 'split') {
+      payload.cashAmount = draft.cashAmount;
+      payload.upiAmount = draft.upiAmount;
+    }
+
+    createMutation.mutate(payload);
   };
 
   return (

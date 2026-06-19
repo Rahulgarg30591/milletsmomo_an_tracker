@@ -9,7 +9,9 @@ interface DraftItem {
 interface OrderDraft {
   items: Map<number, DraftItem>;
   orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'pending';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+  cashAmount: number;
+  upiAmount: number;
 }
 
 interface OrderDraftContextType {
@@ -22,7 +24,8 @@ interface OrderDraftContextType {
   setHalf: (menuItemId: number) => void;
   setCustom: (menuItemId: number) => void;
   setOrderType: (type: 'dine' | 'pack') => void;
-  setPaymentMethod: (method: 'cash' | 'upi' | 'pending') => void;
+  setPaymentMethod: (method: 'cash' | 'upi' | 'split' | 'pending') => void;
+  setSplitAmounts: (cash: number, upi: number) => void;
   clearDraft: () => void;
   getItemList: () => { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[];
   getTotalItems: () => number;
@@ -34,6 +37,8 @@ const defaultDraft: OrderDraft = {
   items: new Map(),
   orderType: 'dine',
   paymentMethod: 'cash',
+  cashAmount: 0,
+  upiAmount: 0,
 };
 
 export function OrderDraftProvider({ children }: { children: React.ReactNode }) {
@@ -123,8 +128,12 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setDraft((prev) => ({ ...prev, orderType: type }));
   }, []);
 
-  const setPaymentMethod = useCallback((method: 'cash' | 'upi' | 'pending') => {
+  const setPaymentMethod = useCallback((method: 'cash' | 'upi' | 'split' | 'pending') => {
     setDraft((prev) => ({ ...prev, paymentMethod: method }));
+  }, []);
+
+  const setSplitAmounts = useCallback((cash: number, upi: number) => {
+    setDraft((prev) => ({ ...prev, cashAmount: cash, upiAmount: upi }));
   }, []);
 
   const clearDraft = useCallback(() => {
@@ -160,6 +169,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setCustom,
         setOrderType,
         setPaymentMethod,
+        setSplitAmounts,
         clearDraft,
         getItemList,
         getTotalItems,

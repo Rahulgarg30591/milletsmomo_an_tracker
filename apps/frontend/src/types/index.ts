@@ -21,9 +21,11 @@ export interface Order {
   orderDate: string;
   timeLabel: string;
   orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'pending';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
   isCompleted: boolean;
   totalAmount: number;
+  cashAmount: number;
+  upiAmount: number;
   items: OrderItem[];
 }
 
