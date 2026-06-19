@@ -152,3 +152,17 @@ export interface CreateClosingStockRequest {
   orderDate: string;
   items: { supplyItemId: number; packetsLeft: number; piecesLeft: number }[];
 }
+
+export interface StaffOperationLog {
+  id: number;
+  orderDate: string;
+  operationType: 'verification' | 'closing_stock' | 'order_create';
+  createdBy: number;
+  createdAt: string;
+  details: string;
+  displayName: string;
+}
+
+export interface StaffLogsResponse {
+  logs: StaffOperationLog[];
+}

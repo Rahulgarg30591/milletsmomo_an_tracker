@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, useTheme, IconButton } from '@mui/material';
-import { ArrowLeft, Minus, Plus, Save, Truck, History } from 'lucide-react';
+import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder } from '../api/supplyApi';
-import { getToday } from '../utils/dateUtils';
+import { getSupplyVerification } from '../api/supplyVerificationApi';
+import { getClosingStock } from '../api/closingStockApi';
+import { getToday, addDays, formatDateLabel } from '../utils/dateUtils';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
 import type { SupplyItem } from '../types';
@@ -33,6 +35,21 @@ export default function SupplyOrderPage() {
   const { data: logs = [] } = useQuery({
     queryKey: ['supplyLogs', date],
     queryFn: () => getSupplyOrderLogs(date),
+  });
+
+  // Verification status for selected date
+  const { data: verification } = useQuery({
+    queryKey: ['supplyVerification', date],
+    queryFn: () => getSupplyVerification(date),
+    enabled: !!date,
+  });
+
+  // Yesterday's closing stock
+  const yesterday = addDays(date, -1);
+  const { data: yesterdayStock } = useQuery({
+    queryKey: ['closingStock', yesterday],
+    queryFn: () => getClosingStock(yesterday),
+    enabled: !!yesterday,
   });
 
   useEffect(() => {
@@ -255,6 +272,123 @@ export default function SupplyOrderPage() {
             />
           </Box>
         </Box>
+
+        {/* Verification Status */}
+        <Paper sx={{
+          borderRadius: 2,
+          p: 1.5,
+          mb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: isDark
+            ? (verification?.isFullyVerified ? 'rgba(45,138,78,0.08)' : 'rgba(220,38,38,0.08)')
+            : (verification?.isFullyVerified ? '#F0FDF4' : '#FEF2F2'),
+          border: `1px solid ${isDark
+            ? (verification?.isFullyVerified ? 'rgba(45,138,78,0.2)' : 'rgba(220,38,38,0.2)')
+            : (verification?.isFullyVerified ? 'rgba(45,138,78,0.15)' : 'rgba(220,38,38,0.15)')}`,
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {verification?.isFullyVerified ? (
+              <CheckCircle2 size={18} color={isDark ? '#4ADE80' : '#16A34A'} />
+            ) : (
+              <AlertCircle size={18} color={isDark ? '#F87171' : '#DC2626'} />
+            )}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
+                {verification?.isFullyVerified ? 'Supply Verified' : 'Not Verified'}
+              </Typography>
+              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                {verification?.isFullyVerified
+                  ? (verification?.conflictCount && verification.conflictCount > 0
+                    ? `${verification.conflictCount} conflict(s) reported`
+                    : 'All items match')
+                  : 'Staff has not verified today\'s supply yet'}
+              </Typography>
+            </Box>
+          </Box>
+          <Typography sx={{
+            fontWeight: 700,
+            fontSize: '0.75rem',
+            px: 0.75,
+            py: 0.25,
+            borderRadius: 1,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            backgroundColor: verification?.isFullyVerified
+              ? (isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5')
+              : (isDark ? 'rgba(248,113,113,0.15)' : '#FEE2E2'),
+            color: verification?.isFullyVerified
+              ? (isDark ? '#4ADE80' : '#16A34A')
+              : (isDark ? '#F87171' : '#DC2626'),
+          }}>
+            {verification?.isFullyVerified ? 'Verified' : 'Pending'}
+          </Typography>
+        </Paper>
+
+        {/* Yesterday's Left Over Stock Accordion */}
+        {yesterdayStock && yesterdayStock.items.length > 0 && (
+          <Accordion
+            defaultExpanded={false}
+            sx={{
+              borderRadius: 2,
+              mb: 2,
+              overflow: 'hidden',
+              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+              '&:before': { display: 'none' },
+              boxShadow: 'none',
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ChevronDown size={16} />}
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                '& .MuiAccordionSummary-content': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  my: 0.75,
+                },
+              }}
+            >
+              <Package size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Yesterday's Left Over: {formatDateLabel(yesterday)}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 1.5, pt: 0, pb: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 1 }}>
+                {yesterdayStock.items.map((item) => (
+                  <Box
+                    key={item.supplyItemId}
+                    sx={{
+                      p: 1,
+                      borderRadius: 1,
+                      background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary', mb: 0.25 }}>
+                      {item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '')}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                      {item.packetsLeft > 0 && `${item.packetsLeft} pkt`}
+                      {item.packetsLeft > 0 && item.piecesLeft > 0 && ' + '}
+                      {item.piecesLeft > 0 && `${item.piecesLeft} pcs`}
+                      {item.packetsLeft === 0 && item.piecesLeft === 0 && 'None'}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>
+                      {item.totalPiecesLeft} pieces total
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        )}
 
         {renderSection('Momo Packets', momoPackets)}
         {renderSection('Sauces & Dips', sauces)}

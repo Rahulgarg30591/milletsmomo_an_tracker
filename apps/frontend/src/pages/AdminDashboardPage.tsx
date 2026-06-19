@@ -154,6 +154,15 @@ export default function AdminDashboardPage() {
             >
               Export
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Package size={16} />}
+              onClick={() => navigate('/admin/staff-logs')}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Logs
+            </Button>
           </Box>
         </Box>
 

@@ -8,11 +8,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock,
-  CheckCircle2, AlertTriangle, Truck, Package
+  Truck, Package
 } from 'lucide-react';
 import { getOrders, completeOrder } from '../api/ordersApi';
-import { getSupplyVerification, submitSupplyVerification } from '../api/supplyVerificationApi';
-import { getClosingStock, submitClosingStock } from '../api/closingStockApi';
+import { getSupplyVerification } from '../api/supplyVerificationApi';
+import { getClosingStock } from '../api/closingStockApi';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
@@ -96,37 +96,11 @@ export default function DayViewPage() {
     enabled: !!date,
   });
 
-  const [verificationItems, setVerificationItems] = useState<Record<number, number>>({});
-  const [showVerifyForm, setShowVerifyForm] = useState(false);
-
   const { data: closingStock } = useQuery<ClosingStock>({
     queryKey: ['closingStock', date],
     queryFn: () => getClosingStock(date!),
     enabled: !!date,
   });
-
-  const [closingStockItems, setClosingStockItems] = useState<Record<number, { packets: number; pieces: number }>>({});
-  const [showClosingForm, setShowClosingForm] = useState(false);
-
-  useEffect(() => {
-    if (closingStock?.items) {
-      const q: Record<number, { packets: number; pieces: number }> = {};
-      closingStock.items.forEach((item) => {
-        q[item.supplyItemId] = { packets: item.packetsLeft, pieces: item.piecesLeft };
-      });
-      setClosingStockItems(q);
-    }
-  }, [closingStock]);
-
-  useEffect(() => {
-    if (supplyVerification?.items) {
-      const q: Record<number, number> = {};
-      supplyVerification.items.forEach((item) => {
-        q[item.supplyItemId] = item.actualQty ?? item.expectedQty;
-      });
-      setVerificationItems(q);
-    }
-  }, [supplyVerification]);
 
   useEffect(() => {
     setLastRefresh(new Date());
@@ -148,54 +122,7 @@ export default function DayViewPage() {
     },
   });
 
-  const verifyMutation = useMutation({
-    mutationFn: () => {
-      if (!supplyVerification) return Promise.reject(new Error('No supply to verify'));
-      const items = supplyVerification.items.map((item) => ({
-        supplyItemId: item.supplyItemId,
-        expectedQty: item.expectedQty,
-        actualQty: verificationItems[item.supplyItemId] ?? item.expectedQty,
-      }));
-      return submitSupplyVerification({ orderDate: date!, items });
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['supplyVerification', date] });
-      setToast({
-        message: result.conflictCount > 0
-          ? `Verification submitted. ${result.conflictCount} conflict(s) reported.`
-          : 'Supply verified successfully!',
-        type: result.conflictCount > 0 ? 'error' : 'success',
-      });
-      setShowVerifyForm(false);
-      vibrate(haptics.success);
-    },
-    onError: () => {
-      setToast({ message: 'Failed to submit verification', type: 'error' });
-      vibrate(haptics.error);
-    },
-  });
 
-  const closingStockMutation = useMutation({
-    mutationFn: () => {
-      if (!closingStock) return Promise.reject(new Error('No supply items to record'));
-      const items = closingStock.items.map((item) => ({
-        supplyItemId: item.supplyItemId,
-        packetsLeft: closingStockItems[item.supplyItemId]?.packets ?? 0,
-        piecesLeft: closingStockItems[item.supplyItemId]?.pieces ?? 0,
-      }));
-      return submitClosingStock({ orderDate: date!, items });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['closingStock', date] });
-      setToast({ message: 'Closing stock saved!', type: 'success' });
-      setShowClosingForm(false);
-      vibrate(haptics.success);
-    },
-    onError: () => {
-      setToast({ message: 'Failed to save closing stock', type: 'error' });
-      vibrate(haptics.error);
-    },
-  });
 
   const handleComplete = (order: Order) => {
     if (order.paymentMethod === 'pending') {
@@ -334,347 +261,92 @@ export default function DayViewPage() {
           />
         </Box>
 
-        {/* Supply Verification */}
-        {supplyVerification && supplyVerification.items.length > 0 && (
-          <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
-            <Paper
-              sx={{
-                borderRadius: { xs: 1, md: 1.5 },
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: supplyVerification.isFullyVerified
-                  ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
-                  : 'divider',
-                background: isDark
-                  ? (supplyVerification.isFullyVerified
-                    ? (supplyVerification.conflictCount > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(45,138,78,0.08)')
-                    : 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)')
-                  : (supplyVerification.isFullyVerified
-                    ? (supplyVerification.conflictCount > 0 ? '#FEF2F2' : '#F0FDF4')
-                    : undefined),
-              }}
-            >
-              <Box sx={{ p: { xs: 1.25, md: 1.5 }, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 } }}>
-                  <Truck size={16} color={supplyVerification.conflictCount > 0 ? '#DC2626' : (supplyVerification.isFullyVerified ? '#16A34A' : '#9CA3AF')} />
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1rem' }, color: 'text.primary' }}>
-                    Supply Verification
+        {/* Quick Actions */}
+        {(supplyVerification || closingStock) && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(2, 1fr)' },
+              gap: { xs: 0.75, md: 1 },
+              mb: { xs: 1.5, md: 2 },
+            }}
+          >
+            {supplyVerification && supplyVerification.items.length > 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Truck size={14} />}
+                onClick={() => {
+                  vibrate(haptics.light);
+                  navigate(`/day/${date}/verify`);
+                }}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 1,
+                  py: { xs: 1, md: 1.25 },
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
+                  justifyContent: 'flex-start',
+                  borderColor: supplyVerification.isFullyVerified
+                    ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
+                    : 'divider',
+                  color: supplyVerification.isFullyVerified
+                    ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
+                    : 'text.primary',
+                  background: isDark
+                    ? (supplyVerification.isFullyVerified
+                      ? (supplyVerification.conflictCount > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(45,138,78,0.08)')
+                      : 'transparent')
+                    : (supplyVerification.isFullyVerified
+                      ? (supplyVerification.conflictCount > 0 ? '#FEF2F2' : '#F0FDF4')
+                      : 'transparent'),
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 'inherit' }}>
+                    Verify Supply
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                    {supplyVerification.isFullyVerified
+                      ? (supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} conflict` : 'Verified')
+                      : 'Not verified'}
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {supplyVerification.isFullyVerified ? (
-                    <Chip
-                      size="small"
-                      icon={supplyVerification.conflictCount > 0 ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
-                      label={supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} Conflict` : 'Verified'}
-                      color={supplyVerification.conflictCount > 0 ? 'error' : 'success'}
-                      sx={{ fontWeight: 700, height: { xs: 20, md: 24 }, fontSize: { xs: '0.65rem', md: '0.75rem' } }}
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => {
-                        vibrate(haptics.light);
-                        setShowVerifyForm(!showVerifyForm);
-                      }}
-                      sx={{ textTransform: 'none', fontWeight: 600, fontSize: { xs: '0.7rem', md: '0.75rem' }, borderRadius: 1, minWidth: 0, px: { xs: 1, md: 1.5 } }}
-                    >
-                      {showVerifyForm ? 'Close' : 'Verify'}
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-
-              <Box sx={{ p: { xs: 1.25, md: 1.5 }, pt: { xs: 0.75, md: 1 } }}>
-                {supplyVerification.items.map((item) => (
-                  <Box
-                    key={item.supplyItemId}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      py: { xs: 0.75, md: 1 },
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      '&:last-child': { borderBottom: 0 },
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.primary' }}>
-                        {item.displayName}
-                      </Typography>
-                      <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: 'text.secondary' }}>
-                        Expected: {item.expectedQty} {item.category === 'momo_packet' ? 'pkt' : 'pack'}
-                        {item.category === 'momo_packet' && ` · ${item.expectedQty * item.piecesPer} pcs`}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 } }}>
-                      {showVerifyForm ? (
-                        <Box
-                          component="input"
-                          type="number"
-                          value={verificationItems[item.supplyItemId] ?? ''}
-                          placeholder={String(item.expectedQty)}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value, 10);
-                            setVerificationItems((prev) => ({
-                              ...prev,
-                              [item.supplyItemId]: isNaN(val) ? 0 : val,
-                            }));
-                          }}
-                          sx={{
-                            width: 56,
-                            textAlign: 'center',
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            py: 0.5,
-                            px: 0,
-                            border: `1px solid ${(verificationItems[item.supplyItemId] ?? item.expectedQty) !== item.expectedQty ? '#DC2626' : theme.palette.divider}`,
-                            borderRadius: 1,
-                            background: 'transparent',
-                            color: (verificationItems[item.supplyItemId] ?? item.expectedQty) !== item.expectedQty ? '#DC2626' : 'inherit',
-                            outline: 'none',
-                            '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                            '-moz-appearance': 'textfield',
-                          }}
-                        />
-                      ) : (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={{
-                            fontWeight: 700,
-                            fontSize: { xs: '0.85rem', md: '1rem' },
-                            color: item.hasConflict ? 'error.main' : (item.actualQty !== null ? 'success.main' : 'text.secondary'),
-                          }}>
-                            {item.actualQty !== null ? item.actualQty : '—'}
-                          </Typography>
-                          <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: 'text.secondary' }}>
-                            {item.category === 'momo_packet' ? 'pkt' : 'pack'}
-                          </Typography>
-                          {item.hasConflict && (
-                            <AlertTriangle size={14} color="#DC2626" />
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                ))}
-
-                {showVerifyForm && (
-                  <Box sx={{ mt: { xs: 1, md: 1.5 }, display: 'flex', gap: { xs: 1, md: 1.5 } }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      size="small"
-                      disabled={verifyMutation.isPending}
-                      onClick={() => verifyMutation.mutate()}
-                      startIcon={<CheckCircle2 size={14} />}
-                      sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      {verifyMutation.isPending ? 'Submitting...' : 'Submit Verification'}
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        setVerificationItems({});
-                        setShowVerifyForm(false);
-                      }}
-                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      Cancel
-                    </Button>
-                  </Box>
-                )}
-              </Box>
-            </Paper>
-          </Box>
-        )}
-
-        {/* Closing Stock */}
-        {closingStock && closingStock.items.length > 0 && (
-          <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
-            <Paper
-              sx={{
-                borderRadius: { xs: 1, md: 1.5 },
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: closingStock.isSubmitted ? 'success.main' : 'divider',
-                background: isDark
-                  ? (closingStock.isSubmitted ? 'rgba(45,138,78,0.08)' : 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)')
-                  : (closingStock.isSubmitted ? '#F0FDF4' : undefined),
-              }}
-            >
-              <Box sx={{ p: { xs: 1.25, md: 1.5 }, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 } }}>
-                  <Package size={16} color={closingStock.isSubmitted ? '#16A34A' : '#9CA3AF'} />
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1rem' }, color: 'text.primary' }}>
+              </Button>
+            )}
+            {closingStock && closingStock.items.length > 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Package size={14} />}
+                onClick={() => {
+                  vibrate(haptics.light);
+                  navigate(`/day/${date}/closing`);
+                }}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 1,
+                  py: { xs: 1, md: 1.25 },
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
+                  justifyContent: 'flex-start',
+                  borderColor: closingStock.isSubmitted ? 'success.main' : 'divider',
+                  color: closingStock.isSubmitted ? 'success.main' : 'text.primary',
+                  background: isDark
+                    ? (closingStock.isSubmitted ? 'rgba(45,138,78,0.08)' : 'transparent')
+                    : (closingStock.isSubmitted ? '#F0FDF4' : 'transparent'),
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 'inherit' }}>
                     Closing Stock
                   </Typography>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                    {closingStock.isSubmitted ? 'Recorded' : 'Not recorded'}
+                  </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {closingStock.isSubmitted ? (
-                    <Chip
-                      size="small"
-                      icon={<CheckCircle2 size={14} />}
-                      label="Recorded"
-                      color="success"
-                      sx={{ fontWeight: 700, height: { xs: 20, md: 24 }, fontSize: { xs: '0.65rem', md: '0.75rem' } }}
-                    />
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => {
-                        vibrate(haptics.light);
-                        setShowClosingForm(!showClosingForm);
-                      }}
-                      sx={{ textTransform: 'none', fontWeight: 600, fontSize: { xs: '0.7rem', md: '0.75rem' }, borderRadius: 1, minWidth: 0, px: { xs: 1, md: 1.5 } }}
-                    >
-                      {showClosingForm ? 'Close' : 'Record'}
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-
-              <Box sx={{ p: { xs: 1.25, md: 1.5 }, pt: { xs: 0.75, md: 1 } }}>
-                {closingStock.items.map((item) => (
-                  <Box
-                    key={item.supplyItemId}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      py: { xs: 0.75, md: 1 },
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      '&:last-child': { borderBottom: 0 },
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.primary' }}>
-                        {item.displayName}
-                      </Typography>
-                      <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: 'text.secondary' }}>
-                        {item.category === 'momo_packet' ? `${item.piecesPer} pcs per packet` : 'per pack'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 } }}>
-                      {showClosingForm ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 } }}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Box
-                              component="input"
-                              type="number"
-                              value={closingStockItems[item.supplyItemId]?.packets ?? ''}
-                              placeholder="0"
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                setClosingStockItems((prev) => ({
-                                  ...prev,
-                                  [item.supplyItemId]: {
-                                    packets: isNaN(val) ? 0 : val,
-                                    pieces: prev[item.supplyItemId]?.pieces ?? 0,
-                                  },
-                                }));
-                              }}
-                              sx={{
-                                width: 48,
-                                textAlign: 'center',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                py: 0.5,
-                                px: 0,
-                                border: `1px solid ${theme.palette.divider}`,
-                                borderRadius: 1,
-                                background: 'transparent',
-                                color: 'inherit',
-                                outline: 'none',
-                                '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                                '-moz-appearance': 'textfield',
-                              }}
-                            />
-                            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pkt</Typography>
-                          </Box>
-                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>+</Typography>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Box
-                              component="input"
-                              type="number"
-                              value={closingStockItems[item.supplyItemId]?.pieces ?? ''}
-                              placeholder="0"
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                setClosingStockItems((prev) => ({
-                                  ...prev,
-                                  [item.supplyItemId]: {
-                                    packets: prev[item.supplyItemId]?.packets ?? 0,
-                                    pieces: isNaN(val) ? 0 : Math.min(val, item.piecesPer - 1),
-                                  },
-                                }));
-                              }}
-                              sx={{
-                                width: 48,
-                                textAlign: 'center',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                py: 0.5,
-                                px: 0,
-                                border: `1px solid ${theme.palette.divider}`,
-                                borderRadius: 1,
-                                background: 'transparent',
-                                color: 'inherit',
-                                outline: 'none',
-                                '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                                '-moz-appearance': 'textfield',
-                              }}
-                            />
-                            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pcs</Typography>
-                          </Box>
-                        </Box>
-                      ) : (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1rem' }, color: item.packetsLeft > 0 || item.piecesLeft > 0 ? 'text.primary' : 'text.secondary' }}>
-                            {item.packetsLeft > 0 || item.piecesLeft > 0
-                              ? `${item.packetsLeft > 0 ? `${item.packetsLeft} pkt` : ''}${item.packetsLeft > 0 && item.piecesLeft > 0 ? ' + ' : ''}${item.piecesLeft > 0 ? `${item.piecesLeft} pcs` : ''}`
-                              : '—'}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                ))}
-
-                {showClosingForm && (
-                  <Box sx={{ mt: { xs: 1, md: 1.5 }, display: 'flex', gap: { xs: 1, md: 1.5 } }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      size="small"
-                      disabled={closingStockMutation.isPending}
-                      onClick={() => closingStockMutation.mutate()}
-                      startIcon={<CheckCircle2 size={14} />}
-                      sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      {closingStockMutation.isPending ? 'Saving...' : 'Save Closing Stock'}
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        setClosingStockItems({});
-                        setShowClosingForm(false);
-                      }}
-                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 1, fontSize: { xs: '0.75rem', md: '0.85rem' } }}
-                    >
-                      Cancel
-                    </Button>
-                  </Box>
-                )}
-              </Box>
-            </Paper>
+              </Button>
+            )}
           </Box>
         )}
 

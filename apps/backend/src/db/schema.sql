@@ -1,3 +1,4 @@
+IF OBJECT_ID('StaffOperationLogs', 'U') IS NOT NULL DROP TABLE StaffOperationLogs;
 IF OBJECT_ID('DailyClosingStock', 'U') IS NOT NULL DROP TABLE DailyClosingStock;
 IF OBJECT_ID('SupplyVerifications', 'U') IS NOT NULL DROP TABLE SupplyVerifications;
 IF OBJECT_ID('SupplyOrderLogs', 'U') IS NOT NULL DROP TABLE SupplyOrderLogs;
@@ -127,3 +128,16 @@ CREATE TABLE DailyClosingStock (
 );
 
 CREATE INDEX IX_DailyClosingStock_Date ON DailyClosingStock(order_date DESC);
+
+CREATE TABLE StaffOperationLogs (
+  id              INT IDENTITY(1,1) PRIMARY KEY,
+  order_date      DATE          NOT NULL,
+  operation_type  NVARCHAR(20)  NOT NULL CHECK (operation_type IN ('verification','closing_stock','order_create')),
+  created_by      INT           NOT NULL REFERENCES Users(id),
+  created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+  details         NVARCHAR(500) NOT NULL
+);
+
+CREATE INDEX IX_StaffOperationLogs_Date ON StaffOperationLogs(order_date DESC);
+CREATE INDEX IX_StaffOperationLogs_CreatedAt ON StaffOperationLogs(created_at DESC);
+CREATE INDEX IX_StaffOperationLogs_Type ON StaffOperationLogs(operation_type);

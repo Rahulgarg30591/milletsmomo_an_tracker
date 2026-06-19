@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getSupplyVerificationSchema, createSupplyVerificationSchema } from '../validators/supplyVerificationValidators.js';
 import * as supplyVerificationService from '../services/supplyVerificationService.js';
+import * as staffLogService from '../services/staffLogService.js';
 
 export async function getVerification(
   req: Request,
@@ -41,6 +42,11 @@ export async function createVerification(
       })),
       userId,
     );
+
+    const conflictCount = items.filter((i) => i.actualQty !== i.expectedQty).length;
+    const details = `Verified ${items.length} items${conflictCount > 0 ? `, ${conflictCount} conflict` : ', all match'}`;
+    await staffLogService.createLog(orderDate, 'verification', userId, details);
+
     res.status(201).json(verification);
   } catch (err: any) {
     if (err.name === 'ZodError') {

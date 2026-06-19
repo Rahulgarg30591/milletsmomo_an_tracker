@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getClosingStockSchema, createClosingStockSchema } from '../validators/closingStockValidators.js';
 import * as closingStockService from '../services/closingStockService.js';
+import * as staffLogService from '../services/staffLogService.js';
 
 export async function getClosingStock(
   req: Request,
@@ -41,6 +42,12 @@ export async function createClosingStock(
       })),
       userId,
     );
+
+    const totalPackets = items.reduce((sum, i) => sum + i.packetsLeft, 0);
+    const totalPieces = items.reduce((sum, i) => sum + i.piecesLeft, 0);
+    const details = `Recorded closing stock: ${totalPackets} packets, ${totalPieces} pieces`;
+    await staffLogService.createLog(orderDate, 'closing_stock', userId, details);
+
     res.status(201).json(stock);
   } catch (err: any) {
     if (err.name === 'ZodError') {

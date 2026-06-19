@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { dateQuerySchema, createOrderSchema, completeOrderSchema } from '../validators/orderValidators.js';
 import * as ordersService from '../services/ordersService.js';
+import * as staffLogService from '../services/staffLogService.js';
 
 export async function getOrders(
   req: Request,
@@ -33,6 +34,11 @@ export async function createOrder(
       return;
     }
     const result = await ordersService.createOrder(userId, data);
+
+    const totalItems = data.items.reduce((sum, i) => sum + i.quantity, 0);
+    const details = `Order #${result.id} created: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${data.paymentMethod}`;
+    await staffLogService.createLog(data.orderDate, 'order_create', userId, details);
+
     res.status(201).json(result);
   } catch (err: any) {
     if (err.name === 'ZodError') {

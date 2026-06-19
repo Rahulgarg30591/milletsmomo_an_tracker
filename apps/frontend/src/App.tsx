@@ -14,6 +14,9 @@ import DayViewPage from './pages/DayViewPage';
 import NewOrderPage from './pages/NewOrderPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import SupplyOrderPage from './pages/SupplyOrderPage';
+import SupplyVerificationPage from './pages/SupplyVerificationPage';
+import ClosingStockPage from './pages/ClosingStockPage';
+import StaffLogsPage from './pages/StaffLogsPage';
 import { getToday } from './utils/dateUtils';
 
 export default function App() {
@@ -60,6 +63,30 @@ export default function App() {
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <SupplyOrderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/staff-logs"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <StaffLogsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/day/:date/verify"
+                element={
+                  <ProtectedRoute requiredRole="staff">
+                    <SupplyVerificationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/day/:date/closing"
+                element={
+                  <ProtectedRoute requiredRole="staff">
+                    <ClosingStockPage />
                   </ProtectedRoute>
                 }
               />
