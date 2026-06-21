@@ -28,6 +28,8 @@ interface OrderDraftContextType {
   removeItem: (menuItemId: number) => void;
   incrementItem: (menuItemId: number) => void;
   decrementItem: (menuItemId: number) => void;
+  incrementByPlate: (menuItemId: number) => void;
+  decrementByPlate: (menuItemId: number) => void;
   setFull: (menuItemId: number) => void;
   setHalf: (menuItemId: number) => void;
   setCustom: (menuItemId: number) => void;
@@ -135,6 +137,33 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
+  const decrementByPlate = useCallback((menuItemId: number) => {
+    setDraft((prev) => {
+      const next = new Map(prev.items);
+      const existing = next.get(menuItemId);
+      if (!existing) return prev;
+      const step = existing.isHalf ? 3 : existing.isCustom ? 1 : 6;
+      const newQty = existing.quantity - step;
+      if (newQty <= 0) {
+        next.delete(menuItemId);
+      } else {
+        next.set(menuItemId, { ...existing, quantity: newQty });
+      }
+      return { ...prev, items: next };
+    });
+  }, []);
+
+  const incrementByPlate = useCallback((menuItemId: number) => {
+    setDraft((prev) => {
+      const next = new Map(prev.items);
+      const existing = next.get(menuItemId);
+      if (!existing) return prev;
+      const step = existing.isHalf ? 3 : existing.isCustom ? 1 : 6;
+      next.set(menuItemId, { ...existing, quantity: existing.quantity + step });
+      return { ...prev, items: next };
+    });
+  }, []);
+
   const clearValidationError = useCallback((field: 'type' | 'payment') => {
     setValidationErrors((prev) => ({ ...prev, [field]: false }));
   }, []);
@@ -185,6 +214,8 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         removeItem,
         incrementItem,
         decrementItem,
+        incrementByPlate,
+        decrementByPlate,
         setFull,
         setHalf,
         setCustom,
