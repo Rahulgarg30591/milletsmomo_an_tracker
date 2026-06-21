@@ -127,6 +127,9 @@ export interface ClosingStockItem {
   piecesPer: number;
   packetsLeft: number;
   piecesLeft: number;
+  wastagePieces: number;
+  hasConflict: boolean;
+  conflictReason: string | null;
   totalPiecesLeft: number;
 }
 
@@ -138,7 +141,7 @@ export interface ClosingStock {
 
 export interface CreateClosingStockRequest {
   orderDate: string;
-  items: { supplyItemId: number; packetsLeft: number; piecesLeft: number }[];
+  items: { supplyItemId: number; packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }[];
 }
 
 export interface StaffOperationLog {

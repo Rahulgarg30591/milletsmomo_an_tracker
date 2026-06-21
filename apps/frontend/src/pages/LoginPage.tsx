@@ -6,6 +6,7 @@ import { Leaf, Shield, User } from 'lucide-react';
 import PinPad from '../components/PinPad';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../api/authApi';
+import { trackLogin } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 
 export default function LoginPage() {
@@ -29,6 +30,7 @@ export default function LoginPage() {
     try {
       const res = await login({ role, pin });
       doLogin(res.token, res.role, res.displayName);
+      trackLogin();
       vibrate(haptics.success);
       if (res.role === 'admin') {
         navigate('/admin');

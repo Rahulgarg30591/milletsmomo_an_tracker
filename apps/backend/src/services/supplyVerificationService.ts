@@ -92,6 +92,30 @@ export async function getVerification(date: string): Promise<SupplyVerification 
   };
 }
 
+export async function listVerifications(startDate: string, endDate: string): Promise<{ orderDate: string; isFullyVerified: boolean; conflictCount: number }[]> {
+  const pool = await getPool();
+  const req = pool.request();
+  req.input('startDate', sql.Date, startDate);
+  req.input('endDate', sql.Date, endDate);
+
+  const result = await req.query(
+    `SELECT order_date, COUNT(*) as total_items, SUM(CASE WHEN actual_qty IS NOT NULL THEN 1 ELSE 0 END) as verified_items, SUM(CASE WHEN has_conflict = 1 THEN 1 ELSE 0 END) as conflict_count
+     FROM SupplyVerifications
+     WHERE order_date BETWEEN @startDate AND @endDate
+     GROUP BY order_date
+     ORDER BY order_date DESC`,
+  );
+
+  return result.recordset.map((row: any) => {
+    const date = row.order_date instanceof Date ? row.order_date.toISOString().split('T')[0] : row.order_date;
+    return {
+      orderDate: date,
+      isFullyVerified: row.total_items > 0 && row.verified_items === row.total_items,
+      conflictCount: row.conflict_count || 0,
+    };
+  });
+}
+
 export async function createVerification(
   orderDate: string,
   items: { supplyItemId: number; expectedQty: number; actualQty: number }[],

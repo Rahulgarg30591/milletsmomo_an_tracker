@@ -8,6 +8,9 @@ export interface ClosingStockItem {
   piecesPer: number;
   packetsLeft: number;
   piecesLeft: number;
+  wastagePieces: number;
+  hasConflict: boolean;
+  conflictReason: string | null;
   totalPiecesLeft: number;
 }
 
@@ -52,15 +55,18 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
   const stockReq = pool.request();
   stockReq.input('orderDate', sql.Date, date);
   const stockResult = await stockReq.query(
-    `SELECT supply_item_id, packets_left, pieces_left
+    `SELECT supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason
      FROM DailyClosingStock WHERE order_date = @orderDate`,
   );
 
-  const stockMap = new Map<number, { packetsLeft: number; piecesLeft: number }>();
+  const stockMap = new Map<number, { packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }>();
   for (const row of stockResult.recordset) {
     stockMap.set(row.supply_item_id, {
       packetsLeft: row.packets_left,
       piecesLeft: row.pieces_left,
+      wastagePieces: row.wastage_pieces,
+      hasConflict: row.has_conflict,
+      conflictReason: row.conflict_reason,
     });
   }
 
@@ -73,6 +79,9 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
       piecesPer: row.pieces_per,
       packetsLeft: s ? s.packetsLeft : 0,
       piecesLeft: s ? s.piecesLeft : 0,
+      wastagePieces: s ? s.wastagePieces : 0,
+      hasConflict: s ? s.hasConflict : false,
+      conflictReason: s ? s.conflictReason : null,
       totalPiecesLeft: (s ? s.packetsLeft : 0) * row.pieces_per + (s ? s.piecesLeft : 0),
     };
   });
@@ -86,7 +95,7 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
 
 export async function createClosingStock(
   orderDate: string,
-  items: { supplyItemId: number; packetsLeft: number; piecesLeft: number }[],
+  items: { supplyItemId: number; packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }[],
   reportedBy: number,
 ): Promise<ClosingStock> {
   const pool = await getPool();
@@ -108,10 +117,13 @@ export async function createClosingStock(
       itemReq.input('supplyItemId', sql.Int, item.supplyItemId);
       itemReq.input('packetsLeft', sql.Int, item.packetsLeft);
       itemReq.input('piecesLeft', sql.Int, item.piecesLeft);
+      itemReq.input('wastagePieces', sql.Int, item.wastagePieces);
+      itemReq.input('hasConflict', sql.Bit, item.hasConflict);
+      itemReq.input('conflictReason', sql.NVarChar, item.conflictReason);
       itemReq.input('reportedBy', sql.Int, reportedBy);
       await itemReq.query(
-        `INSERT INTO DailyClosingStock (order_date, supply_item_id, packets_left, pieces_left, reported_by)
-         VALUES (@orderDate, @supplyItemId, @packetsLeft, @piecesLeft, @reportedBy)`,
+        `INSERT INTO DailyClosingStock (order_date, supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason, reported_by)
+         VALUES (@orderDate, @supplyItemId, @packetsLeft, @piecesLeft, @wastagePieces, @hasConflict, @conflictReason, @reportedBy)`,
       );
     }
 

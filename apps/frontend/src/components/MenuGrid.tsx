@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { calculateLineTotal } from '../utils/pricing';
+import { trackButtonClick } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 
 interface MenuItem {
@@ -126,12 +127,13 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                     transition={{ duration: 0.15 }}
                     style={{ marginTop: 'auto' }}
                   >
-                    <Button
+                      <Button
                       fullWidth
                       variant="contained"
                       size="small"
                       onClick={() => {
                         addItem(item.id);
+                        trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling });
                         vibrate(haptics.light);
                       }}
                       sx={{
@@ -181,6 +183,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           size="small"
                           onClick={() => {
                             setFull(item.id);
+                            trackButtonClick('new_order', `set_full_${item.displayName}`, { itemId: item.id });
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -207,6 +210,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           size="small"
                           onClick={() => {
                             setHalf(item.id);
+                            trackButtonClick('new_order', `set_half_${item.displayName}`, { itemId: item.id });
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -237,6 +241,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           size="small"
                           onClick={() => {
                             setCustom(item.id);
+                            trackButtonClick('new_order', `set_custom_${item.displayName}`, { itemId: item.id });
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -275,6 +280,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           size="small"
                           onClick={() => {
                             removeItem(item.id);
+                            trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
                             vibrate(haptics.light);
                           }}
                           sx={{
@@ -302,12 +308,13 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           gap: { xs: 0.25, md: 0.5 },
                         }}
                       >
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            decrementItem(item.id);
-                            vibrate(haptics.light);
-                          }}
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          decrementItem(item.id);
+                          trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
+                          vibrate(haptics.light);
+                        }}
                           sx={{
                             minWidth: { xs: 22, md: 26 },
                             width: { xs: 22, md: 26 },
@@ -354,6 +361,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           size="small"
                           onClick={() => {
                             incrementItem(item.id);
+                            trackButtonClick('new_order', `increment_${item.displayName}`, { itemId: item.id, type: 'custom' });
                             vibrate(haptics.light);
                           }}
                           sx={{

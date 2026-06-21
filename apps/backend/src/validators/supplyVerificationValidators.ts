@@ -6,6 +6,11 @@ export const getSupplyVerificationSchema = z.object({
   date: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
 });
 
+export const listSupplyVerificationsSchema = z.object({
+  startDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
+  endDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
+});
+
 export const createSupplyVerificationSchema = z.object({
   orderDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
   items: z.array(

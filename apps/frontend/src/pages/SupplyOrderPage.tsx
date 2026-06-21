@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder } from '../api/supplyApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
+import { getStaffLogs } from '../api/staffLogApi';
 import { getToday, addDays, formatDateLabel } from '../utils/dateUtils';
+import { exportSupplyToExcel } from '../utils/exportSupply';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
-import type { SupplyItem } from '../types';
+import type { SupplyItem, SupplyOrderLog, StaffOperationLog } from '../types';
 
 export default function SupplyOrderPage() {
   const theme = useTheme();
@@ -36,6 +38,12 @@ export default function SupplyOrderPage() {
     queryKey: ['supplyLogs', date],
     queryFn: () => getSupplyOrderLogs(date),
   });
+
+  const { data: staffLogsData } = useQuery({
+    queryKey: ['staffLogs', date, 'verification'],
+    queryFn: () => getStaffLogs(date, 'verification'),
+  });
+  const staffLogs = staffLogsData?.logs || [];
 
   // Verification status for selected date
   const { data: verification } = useQuery({
@@ -73,8 +81,7 @@ export default function SupplyOrderPage() {
       const current = prev[id] || 0;
       const next = Math.max(0, current + delta);
       if (next === 0) {
-        const { [id]: _, ...rest } = prev;
-        return rest;
+        return Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== id));
       }
       return { ...prev, [id]: next };
     });
@@ -85,8 +92,7 @@ export default function SupplyOrderPage() {
     if (isNaN(num) || num < 0) return;
     setQuantities((prev) => {
       if (num === 0) {
-        const { [id]: _, ...rest } = prev;
-        return rest;
+        return Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== id));
       }
       return { ...prev, [id]: num };
     });
@@ -121,6 +127,9 @@ export default function SupplyOrderPage() {
       vibrate(haptics.success);
       setToast({ message: 'Supply order saved!', type: 'success' });
       qc.invalidateQueries({ queryKey: ['supplyOrder', date] });
+      qc.invalidateQueries({ queryKey: ['supplyLogs', date] });
+      qc.invalidateQueries({ queryKey: ['staffLogs', date, 'verification'] });
+      navigate('/admin');
     },
     onError: () => {
       setToast({ message: 'Failed to save order', type: 'error' });
@@ -165,12 +174,9 @@ export default function SupplyOrderPage() {
                 ₹{item.unitPrice} per {item.category === 'momo_packet' ? 'packet' : 'pack'}
                 {item.category === 'momo_packet' && ` · ${item.piecesPer} pcs`}
               </Typography>
-              {qty > 0 && (
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', mt: 0.25 }}>
-                  ₹{lineTotal.toLocaleString()}
-                  {item.category === 'momo_packet' && ` · ${qty * item.piecesPer} pcs`}
-                </Typography>
-              )}
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', mt: 0.25, opacity: qty > 0 ? 1 : 0, minHeight: '1.1rem' }}>
+                {qty > 0 ? `₹${lineTotal.toLocaleString()}${item.category === 'momo_packet' ? ` · ${qty * item.piecesPer} pcs` : ''}` : ' '}
+              </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton
@@ -243,7 +249,27 @@ export default function SupplyOrderPage() {
               Supply Order
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Download size={14} />}
+              onClick={() => {
+                vibrate(haptics.light);
+                exportSupplyToExcel({
+                  date,
+                  existingOrder,
+                  logs,
+                  staffLogs,
+                  verification,
+                  items,
+                });
+                setToast({ message: 'Excel exported!', type: 'success' });
+              }}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, fontSize: '0.75rem', py: 0.5, px: 1.5 }}
+            >
+              Export
+            </Button>
             <Truck size={14} />
             <Box
               component="input"
@@ -281,29 +307,37 @@ export default function SupplyOrderPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: isDark
-            ? (verification?.isFullyVerified ? 'rgba(45,138,78,0.08)' : 'rgba(220,38,38,0.08)')
-            : (verification?.isFullyVerified ? '#F0FDF4' : '#FEF2F2'),
-          border: `1px solid ${isDark
-            ? (verification?.isFullyVerified ? 'rgba(45,138,78,0.2)' : 'rgba(220,38,38,0.2)')
-            : (verification?.isFullyVerified ? 'rgba(45,138,78,0.15)' : 'rgba(220,38,38,0.15)')}`,
+          background: (() => {
+            if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.08)' : '#F9FAFB';
+            if (verification.isFullyVerified) return isDark ? 'rgba(45,138,78,0.08)' : '#F0FDF4';
+            return isDark ? 'rgba(220,38,38,0.08)' : '#FEF2F2';
+          })(),
+          border: `1px solid ${(() => {
+            if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.2)' : 'rgba(156,163,175,0.2)';
+            if (verification.isFullyVerified) return isDark ? 'rgba(45,138,78,0.2)' : 'rgba(45,138,78,0.15)';
+            return isDark ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.15)';
+          })()}`,
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {verification?.isFullyVerified ? (
-              <CheckCircle2 size={18} color={isDark ? '#4ADE80' : '#16A34A'} />
-            ) : (
-              <AlertCircle size={18} color={isDark ? '#F87171' : '#DC2626'} />
-            )}
+            {(() => {
+              if (!verification?.items || verification.items.length === 0) return <Package size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />;
+              if (verification.isFullyVerified) return <CheckCircle2 size={18} color={isDark ? '#4ADE80' : '#16A34A'} />;
+              return <AlertCircle size={18} color={isDark ? '#F87171' : '#DC2626'} />;
+            })()}
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
-                {verification?.isFullyVerified ? 'Supply Verified' : 'Not Verified'}
+                {(() => {
+                  if (!verification?.items || verification.items.length === 0) return 'No Supply Created';
+                  if (verification.isFullyVerified) return 'Supply Verified';
+                  return 'Not Verified';
+                })()}
               </Typography>
               <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                {verification?.isFullyVerified
-                  ? (verification?.conflictCount && verification.conflictCount > 0
-                    ? `${verification.conflictCount} conflict(s) reported`
-                    : 'All items match')
-                  : 'Staff has not verified today\'s supply yet'}
+                {(() => {
+                  if (!verification?.items || verification.items.length === 0) return 'No supply order found for this date';
+                  if (verification.isFullyVerified) return (verification.conflictCount && verification.conflictCount > 0 ? `${verification.conflictCount} conflict(s) reported` : 'All items match');
+                  return 'Staff has not verified today\'s supply yet';
+                })()}
               </Typography>
             </Box>
           </Box>
@@ -315,14 +349,22 @@ export default function SupplyOrderPage() {
             borderRadius: 1,
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            backgroundColor: verification?.isFullyVerified
-              ? (isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5')
-              : (isDark ? 'rgba(248,113,113,0.15)' : '#FEE2E2'),
-            color: verification?.isFullyVerified
-              ? (isDark ? '#4ADE80' : '#16A34A')
-              : (isDark ? '#F87171' : '#DC2626'),
+            backgroundColor: (() => {
+              if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.15)' : '#F3F4F6';
+              if (verification.isFullyVerified) return isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5';
+              return isDark ? 'rgba(248,113,113,0.15)' : '#FEE2E2';
+            })(),
+            color: (() => {
+              if (!verification?.items || verification.items.length === 0) return isDark ? '#9CA3AF' : '#6B7280';
+              if (verification.isFullyVerified) return isDark ? '#4ADE80' : '#16A34A';
+              return isDark ? '#F87171' : '#DC2626';
+            })(),
           }}>
-            {verification?.isFullyVerified ? 'Verified' : 'Pending'}
+            {(() => {
+              if (!verification?.items || verification.items.length === 0) return 'No Supply';
+              if (verification.isFullyVerified) return 'Verified';
+              return 'Pending';
+            })()}
           </Typography>
         </Paper>
 
@@ -440,7 +482,7 @@ export default function SupplyOrderPage() {
         </Button>
 
         {/* Supply Change Logs */}
-        {logs.length > 0 && (
+        {(logs.length > 0 || staffLogs.length > 0) && (
           <Paper sx={{
             borderRadius: 2,
             overflow: 'hidden',
@@ -455,49 +497,74 @@ export default function SupplyOrderPage() {
               </Typography>
             </Box>
             <Box sx={{ p: 1.5, pt: 0.5 }}>
-              {logs.map((log) => {
-                const logTime = new Date(log.createdAt);
-                const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-                const dateStr = logTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-                return (
-                  <Box
-                    key={log.id}
-                    sx={{
-                      py: 1,
-                      borderBottom: 1,
-                      borderColor: 'divider',
-                      '&:last-child': { borderBottom: 0 },
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography sx={{
-                          fontWeight: 700,
-                          fontSize: '0.7rem',
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: 1,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          backgroundColor: log.action === 'CREATE' ? (isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5') : (isDark ? 'rgba(96,165,250,0.15)' : '#DBEAFE'),
-                          color: log.action === 'CREATE' ? (isDark ? '#4ADE80' : '#065F46') : (isDark ? '#60A5FA' : '#1E40AF'),
-                        }}>
-                          {log.action}
-                        </Typography>
-                        <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary' }}>
-                          {log.displayName}
+              {([...logs.map((l: SupplyOrderLog) => ({ type: 'supply' as const, ...l })), ...staffLogs.map((l: StaffOperationLog) => ({ type: 'staff' as const, ...l }))])
+                .sort((a: { createdAt: string }, b: { createdAt: string }) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((log: { type: 'supply' | 'staff'; id: number; createdAt: string; displayName: string; action?: 'CREATE' | 'UPDATE'; itemSummary?: string; details?: string }) => {
+                  const logTime = new Date(log.createdAt);
+                  const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                  const dateStr = logTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  const isSupply = log.type === 'supply';
+                  return (
+                    <Box
+                      key={`${log.type}-${log.id}`}
+                      sx={{
+                        py: 1,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        '&:last-child': { borderBottom: 0 },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{
+                            fontWeight: 700,
+                            fontSize: '0.7rem',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            backgroundColor: isSupply
+                              ? (log.action === 'CREATE' ? (isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5') : (isDark ? 'rgba(96,165,250,0.15)' : '#DBEAFE'))
+                              : (isDark ? 'rgba(250,204,21,0.15)' : '#FEF9C3'),
+                            color: isSupply
+                              ? (log.action === 'CREATE' ? (isDark ? '#4ADE80' : '#065F46') : (isDark ? '#60A5FA' : '#1E40AF'))
+                              : (isDark ? '#FACC15' : '#854D0E'),
+                          }}>
+                            {isSupply ? log.action : 'Verify'}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary' }}>
+                            {log.displayName}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
+                          {dateStr} {timeStr}
                         </Typography>
                       </Box>
-                      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
-                        {dateStr} {timeStr}
-                      </Typography>
-                    </Box>
                     <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.4 }}>
-                      {log.itemSummary}
+                      {isSupply ? log.itemSummary : log.details}
                     </Typography>
-                  </Box>
-                );
-              })}
+                    {!isSupply && 'operationType' in log && log.operationType === 'verification' && verification?.items && verification.items.length > 0 && (
+                      <Box sx={{ mt: 0.5, pl: 0.5 }}>
+                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'text.secondary', mb: 0.25, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <AlertTriangle size={10} />
+                          Verification Details
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                          {verification.items.map((item) => (
+                            <Box key={item.supplyItemId} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: item.hasConflict ? '#DC2626' : '#16A34A' }} />
+                              <Typography sx={{ fontSize: '0.7rem', color: item.hasConflict ? 'error.main' : 'text.secondary', lineHeight: 1.3 }}>
+                                {item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '')}: expected {item.expectedQty}, found {item.actualQty ?? 0} {item.hasConflict && '(CONFLICT)'}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                    </Box>
+                  );
+                })}
             </Box>
           </Paper>
         )}

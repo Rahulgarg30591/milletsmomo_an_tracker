@@ -1,7 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import { getSupplyVerificationSchema, createSupplyVerificationSchema } from '../validators/supplyVerificationValidators.js';
+import { getSupplyVerificationSchema, createSupplyVerificationSchema, listSupplyVerificationsSchema } from '../validators/supplyVerificationValidators.js';
 import * as supplyVerificationService from '../services/supplyVerificationService.js';
 import * as staffLogService from '../services/staffLogService.js';
+
+export async function listVerifications(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { startDate, endDate } = listSupplyVerificationsSchema.parse(req.query);
+    const verifications = await supplyVerificationService.listVerifications(startDate, endDate);
+    res.json(verifications);
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid date range', details: err.errors });
+      return;
+    }
+    next(err);
+  }
+}
 
 export async function getVerification(
   req: Request,

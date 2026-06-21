@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { ArrowLeft, ChefHat, ShoppingCart } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
+import { trackPageView, trackOrderSubmit, trackNavigation } from '../utils/tracking';
 import MenuGrid from '../components/MenuGrid';
 import OrderConfigPanel from '../components/OrderConfigPanel';
 import SelectedItemsList from '../components/SelectedItemsList';
@@ -77,9 +78,15 @@ function NewOrderContent() {
     return total;
   }, [draft.items]);
 
+  useEffect(() => {
+    trackPageView('new_order', `Opened new order page for ${date}`);
+  }, [date]);
+
   const createMutation = useMutation({
     mutationFn: createOrder,
-    onSuccess: () => {
+    onSuccess: (res) => {
+      trackOrderSubmit(res.id, { orderDate: date, itemCount: getItemList().length });
+      trackNavigation('new_order', `day/${date}`, { reason: 'order_created', orderId: res.id });
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       setToast({ message: 'Order placed! 🎉', type: 'success' });
       clearDraft();
@@ -95,6 +102,12 @@ function NewOrderContent() {
   const handleSubmit = () => {
     const items = getItemList();
     if (items.length === 0) return;
+
+    if (!draft.orderType || !draft.paymentMethod) {
+      setToast({ message: 'Select order type and payment method', type: 'error' });
+      vibrate(haptics.error);
+      return;
+    }
 
     const payload: any = {
       orderDate: date!,

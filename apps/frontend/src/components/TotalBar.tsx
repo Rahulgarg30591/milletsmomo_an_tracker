@@ -10,10 +10,11 @@ interface TotalBarProps {
 }
 
 export default function TotalBar({ onSubmit }: TotalBarProps) {
-  const { getItemList } = useOrderDraft();
+  const { draft, getItemList } = useOrderDraft();
   const items = getItemList();
   const total = calculateOrderTotal(items);
   const hasItems = items.length > 0;
+  const canSubmit = hasItems && !!draft.orderType && !!draft.paymentMethod;
 
   return (
     <Box
@@ -64,7 +65,7 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
       <motion.div whileTap={{ scale: 0.97 }} style={{ flexShrink: 0 }}>
         <Button
           variant="contained"
-          disabled={!hasItems}
+          disabled={!canSubmit}
           onClick={() => {
             vibrate(haptics.medium);
             onSubmit();

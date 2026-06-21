@@ -14,8 +14,8 @@ export async function getSummary(date: string, endDate?: string) {
       COUNT(*) AS totalOrders,
       ISNULL(SUM(total_amount), 0) AS totalRevenue,
       ISNULL(SUM(CASE WHEN payment_method = 'pending' THEN total_amount ELSE 0 END), 0) AS pendingAmount,
-      ISNULL(SUM(CASE WHEN payment_method = 'cash' THEN total_amount ELSE 0 END), 0) AS cashTotal,
-      ISNULL(SUM(CASE WHEN payment_method = 'upi' THEN total_amount ELSE 0 END), 0) AS upiTotal
+      ISNULL(SUM(cash_amount), 0) AS cashTotal,
+      ISNULL(SUM(upi_amount), 0) AS upiTotal
      FROM Orders WHERE order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'}`,
   );
 

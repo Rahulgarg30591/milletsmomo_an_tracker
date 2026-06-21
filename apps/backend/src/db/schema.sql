@@ -1,3 +1,4 @@
+IF OBJECT_ID('ClientActivityLogs', 'U') IS NOT NULL DROP TABLE ClientActivityLogs;
 IF OBJECT_ID('StaffOperationLogs', 'U') IS NOT NULL DROP TABLE StaffOperationLogs;
 IF OBJECT_ID('DailyClosingStock', 'U') IS NOT NULL DROP TABLE DailyClosingStock;
 IF OBJECT_ID('SupplyVerifications', 'U') IS NOT NULL DROP TABLE SupplyVerifications;
@@ -124,6 +125,9 @@ CREATE TABLE DailyClosingStock (
   supply_item_id  INT           NOT NULL REFERENCES SupplyItems(id),
   packets_left    INT           NOT NULL DEFAULT 0,
   pieces_left     INT           NOT NULL DEFAULT 0 CHECK (pieces_left >= 0 AND pieces_left < 24),
+  wastage_pieces  INT           NOT NULL DEFAULT 0,
+  has_conflict    BIT           NOT NULL DEFAULT 0,
+  conflict_reason NVARCHAR(500) NULL,
   reported_by     INT           NOT NULL REFERENCES Users(id),
   created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
   CONSTRAINT UQ_DailyClosingStock_DateItem UNIQUE (order_date, supply_item_id)
@@ -143,3 +147,19 @@ CREATE TABLE StaffOperationLogs (
 CREATE INDEX IX_StaffOperationLogs_Date ON StaffOperationLogs(order_date DESC);
 CREATE INDEX IX_StaffOperationLogs_CreatedAt ON StaffOperationLogs(created_at DESC);
 CREATE INDEX IX_StaffOperationLogs_Type ON StaffOperationLogs(operation_type);
+
+CREATE TABLE ClientActivityLogs (
+  id            INT IDENTITY(1,1) PRIMARY KEY,
+  user_id       INT           NULL,
+  user_role     VARCHAR(20)   NULL,
+  log_type      VARCHAR(50)   NOT NULL,
+  page          VARCHAR(100)  NULL,
+  details       NVARCHAR(500) NULL,
+  metadata      NVARCHAR(MAX) NULL,
+  device_info   NVARCHAR(500) NULL,
+  duration_ms   INT           NULL,
+  created_at    DATETIME      DEFAULT GETDATE()
+);
+
+CREATE INDEX IX_ClientActivityLogs_Type ON ClientActivityLogs(log_type);
+CREATE INDEX IX_ClientActivityLogs_CreatedAt ON ClientActivityLogs(created_at DESC);

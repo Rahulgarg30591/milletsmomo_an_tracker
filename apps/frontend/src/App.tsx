@@ -17,6 +17,7 @@ import SupplyOrderPage from './pages/SupplyOrderPage';
 import SupplyVerificationPage from './pages/SupplyVerificationPage';
 import ClosingStockPage from './pages/ClosingStockPage';
 import StaffLogsPage from './pages/StaffLogsPage';
+import StockPage from './pages/StockPage';
 import { getToday } from './utils/dateUtils';
 
 export default function App() {
@@ -87,6 +88,14 @@ export default function App() {
                 element={
                   <ProtectedRoute requiredRole="staff">
                     <ClosingStockPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/day/:date/stock"
+                element={
+                  <ProtectedRoute requiredRole="staff">
+                    <StockPage />
                   </ProtectedRoute>
                 }
               />

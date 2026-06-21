@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split } from 'lucide-react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
+import { formatQuantity } from '../utils/formatQuantity';
 
 interface OrderCardProps {
   order: Order;
@@ -160,7 +161,7 @@ export default function OrderCard({ order, onComplete }: OrderCardProps) {
         <Box sx={{ mb: { xs: 0.75, md: 1 } }}>
           {order.items.map((item, idx) => (
             <Typography key={idx} sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.secondary', lineHeight: { xs: 1.4, md: 1.5 }, fontWeight: 500 }}>
-              {item.quantity}x {item.itemName}
+              {formatQuantity(item.quantity)} {item.itemName}
               {item.isHalf && (
                 <Box component="span" sx={{ color: 'secondary.main', fontWeight: 700, ml: 0.5, fontSize: { xs: '0.7rem', md: '0.8rem' } }}>
                   (½)

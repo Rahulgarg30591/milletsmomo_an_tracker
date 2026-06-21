@@ -8,11 +8,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock,
-  Truck, Package
+  Truck, Package, Layers
 } from 'lucide-react';
 import { getOrders, completeOrder } from '../api/ordersApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
+import { trackNavigation } from '../utils/tracking';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
@@ -264,13 +265,13 @@ export default function DayViewPage() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(2, 1fr)' },
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
               gap: { xs: 0.75, md: 1 },
               mb: { xs: 1.5, md: 2 },
             }}
           >
             {supplyVerification && supplyVerification.items.length > 0 && (
-              <Button
+                  <Button
                 variant="outlined"
                 size="small"
                 startIcon={<Truck size={14} />}
@@ -287,27 +288,82 @@ export default function DayViewPage() {
                   justifyContent: 'flex-start',
                   borderColor: supplyVerification.isFullyVerified
                     ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
-                    : 'divider',
+                    : 'warning.main',
                   color: supplyVerification.isFullyVerified
                     ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
-                    : 'text.primary',
+                    : 'warning.main',
                   background: isDark
                     ? (supplyVerification.isFullyVerified
                       ? (supplyVerification.conflictCount > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(45,138,78,0.08)')
-                      : 'transparent')
+                      : 'rgba(245,158,11,0.08)')
                     : (supplyVerification.isFullyVerified
                       ? (supplyVerification.conflictCount > 0 ? '#FEF2F2' : '#F0FDF4')
-                      : 'transparent'),
+                      : '#FFFBEB'),
+                  position: 'relative',
+                  overflow: 'visible',
                 }}
               >
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
                   <Typography sx={{ fontWeight: 700, fontSize: 'inherit' }}>
                     Verify Supply
                   </Typography>
-                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'inherit', opacity: 0.8, fontWeight: 500 }}>
                     {supplyVerification.isFullyVerified
                       ? (supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} conflict` : 'Verified')
                       : 'Not verified'}
+                  </Typography>
+                </Box>
+                {!supplyVerification.isFullyVerified && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      backgroundColor: 'warning.main',
+                      border: '2px solid',
+                      borderColor: 'background.paper',
+                      animation: 'pulse 2s infinite',
+                      '@keyframes pulse': {
+                        '0%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(245,158,11,0.7)' },
+                        '70%': { transform: 'scale(1)', boxShadow: '0 0 0 6px rgba(245,158,11,0)' },
+                        '100%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(245,158,11,0)' },
+                      },
+                    }}
+                  />
+                )}
+              </Button>
+            )}
+            {supplyVerification?.isFullyVerified && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Layers size={14} />}
+                onClick={() => {
+                  vibrate(haptics.light);
+                  trackNavigation('day_view', `day/${date}/stock`, { reason: 'view_live_stock' });
+                  navigate(`/day/${date}/stock`);
+                }}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 1,
+                  py: { xs: 1, md: 1.25 },
+                  fontSize: { xs: '0.75rem', md: '0.85rem' },
+                  justifyContent: 'flex-start',
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  background: isDark ? 'rgba(27,107,58,0.08)' : '#F0FDF4',
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 'inherit' }}>
+                    Live Stock
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                    View remaining stock
                   </Typography>
                 </Box>
               </Button>

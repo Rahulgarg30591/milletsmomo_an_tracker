@@ -8,8 +8,8 @@ interface DraftItem {
 
 interface OrderDraft {
   items: Map<number, DraftItem>;
-  orderType: 'dine' | 'pack';
-  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+  orderType: 'dine' | 'pack' | null;
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending' | null;
   cashAmount: number;
   upiAmount: number;
 }
@@ -35,8 +35,8 @@ const OrderDraftContext = createContext<OrderDraftContextType | null>(null);
 
 const defaultDraft: OrderDraft = {
   items: new Map(),
-  orderType: 'dine',
-  paymentMethod: 'cash',
+  orderType: null,
+  paymentMethod: null,
   cashAmount: 0,
   upiAmount: 0,
 };

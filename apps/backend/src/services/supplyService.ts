@@ -204,7 +204,8 @@ export async function updateSupplyOrder(
     deleteReq.input('orderDate', sql.Date, date);
     await deleteReq.query(
       `DELETE FROM DailySupplyOrderItems WHERE order_id IN (SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate);
-       DELETE FROM DailySupplyOrders WHERE order_date = @orderDate;`,
+       DELETE FROM DailySupplyOrders WHERE order_date = @orderDate;
+       DELETE FROM SupplyVerifications WHERE order_date = @orderDate;`,
     );
   }
 

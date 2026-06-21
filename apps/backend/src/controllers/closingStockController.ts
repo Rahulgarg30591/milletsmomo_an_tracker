@@ -39,6 +39,9 @@ export async function createClosingStock(
         supplyItemId: i.supplyItemId,
         packetsLeft: i.packetsLeft,
         piecesLeft: i.piecesLeft,
+        wastagePieces: i.wastagePieces,
+        hasConflict: i.hasConflict,
+        conflictReason: i.conflictReason,
       })),
       userId,
     );

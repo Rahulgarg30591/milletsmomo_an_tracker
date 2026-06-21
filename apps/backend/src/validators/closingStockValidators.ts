@@ -13,6 +13,9 @@ export const createClosingStockSchema = z.object({
       supplyItemId: z.number().int().positive(),
       packetsLeft: z.number().int().min(0),
       piecesLeft: z.number().int().min(0).max(23),
+      wastagePieces: z.number().int().min(0).default(0),
+      hasConflict: z.boolean().default(false),
+      conflictReason: z.string().max(500).nullable().default(null),
     }),
   ).min(1, 'At least one item is required'),
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Button, Typography, Paper, useTheme, IconButton,
@@ -8,6 +8,7 @@ import {
   ArrowLeft, CheckCircle2, AlertTriangle, Truck, Minus, Plus,
 } from 'lucide-react';
 import { getSupplyVerification, submitSupplyVerification } from '../api/supplyVerificationApi';
+import { trackPageView, trackActionStart, trackActionEnd, trackVerificationSubmit, trackNavigation } from '../utils/tracking';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
 import type { SupplyVerification } from '../types';
@@ -22,6 +23,18 @@ export default function SupplyVerificationPage() {
 
   const [verificationItems, setVerificationItems] = useState<Record<number, number>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const actionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    trackPageView('supply_verification', `Opened supply verification for ${targetDate}`);
+    actionIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    trackActionStart('supply_verification', 'verification_flow', { actionId: actionIdRef.current, date: targetDate });
+    return () => {
+      if (actionIdRef.current) {
+        trackActionEnd('supply_verification', 'verification_flow', actionIdRef.current);
+      }
+    };
+  }, [targetDate]);
 
   const { data: supplyVerification } = useQuery<SupplyVerification>({
     queryKey: ['supplyVerification', targetDate],
@@ -50,7 +63,12 @@ export default function SupplyVerificationPage() {
       return submitSupplyVerification({ orderDate: targetDate, items });
     },
     onSuccess: (result) => {
+      trackVerificationSubmit(targetDate, { conflicts: result.conflictCount, items: result.items.length });
+      if (actionIdRef.current) {
+        trackActionEnd('supply_verification', 'verification_submit', actionIdRef.current, { conflicts: result.conflictCount });
+      }
       qc.invalidateQueries({ queryKey: ['supplyVerification', targetDate] });
+      qc.invalidateQueries({ queryKey: ['staffLogs', targetDate, 'verification'] });
       setToast({
         message: result.conflictCount > 0
           ? `Verification submitted. ${result.conflictCount} conflict(s) reported.`
@@ -58,6 +76,8 @@ export default function SupplyVerificationPage() {
         type: result.conflictCount > 0 ? 'error' : 'success',
       });
       vibrate(haptics.success);
+      trackNavigation('supply_verification', `day/${targetDate}`, { reason: 'verification_complete' });
+      navigate(`/day/${targetDate}`);
     },
     onError: () => {
       setToast({ message: 'Failed to submit verification', type: 'error' });

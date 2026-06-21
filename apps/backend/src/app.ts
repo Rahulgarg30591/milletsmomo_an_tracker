@@ -9,6 +9,7 @@ import menuRoutes from './routes/menuRoutes.js';
 import ordersRoutes from './routes/ordersRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import supplyRoutes from './routes/supplyRoutes.js';
+import clientLogRoutes from './routes/clientLogRoutes.js';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/supply', supplyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/client-logs', clientLogRoutes);
 
 app.use(errorHandler);
 
