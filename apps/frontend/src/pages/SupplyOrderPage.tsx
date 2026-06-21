@@ -127,6 +127,7 @@ export default function SupplyOrderPage() {
       vibrate(haptics.success);
       setToast({ message: 'Supply order saved!', type: 'success' });
       qc.invalidateQueries({ queryKey: ['supplyOrder', date] });
+      qc.invalidateQueries({ queryKey: ['supplyOrders'] });
       qc.invalidateQueries({ queryKey: ['supplyLogs', date] });
       qc.invalidateQueries({ queryKey: ['staffLogs', date, 'verification'] });
       navigate('/admin');

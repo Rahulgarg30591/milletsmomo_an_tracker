@@ -14,8 +14,16 @@ interface OrderDraft {
   upiAmount: number;
 }
 
+interface ValidationErrors {
+  type: boolean;
+  payment: boolean;
+}
+
 interface OrderDraftContextType {
   draft: OrderDraft;
+  validationErrors: ValidationErrors;
+  setValidationErrors: (errors: ValidationErrors) => void;
+  clearValidationError: (field: 'type' | 'payment') => void;
   addItem: (menuItemId: number) => void;
   removeItem: (menuItemId: number) => void;
   incrementItem: (menuItemId: number) => void;
@@ -41,8 +49,11 @@ const defaultDraft: OrderDraft = {
   upiAmount: 0,
 };
 
+const defaultValidationErrors: ValidationErrors = { type: false, payment: false };
+
 export function OrderDraftProvider({ children }: { children: React.ReactNode }) {
   const [draft, setDraft] = useState<OrderDraft>(defaultDraft);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(defaultValidationErrors);
 
   const addItem = useCallback((menuItemId: number) => {
     setDraft((prev) => {
@@ -124,12 +135,18 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
+  const clearValidationError = useCallback((field: 'type' | 'payment') => {
+    setValidationErrors((prev) => ({ ...prev, [field]: false }));
+  }, []);
+
   const setOrderType = useCallback((type: 'dine' | 'pack') => {
     setDraft((prev) => ({ ...prev, orderType: type }));
+    setValidationErrors((prev) => ({ ...prev, type: false }));
   }, []);
 
   const setPaymentMethod = useCallback((method: 'cash' | 'upi' | 'split' | 'pending') => {
     setDraft((prev) => ({ ...prev, paymentMethod: method }));
+    setValidationErrors((prev) => ({ ...prev, payment: false }));
   }, []);
 
   const setSplitAmounts = useCallback((cash: number, upi: number) => {
@@ -138,6 +155,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
 
   const clearDraft = useCallback(() => {
     setDraft(defaultDraft);
+    setValidationErrors(defaultValidationErrors);
   }, []);
 
   const getItemList = useCallback(() => {
@@ -160,6 +178,9 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     <OrderDraftContext.Provider
       value={{
         draft,
+        validationErrors,
+        setValidationErrors,
+        clearValidationError,
         addItem,
         removeItem,
         incrementItem,

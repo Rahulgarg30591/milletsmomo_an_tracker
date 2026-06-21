@@ -6,7 +6,6 @@ import { ArrowLeft, Package, Layers, PieChart } from 'lucide-react';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
 import { getOrders } from '../api/ordersApi';
-import { getSupplyItems } from '../api/supplyApi';
 import { getMenu } from '../api/menuApi';
 import { getToday, addDays } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
@@ -17,16 +16,14 @@ interface StockItem {
   displayName: string;
   category: string;
   piecesPer: number;
-  // Opening = yesterday closing + verified supply
   openingPackets: number;
   openingPieces: number;
   openingTotalPieces: number;
-  // Consumed = orders
   consumedPieces: number;
-  // Remaining = opening - consumed
   remainingPackets: number;
   remainingPieces: number;
   remainingTotalPieces: number;
+  isVerified: boolean;
 }
 
 export default function StockPage() {
@@ -55,11 +52,6 @@ export default function StockPage() {
     enabled: !!targetDate,
   });
 
-  const { data: supplyItems } = useQuery({
-    queryKey: ['supplyItems'],
-    queryFn: getSupplyItems,
-  });
-
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
@@ -70,56 +62,86 @@ export default function StockPage() {
   }, [targetDate]);
 
   const stockItems = useMemo<StockItem[]>(() => {
-    if (!supplyItems || !supplyVerification) return [];
-
     const menuItems = (menuData?.items || []) as Array<{ id: number; filling: string; displayName: string }>;
     const menuMap = new Map(menuItems.map((mi) => [mi.id, mi]));
 
-    const items: StockItem[] = [];
+    const itemMap = new Map<number, {
+      supplyItemId: number;
+      displayName: string;
+      category: string;
+      piecesPer: number;
+      closingPackets: number;
+      closingPieces: number;
+      closingTotalPieces: number;
+      supplyQty: number;
+      supplyTotalPieces: number;
+      isVerified: boolean;
+    }>();
 
-    for (const si of supplyItems) {
-      if (si.category !== 'momo_packet') continue;
+    for (const cItem of yesterdayClosing?.items || []) {
+      if (cItem.category !== 'momo_packet') continue;
+      const piecesPer = cItem.piecesPer || 24;
+      itemMap.set(cItem.supplyItemId, {
+        supplyItemId: cItem.supplyItemId,
+        displayName: cItem.displayName,
+        category: cItem.category,
+        piecesPer,
+        closingPackets: cItem.packetsLeft,
+        closingPieces: cItem.piecesLeft,
+        closingTotalPieces: cItem.packetsLeft * piecesPer + cItem.piecesLeft,
+        supplyQty: 0,
+        supplyTotalPieces: 0,
+        isVerified: false,
+      });
+    }
 
-      const piecesPer = si.piecesPer || 24;
+    for (const vItem of supplyVerification?.items || []) {
+      if (vItem.category !== 'momo_packet') continue;
+      const piecesPer = vItem.piecesPer || 24;
+      const supplyQty = vItem.actualQty ?? vItem.expectedQty;
+      const supplyTotalPieces = supplyQty * piecesPer;
+      const existing = itemMap.get(vItem.supplyItemId);
+      if (existing) {
+        existing.supplyQty = supplyQty;
+        existing.supplyTotalPieces = supplyTotalPieces;
+        existing.isVerified = vItem.actualQty !== null;
+      } else {
+        itemMap.set(vItem.supplyItemId, {
+          supplyItemId: vItem.supplyItemId,
+          displayName: vItem.displayName,
+          category: vItem.category,
+          piecesPer,
+          closingPackets: 0,
+          closingPieces: 0,
+          closingTotalPieces: 0,
+          supplyQty,
+          supplyTotalPieces,
+          isVerified: vItem.actualQty !== null,
+        });
+      }
+    }
 
-      // Extract filling from supply item name (e.g., "Veg Momo (24 Pcs)" -> "Veg")
-      const siFilling = si.displayName.split(' ')[0];
-      // Handle "Cheese Corn" which is two words
-      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : siFilling;
+    const orders = ordersData?.orders || [];
 
-      // Yesterday closing stock
-      const yestItem = yesterdayClosing?.items.find((i) => i.supplyItemId === si.id);
-      const yestPackets = yestItem?.packetsLeft || 0;
-      const yestPieces = yestItem?.piecesLeft || 0;
-      const yestTotalPieces = yestPackets * piecesPer + yestPieces;
+    return [...itemMap.values()].map((si) => {
+      const piecesPer = si.piecesPer;
+      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : si.displayName.split(' ')[0];
 
-      // Today verified supply
-      const verItem = supplyVerification.items.find((i) => i.supplyItemId === si.id);
-      const verQty = verItem?.actualQty ?? 0;
-      const verTotalPieces = verQty * piecesPer;
-
-      // Opening stock = yesterday closing + verified supply
-      const openingTotalPieces = yestTotalPieces + verTotalPieces;
+      const openingTotalPieces = si.closingTotalPieces + si.supplyTotalPieces;
       const openingPackets = Math.floor(openingTotalPieces / piecesPer);
       const openingPieces = openingTotalPieces % piecesPer;
 
-      // Consumed = orders for this date
-      const orders = ordersData?.orders || [];
       let consumedPieces = 0;
       for (const order of orders) {
         for (const orderItem of order.items) {
           const menuItem = menuMap.get(orderItem.menuItemId);
           if (!menuItem) continue;
-
           const itemFilling = menuItem.filling;
           const quantity = orderItem.quantity;
 
           if (itemFilling === fullFilling) {
-            // Direct match: Veg -> Veg, Paneer -> Paneer, etc.
             consumedPieces += quantity;
           } else if (itemFilling === 'Platter') {
-            // Platter: split into 2 Veg + 2 Paneer + 2 Cheese Corn per 6
-            // So per momo quantity: each type gets quantity / 3
             const perType = Math.round(quantity / 3);
             if (fullFilling === 'Veg' || fullFilling === 'Paneer' || fullFilling === 'Cheese Corn') {
               consumedPieces += perType;
@@ -128,13 +150,12 @@ export default function StockPage() {
         }
       }
 
-      // Remaining = opening - consumed
       const remainingTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
       const remainingPackets = Math.floor(remainingTotalPieces / piecesPer);
       const remainingPieces = remainingTotalPieces % piecesPer;
 
-      items.push({
-        supplyItemId: si.id,
+      return {
+        supplyItemId: si.supplyItemId,
         displayName: si.displayName,
         category: si.category,
         piecesPer,
@@ -145,11 +166,10 @@ export default function StockPage() {
         remainingPackets,
         remainingPieces,
         remainingTotalPieces,
-      });
-    }
-
-    return items;
-  }, [supplyItems, supplyVerification, yesterdayClosing, ordersData, menuData]);
+        isVerified: si.isVerified,
+      };
+    });
+  }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
 
   const totalRemainingPackets = stockItems.reduce((sum, s) => sum + s.remainingPackets, 0);
   const totalRemainingPieces = stockItems.reduce((sum, s) => sum + s.remainingPieces, 0);
@@ -170,7 +190,7 @@ export default function StockPage() {
               Back
             </Button>
             <Typography sx={{ fontWeight: 800, fontSize: { xs: '1rem', md: '1.25rem' }, color: 'text.primary', letterSpacing: '-0.3px' }}>
-              Live Stock 123
+              Live Stock
             </Typography>
           </Box>
           <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary' }}>
@@ -270,7 +290,9 @@ export default function StockPage() {
                 No stock data available
               </Typography>
               <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.5 }}>
-                Verify supply order first to see stock
+                {supplyVerification?.items.length === 0
+                  ? 'Place and verify a supply order first'
+                  : 'Could not load stock data'}
               </Typography>
             </Box>
           )}
@@ -286,9 +308,18 @@ export default function StockPage() {
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>
-                  {item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '')}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>
+                    {item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '')}
+                  </Typography>
+                  {!item.isVerified && item.openingTotalPieces > 0 && (
+                    <Chip
+                      size="small"
+                      label="Expected"
+                      sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: '#FEF3C7', color: '#92400E' }}
+                    />
+                  )}
+                </Box>
                 <Chip
                   size="small"
                   label={`${item.piecesPer} pcs/pkt`}
@@ -369,11 +400,13 @@ export default function StockPage() {
             How stock is calculated:
           </Typography>
           <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', lineHeight: 1.5 }}>
-            • Opening = Yesterday's closing stock + Today's verified supply
+            • Opening = Yesterday's closing stock + Today's supply (verified or expected)
             <br />
-            • Consumed = Total momos from all completed orders today
+            • Consumed = Total momos from all orders today
             <br />
             • Remaining = Opening - Consumed
+            <br />
+            • "Expected" = not yet verified, using ordered qty
             <br />
             • 1 Packet = 24 Momos (displayed in packets + loose pieces)
           </Typography>

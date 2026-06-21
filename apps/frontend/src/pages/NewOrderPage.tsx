@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
 import { trackPageView, trackOrderSubmit, trackNavigation } from '../utils/tracking';
 import MenuGrid from '../components/MenuGrid';
-import OrderConfigPanel from '../components/OrderConfigPanel';
+import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
 import SelectedItemsList from '../components/SelectedItemsList';
 import TotalBar from '../components/TotalBar';
 import Toast from '../components/Toast';
@@ -47,7 +47,8 @@ function NewOrderContent() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { draft, clearDraft, getItemList } = useOrderDraft();
+  const { draft, clearDraft, getItemList, setValidationErrors } = useOrderDraft();
+  const configPanelRef = useRef<OrderConfigPanelHandle>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -103,9 +104,16 @@ function NewOrderContent() {
     const items = getItemList();
     if (items.length === 0) return;
 
-    if (!draft.orderType || !draft.paymentMethod) {
-      setToast({ message: 'Select order type and payment method', type: 'error' });
+    const errors = {
+      type: !draft.orderType,
+      payment: !draft.paymentMethod,
+    };
+
+    if (errors.type || errors.payment) {
+      setValidationErrors(errors);
       vibrate(haptics.error);
+      const firstError = errors.type ? 'type' : 'payment';
+      configPanelRef.current?.scrollToError(firstError);
       return;
     }
 
@@ -212,7 +220,7 @@ function NewOrderContent() {
 
         {/* Order Config */}
         <Box sx={{ mt: { xs: 1.5, md: 2.5 }, mb: { xs: 1, md: 1.5 } }}>
-          <OrderConfigPanel />
+          <OrderConfigPanel ref={configPanelRef} />
         </Box>
 
         {/* Selected Items Summary */}
