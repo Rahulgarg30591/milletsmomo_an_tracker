@@ -15,6 +15,8 @@ import { globalLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -23,7 +25,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
       fontSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", ...allowedOrigins],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -45,11 +47,12 @@ app.use(helmet({
 
 app.use(cors({
   origin: (origin, callback) => {
-    const allowed = process.env.ALLOWED_ORIGIN;
-    if (!origin || origin === allowed) {
+    if (!origin) return callback(null, true);
+    const isLocalhost = /^http:\/\/localhost:\d+$/.test(origin);
+    if (isLocalhost || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true,

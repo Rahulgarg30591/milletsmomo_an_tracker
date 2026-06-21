@@ -282,6 +282,7 @@ export default function DayViewPage() {
                   vibrate(haptics.light);
                   navigate(`/day/${date}/verify`);
                 }}
+                disabled={supplyVerification.isFullyVerified && supplyVerification.conflictCount === 0}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
@@ -304,6 +305,12 @@ export default function DayViewPage() {
                       : '#FFFBEB'),
                   position: 'relative',
                   overflow: 'visible',
+                  '&:disabled': {
+                    color: 'text.disabled',
+                    borderColor: 'action.disabled',
+                    background: 'transparent',
+                    cursor: 'not-allowed',
+                  },
                 }}
               >
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', ml: 0.5 }}>
