@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { flushLogs, trackLogout } from '../utils/tracking';
 
 interface AuthState {
   token: string | null;
@@ -9,7 +10,7 @@ interface AuthState {
 interface AuthContextType {
   auth: AuthState;
   login: (token: string, role: string, displayName: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: () => boolean;
 }
 
@@ -30,7 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuth({ token, role, displayName });
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    trackLogout();
+    await flushLogs();
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('role');
     sessionStorage.removeItem('displayName');

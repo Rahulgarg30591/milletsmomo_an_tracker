@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Leaf, Shield, User } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { login } from '../api/authApi';
 import { trackLogin } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
+import { getToday } from '../utils/dateUtils';
 
 export default function LoginPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff');
@@ -15,7 +16,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login: doLogin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const theme = useTheme();
+  const redirectPath = searchParams.get('redirect') || null;
 
   useEffect(() => {
     if (error) {
@@ -32,10 +35,12 @@ export default function LoginPage() {
       doLogin(res.token, res.role, res.displayName);
       trackLogin();
       vibrate(haptics.success);
-      if (res.role === 'admin') {
-        navigate('/admin');
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+      } else if (res.role === 'admin') {
+        navigate('/admin', { replace: true });
       } else {
-        navigate(`/day/${new Date().toISOString().split('T')[0]}`);
+        navigate(`/day/${getToday()}`, { replace: true });
       }
     } catch {
       setError(true);

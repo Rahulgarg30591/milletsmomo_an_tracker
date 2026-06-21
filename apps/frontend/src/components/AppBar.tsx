@@ -32,9 +32,9 @@ export default function AppBarComponent() {
   const isLogin = location.pathname === '/login';
   if (isLogin) return null;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     vibrate(haptics.medium);
-    logout();
+    await logout();
     navigate('/login');
   };
 

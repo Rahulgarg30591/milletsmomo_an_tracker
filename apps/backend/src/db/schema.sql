@@ -163,3 +163,20 @@ CREATE TABLE ClientActivityLogs (
 
 CREATE INDEX IX_ClientActivityLogs_Type ON ClientActivityLogs(log_type);
 CREATE INDEX IX_ClientActivityLogs_CreatedAt ON ClientActivityLogs(created_at DESC);
+
+CREATE TABLE DailyPaymentSettlements (
+  id              INT IDENTITY(1,1) PRIMARY KEY,
+  order_date      DATE          NOT NULL,
+  expected_cash   DECIMAL(10,2) NOT NULL DEFAULT 0,
+  expected_upi    DECIMAL(10,2) NOT NULL DEFAULT 0,
+  actual_cash     DECIMAL(10,2) NOT NULL DEFAULT 0,
+  actual_upi      DECIMAL(10,2) NOT NULL DEFAULT 0,
+  cash_conflict   BIT           NOT NULL DEFAULT 0,
+  upi_conflict    BIT           NOT NULL DEFAULT 0,
+  notes           NVARCHAR(500) NULL,
+  created_by      INT           NOT NULL REFERENCES Users(id),
+  created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT UQ_DailyPaymentSettlement_Date UNIQUE (order_date)
+);
+
+CREATE INDEX IX_DailyPaymentSettlements_Date ON DailyPaymentSettlements(order_date DESC);

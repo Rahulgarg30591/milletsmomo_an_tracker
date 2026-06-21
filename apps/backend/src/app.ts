@@ -10,30 +10,58 @@ import ordersRoutes from './routes/ordersRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import supplyRoutes from './routes/supplyRoutes.js';
 import clientLogRoutes from './routes/clientLogRoutes.js';
+import paymentSettlementRoutes from './routes/paymentSettlementRoutes.js';
+import { globalLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
 
-app.use(helmet());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowed = process.env.ALLOWED_ORIGIN;
-      if (!origin || origin === allowed) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
     },
-    credentials: true,
-  }),
-);
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  dnsPrefetchControl: { allow: false },
+  frameguard: { action: 'deny' },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  ieNoOpen: true,
+  noSniff: true,
+  originAgentCluster: true,
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  xssFilter: true,
+}));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = process.env.ALLOWED_ORIGIN;
+    if (!origin || origin === allowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json({ limit: '50kb' }));
 
-app.use(
-  morgan('combined', {
-    skip: (_req, _res) => false,
-  }),
-);
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms', {
+  skip: (_req, _res) => false,
+}));
+
+app.use(globalLimiter);
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -51,6 +79,7 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/supply', supplyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/client-logs', clientLogRoutes);
+app.use('/api/admin', paymentSettlementRoutes);
 
 app.use(errorHandler);
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { getAdminSummary } from '../api/adminApi';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
@@ -569,6 +569,15 @@ export default function AdminDashboardPage() {
               sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
             >
               Logs
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Calculator size={16} />}
+              onClick={() => navigate(`/admin/settlement?date=${startDate}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Settlement
             </Button>
           </Box>
         </Box>

@@ -26,11 +26,13 @@ export default defineConfig({
         ],
       },
       workbox: {
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|svg|gif|ico)$/,
+            urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|svg|gif|ico|woff2?)$/,
             handler: 'CacheFirst',
-            options: { cacheName: 'images' },
+            options: { cacheName: 'static-assets', expiration: { maxAgeSeconds: 86400 * 30 } },
           },
           {
             urlPattern: /^\/api\/menu/,
@@ -38,19 +40,38 @@ export default defineConfig({
             options: { cacheName: 'menu-data', expiration: { maxAgeSeconds: 86400 } },
           },
           {
-            urlPattern: /^\/api\/orders/,
+            urlPattern: /^\/api\/(orders|supply|admin|closing-stock)/,
             handler: 'NetworkFirst',
-            options: { cacheName: 'orders-data', expiration: { maxAgeSeconds: 300 } },
-          },
-          {
-            urlPattern: /^\/api\/admin/,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'admin-data', expiration: { maxAgeSeconds: 300 } },
+            options: { cacheName: 'api-data', expiration: { maxAgeSeconds: 300 }, networkTimeoutSeconds: 5 },
           },
         ],
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-mui': ['@mui/material', '@emotion/react', '@emotion/styled'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-charts': ['recharts'],
+          'vendor-xlsx': ['xlsx'],
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
+    target: 'es2020',
+    sourcemap: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:7071',

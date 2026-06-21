@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
@@ -10,15 +11,18 @@ import OfflineBanner from './components/OfflineBanner';
 import PageTransition from './components/animations/PageTransition';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import DayViewPage from './pages/DayViewPage';
-import NewOrderPage from './pages/NewOrderPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import SupplyOrderPage from './pages/SupplyOrderPage';
-import SupplyVerificationPage from './pages/SupplyVerificationPage';
-import ClosingStockPage from './pages/ClosingStockPage';
-import StaffLogsPage from './pages/StaffLogsPage';
-import StockPage from './pages/StockPage';
 import { getToday } from './utils/dateUtils';
+import PageLoader from './components/PageLoader';
+
+const DayViewPage = lazy(() => import('./pages/DayViewPage'));
+const NewOrderPage = lazy(() => import('./pages/NewOrderPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const SupplyOrderPage = lazy(() => import('./pages/SupplyOrderPage'));
+const SupplyVerificationPage = lazy(() => import('./pages/SupplyVerificationPage'));
+const ClosingStockPage = lazy(() => import('./pages/ClosingStockPage'));
+const StaffLogsPage = lazy(() => import('./pages/StaffLogsPage'));
+const StockPage = lazy(() => import('./pages/StockPage'));
+const PaymentSettlementPage = lazy(() => import('./pages/PaymentSettlementPage'));
 
 export default function App() {
   const { mode } = useThemeMode();
@@ -32,75 +36,22 @@ export default function App() {
           <OfflineBanner />
           <AppBar />
           <PageTransition>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<Navigate to={`/day/${getToday()}`} replace />} />
-              <Route
-                path="/day/:date"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <DayViewPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/day/:date/new"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <NewOrderPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminDashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/supply"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <SupplyOrderPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/staff-logs"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <StaffLogsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/day/:date/verify"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <SupplyVerificationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/day/:date/closing"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <ClosingStockPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/day/:date/stock"
-                element={
-                  <ProtectedRoute requiredRole="staff">
-                    <StockPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={<Navigate to={`/day/${getToday()}`} replace />} />
+                <Route path="/day/:date" element={<ProtectedRoute requiredRole="staff"><DayViewPage /></ProtectedRoute>} />
+                <Route path="/day/:date/new" element={<ProtectedRoute requiredRole="staff"><NewOrderPage /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+                <Route path="/admin/supply" element={<ProtectedRoute requiredRole="admin"><SupplyOrderPage /></ProtectedRoute>} />
+                <Route path="/admin/staff-logs" element={<ProtectedRoute requiredRole="admin"><StaffLogsPage /></ProtectedRoute>} />
+                <Route path="/admin/settlement" element={<ProtectedRoute requiredRole="admin"><PaymentSettlementPage /></ProtectedRoute>} />
+                <Route path="/day/:date/verify" element={<ProtectedRoute requiredRole="staff"><SupplyVerificationPage /></ProtectedRoute>} />
+                <Route path="/day/:date/closing" element={<ProtectedRoute requiredRole="staff"><ClosingStockPage /></ProtectedRoute>} />
+                <Route path="/day/:date/stock" element={<ProtectedRoute requiredRole="staff"><StockPage /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
+              </Routes>
+            </Suspense>
           </PageTransition>
           <BottomNav />
         </ErrorBoundary>

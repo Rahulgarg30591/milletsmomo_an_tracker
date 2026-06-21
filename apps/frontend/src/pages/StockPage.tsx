@@ -170,7 +170,7 @@ export default function StockPage() {
               Back
             </Button>
             <Typography sx={{ fontWeight: 800, fontSize: { xs: '1rem', md: '1.25rem' }, color: 'text.primary', letterSpacing: '-0.3px' }}>
-              Live Stock
+              Live Stock 123
             </Typography>
           </Box>
           <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary' }}>

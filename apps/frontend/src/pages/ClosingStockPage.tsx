@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, CheckCircle2, Package, Minus, Plus, AlertTriangle, Trash2,
+  ArrowLeft, CheckCircle2, Package, Minus, Plus, AlertTriangle,
 } from 'lucide-react';
 import { getClosingStock, submitClosingStock } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
@@ -174,6 +174,9 @@ export default function ClosingStockPage() {
       qc.invalidateQueries({ queryKey: ['closingStock', targetDate] });
       setToast({ message: 'Closing stock saved!', type: 'success' });
       vibrate(haptics.success);
+      setTimeout(() => {
+        navigate(`/day/${targetDate}`);
+      }, 500);
     },
     onError: () => {
       setToast({ message: 'Failed to save closing stock', type: 'error' });
@@ -442,48 +445,52 @@ export default function ClosingStockPage() {
                       </Box>
                       <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pkt</Typography>
                     </Box>
-                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => updatePieces(item.supplyItemId, -1, item.piecesPer)}
-                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
-                        >
-                          <Minus size={12} />
-                        </IconButton>
-                        <Box
-                          component="input"
-                          type="number"
-                          value={current.pieces}
-                          onChange={(e) => setPieces(item.supplyItemId, e.target.value, item.piecesPer)}
-                          sx={{
-                            width: 44,
-                            textAlign: 'center',
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            py: 0.5,
-                            px: 0,
-                            border: `1px solid ${theme.palette.divider}`,
-                            borderRadius: 1,
-                            background: 'transparent',
-                            color: 'inherit',
-                            outline: 'none',
-                            '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                            '-moz-appearance': 'textfield',
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => updatePieces(item.supplyItemId, 1, item.piecesPer)}
-                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
-                        >
-                          <Plus size={12} />
-                        </IconButton>
-                      </Box>
-                      <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pcs</Typography>
-                    </Box>
-                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
+                    {item.category === 'momo_packet' && (
+                      <>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => updatePieces(item.supplyItemId, -1, item.piecesPer)}
+                              sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
+                            >
+                              <Minus size={12} />
+                            </IconButton>
+                            <Box
+                              component="input"
+                              type="number"
+                              value={current.pieces}
+                              onChange={(e) => setPieces(item.supplyItemId, e.target.value, item.piecesPer)}
+                              sx={{
+                                width: 44,
+                                textAlign: 'center',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                py: 0.5,
+                                px: 0,
+                                border: `1px solid ${theme.palette.divider}`,
+                                borderRadius: 1,
+                                background: 'transparent',
+                                color: 'inherit',
+                                outline: 'none',
+                                '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
+                                '-moz-appearance': 'textfield',
+                              }}
+                            />
+                            <IconButton
+                              size="small"
+                              onClick={() => updatePieces(item.supplyItemId, 1, item.piecesPer)}
+                              sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
+                            >
+                              <Plus size={12} />
+                            </IconButton>
+                          </Box>
+                          <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pcs</Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
+                      </>
+                    )}
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <IconButton
@@ -491,7 +498,7 @@ export default function ClosingStockPage() {
                           onClick={() => updateWastage(item.supplyItemId, -1)}
                           sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
                         >
-                          <Trash2 size={12} />
+                          <Minus size={12} />
                         </IconButton>
                         <Box
                           component="input"
@@ -519,7 +526,7 @@ export default function ClosingStockPage() {
                           onClick={() => updateWastage(item.supplyItemId, 1)}
                           sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
                         >
-                          <Trash2 size={12} />
+                          <Plus size={12} />
                         </IconButton>
                       </Box>
                       <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>wastage</Typography>

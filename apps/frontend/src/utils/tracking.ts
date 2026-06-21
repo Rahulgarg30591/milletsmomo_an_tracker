@@ -96,25 +96,28 @@ export function addLog(entry: Omit<ClientLogEntry, 'id' | 'timestamp' | 'deviceI
   }
 }
 
-export function flushLogs(): ClientLogEntry[] {
+export function flushLogs(): Promise<ClientLogEntry[]> {
   const logs = getStoredLogs();
-  if (logs.length === 0) return [];
+  if (logs.length === 0) return Promise.resolve([]);
 
-  // Send to backend
   const apiUrl = import.meta.env.VITE_API_URL || '';
-  fetch(`${apiUrl}/api/client-logs`, {
+  const promise = fetch(`${apiUrl}/api/client-logs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs }),
     keepalive: true,
-  }).catch(() => {
-    // Silently fail - logs remain in localStorage
-  });
+  })
+    .then(() => {
+      setStoredLogs([]);
+      setLastFlushTime();
+      return logs;
+    })
+    .catch(() => {
+      // Silently fail - logs remain in localStorage
+      return [];
+    });
 
-  // Clear sent logs and update last flush time
-  setStoredLogs([]);
-  setLastFlushTime();
-  return logs;
+  return promise;
 }
 
 // Set up periodic flush every 30 minutes
@@ -178,6 +181,10 @@ export function trackClosingStockSubmit(orderDate: string, metadata?: Record<str
 
 export function trackFormSubmit(page: string, formName: string, metadata?: Record<string, any>) {
   addLog({ type: 'form_submit', page, details: `Form submitted: ${formName}`, metadata });
+}
+
+export function trackLogout() {
+  addLog({ type: 'login', page: 'logout', details: 'User logged out', metadata: { url: window.location.href } });
 }
 
 // Send remaining logs on page unload
