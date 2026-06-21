@@ -14,7 +14,7 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
   const items = getItemList();
   const total = calculateOrderTotal(items);
   const hasItems = items.length > 0;
-  const canSubmit = hasItems && !!draft.orderType && !!draft.paymentMethod;
+  const isReady = hasItems && !!draft.orderType && !!draft.paymentMethod;
 
   return (
     <Box
@@ -65,7 +65,7 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
       <motion.div whileTap={{ scale: 0.97 }} style={{ flexShrink: 0 }}>
         <Button
           variant="contained"
-          disabled={!canSubmit}
+          disabled={!hasItems}
           onClick={() => {
             vibrate(haptics.medium);
             onSubmit();
@@ -79,8 +79,8 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
             fontWeight: 700,
             fontSize: { xs: '0.85rem', md: '1rem' },
             textTransform: 'none',
-            background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
-            boxShadow: '0 4px 14px rgba(27,107,58,0.25)',
+            background: isReady ? 'linear-gradient(135deg, #1B6B3A, #2D8A4E)' : 'linear-gradient(135deg, #D97706, #B45309)',
+            boxShadow: isReady ? '0 4px 14px rgba(27,107,58,0.25)' : '0 4px 14px rgba(217,119,6,0.25)',
             '&:disabled': {
               background: 'linear-gradient(135deg, #9CA3AF, #6B7280)',
               boxShadow: 'none',

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { flushSync } from 'react-dom';
 import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Leaf, Shield, User } from 'lucide-react';
@@ -32,7 +33,9 @@ export default function LoginPage() {
     setError(false);
     try {
       const res = await login({ role, pin });
-      doLogin(res.token, res.role, res.displayName);
+      flushSync(() => {
+        doLogin(res.token, res.role, res.displayName);
+      });
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });
       vibrate(haptics.success);

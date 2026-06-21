@@ -10,7 +10,6 @@ import { getToday } from '../utils/dateUtils';
 const pageTitles: Record<string, string> = {
   '/login': 'Login',
   '/day': 'Orders',
-  '/admin': 'Dashboard',
 };
 
 function getPageTitle(path: string): string {

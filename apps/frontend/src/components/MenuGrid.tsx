@@ -1,8 +1,9 @@
 import { Box, Typography, Button, useTheme } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, X, Slice } from 'lucide-react';
+import { useRef } from 'react';
 import { useOrderDraft } from '../context/OrderDraftContext';
-import { calculateLineTotal } from '../utils/pricing';
+
 import { trackButtonClick } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 
@@ -41,6 +42,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
   const FILLING_COLORS = isDark ? FILLING_COLORS_DARK : FILLING_COLORS_LIGHT;
   const inactiveBtnBg = isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF';
   const inactiveBtnColor = isDark ? '#9CA3AF' : '#6B7280';
+  const clickTimer = useRef<NodeJS.Timeout | null>(null);
 
   return (
     <Box
@@ -57,7 +59,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
         const isCustom = draftItem?.isCustom || false;
         const isActive = quantity > 0;
         const colors = FILLING_COLORS[item.filling] || FILLING_COLORS['Veg'];
-        const { lineTotal } = isActive ? calculateLineTotal(item.id, quantity, isHalf, isCustom) : { lineTotal: 0 };
+
 
         return (
           <motion.div
@@ -86,13 +88,37 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: { xs: 0.125, md: 0.25 },
-                minHeight: { xs: isActive ? (isCustom ? 90 : 68) : 52, md: isActive ? (isCustom ? 112 : 88) : 72 },
+                minHeight: { xs: isActive ? (isCustom ? 72 : 48) : 44, md: isActive ? (isCustom ? 84 : 56) : 52 },
+                cursor: isActive ? 'default' : 'pointer',
                 '&:hover': {
                   borderColor: isActive ? colors.activeBorder : colors.border,
                 },
               }}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                if (!isActive) {
+                  if (clickTimer.current) {
+                    clearTimeout(clickTimer.current);
+                    clickTimer.current = null;
+                    addItem(item.id);
+                    trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling, double: true });
+                    vibrate(haptics.light);
+                  } else {
+                    clickTimer.current = setTimeout(() => {
+                      clickTimer.current = null;
+                      addItem(item.id);
+                      trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling });
+                      vibrate(haptics.light);
+                    }, 250);
+                  }
+                } else if (!isCustom) {
+                  setFull(item.id);
+                  trackButtonClick('new_order', `add_full_${item.displayName}`, { itemId: item.id });
+                  vibrate(haptics.light);
+                }
+              }}
             >
-              {/* Header: centered name + price */}
+              {/* Header: centered name */}
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { xs: 0.125, md: 0.25 } }}>
                 <Typography
                   sx={{
@@ -104,15 +130,6 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                   }}
                 >
                   {item.filling}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: { xs: '0.6rem', md: '0.7rem' },
-                    fontWeight: 600,
-                    color: isActive ? colors.text : 'text.secondary',
-                  }}
-                >
-                  ₹{item.fullPrice} / ₹{item.halfPrice}
                 </Typography>
               </Box>
 
@@ -127,33 +144,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                     transition={{ duration: 0.15 }}
                     style={{ marginTop: 'auto' }}
                   >
-                      <Button
-                      fullWidth
-                      variant="contained"
-                      size="small"
-                      onClick={() => {
-                        addItem(item.id);
-                        trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling });
-                        vibrate(haptics.light);
-                      }}
-                      sx={{
-                        borderRadius: { xs: 0.75, md: 1 },
-                        py: { xs: 0.25, md: 0.4 },
-                        fontWeight: 700,
-                        fontSize: { xs: '0.65rem', md: '0.75rem' },
-                        textTransform: 'none',
-                        backgroundColor: colors.btnBg,
-                        color: '#FFFFFF',
-                        boxShadow: 'none',
-                        minHeight: 0,
-                        lineHeight: 1.2,
-                        '&:hover': { backgroundColor: colors.btnHover },
-                        '&:active': { transform: 'scale(0.97)' },
-                      }}
-                    >
-                      <Plus size={11} style={{ marginRight: 2 }} />
-                      Add
-                    </Button>
+                    <Box sx={{ height: { xs: 20, md: 24 } }} />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -178,7 +169,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         gap: { xs: 0.25, md: 0.5 },
                       }}
                     >
-                      <Box sx={{ display: 'flex', gap: { xs: 0.25, md: 0.5 } }}>
+                      <Box sx={{ display: 'flex', flex: 1, gap: { xs: 0.25, md: 0.5 } }}>
                         <Button
                           size="small"
                           onClick={() => {
@@ -187,11 +178,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             vibrate(haptics.light);
                           }}
                           sx={{
+                            flex: 1,
                             minWidth: 0,
-                            px: { xs: 0.5, md: 0.75 },
-                            py: { xs: 0.125, md: 0.25 },
-                            borderRadius: { xs: 0.75, md: 1 },
-                            fontSize: { xs: '0.55rem', md: '0.65rem' },
+                            px: { xs: 0.25, md: 0.5 },
+                            py: { xs: 0.05, md: 0.1 },
+                            borderRadius: { xs: 0.5, md: 0.75 },
+                            fontSize: { xs: '0.5rem', md: '0.6rem' },
                             fontWeight: 700,
                             textTransform: 'none',
                             backgroundColor: !isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
@@ -201,10 +193,15 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             '&:hover': {
                               backgroundColor: !isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
                             },
-                            lineHeight: 1.3,
+                            lineHeight: 1.2,
                           }}
                         >
-                          Full
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                            <span>Full</span>
+                            {!isHalf && !isCustom && (
+                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                            )}
+                          </Box>
                         </Button>
                         <Button
                           size="small"
@@ -214,11 +211,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             vibrate(haptics.light);
                           }}
                           sx={{
+                            flex: 1,
                             minWidth: 0,
-                            px: { xs: 0.5, md: 0.75 },
-                            py: { xs: 0.125, md: 0.25 },
-                            borderRadius: { xs: 0.75, md: 1 },
-                            fontSize: { xs: '0.55rem', md: '0.65rem' },
+                            px: { xs: 0.25, md: 0.5 },
+                            py: { xs: 0.05, md: 0.1 },
+                            borderRadius: { xs: 0.5, md: 0.75 },
+                            fontSize: { xs: '0.5rem', md: '0.6rem' },
                             fontWeight: 700,
                             textTransform: 'none',
                             backgroundColor: isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
@@ -228,14 +226,18 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             '&:hover': {
                               backgroundColor: isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
                             },
-                            lineHeight: 1.3,
+                            lineHeight: 1.2,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 0.25,
                           }}
                         >
-                          <Slice size={8} />
-                          ½
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                            <span><Slice size={7} />½</span>
+                            {isHalf && !isCustom && (
+                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                            )}
+                          </Box>
                         </Button>
                         <Button
                           size="small"
@@ -245,11 +247,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             vibrate(haptics.light);
                           }}
                           sx={{
+                            flex: 1,
                             minWidth: 0,
-                            px: { xs: 0.5, md: 0.75 },
-                            py: { xs: 0.125, md: 0.25 },
-                            borderRadius: { xs: 0.75, md: 1 },
-                            fontSize: { xs: '0.55rem', md: '0.65rem' },
+                            px: { xs: 0.25, md: 0.5 },
+                            py: { xs: 0.05, md: 0.1 },
+                            borderRadius: { xs: 0.5, md: 0.75 },
+                            fontSize: { xs: '0.5rem', md: '0.6rem' },
                             fontWeight: 700,
                             textTransform: 'none',
                             backgroundColor: isCustom ? colors.btnBg : inactiveBtnBg,
@@ -259,43 +262,37 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             '&:hover': {
                               backgroundColor: isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
                             },
-                            lineHeight: 1.3,
+                            lineHeight: 1.2,
                           }}
                         >
-                          Cst
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                            <span>Cst</span>
+                            {isCustom && (
+                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                            )}
+                          </Box>
                         </Button>
                       </Box>
 
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.25, md: 0.5 } }}>
-                        <Typography
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: { xs: '0.7rem', md: '0.8rem' },
-                            color: colors.text,
-                          }}
-                        >
-                          ₹{lineTotal}
-                        </Typography>
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            removeItem(item.id);
-                            trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
-                            vibrate(haptics.light);
-                          }}
-                          sx={{
-                            minWidth: { xs: 18, md: 22 },
-                            width: { xs: 18, md: 22 },
-                            height: { xs: 18, md: 22 },
-                            p: 0,
-                            borderRadius: '50%',
-                            color: 'error.main',
-                            '&:hover': { backgroundColor: 'error.light' },
-                          }}
-                        >
-                          <X size={10} />
-                        </Button>
-                      </Box>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          removeItem(item.id);
+                          trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          minWidth: { xs: 16, md: 20 },
+                          width: { xs: 16, md: 20 },
+                          height: { xs: 16, md: 20 },
+                          p: 0,
+                          borderRadius: '50%',
+                          color: 'error.main',
+                          '&:hover': { backgroundColor: 'error.light' },
+                        }}
+                      >
+                        <X size={9} />
+                      </Button>
                     </Box>
 
                     {/* Quantity row - only when custom */}
@@ -304,23 +301,22 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
                           gap: { xs: 0.25, md: 0.5 },
                         }}
                       >
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          decrementItem(item.id);
-                          trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
-                          vibrate(haptics.light);
-                        }}
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            decrementItem(item.id);
+                            trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
+                            vibrate(haptics.light);
+                          }}
                           sx={{
-                            minWidth: { xs: 22, md: 26 },
-                            width: { xs: 22, md: 26 },
+                            flex: 1,
+                            minWidth: 0,
                             height: { xs: 22, md: 26 },
                             p: 0,
-                            borderRadius: '50%',
+                            borderRadius: { xs: 0.5, md: 0.75 },
                             border: { xs: 1, md: 1.5 },
                             borderColor: colors.activeBorder,
                             color: colors.text,
@@ -334,12 +330,12 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
 
                         <Box
                           sx={{
+                            flex: 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            minWidth: { xs: 22, md: 26 },
                             height: { xs: 22, md: 26 },
-                            borderRadius: { xs: 0.75, md: 1 },
+                            borderRadius: { xs: 0.5, md: 0.75 },
                             backgroundColor: colors.activeBg,
                             border: { xs: 1, md: 1.5 },
                             borderColor: colors.activeBorder,
@@ -348,7 +344,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           <Typography
                             sx={{
                               fontWeight: 800,
-                              fontSize: { xs: '0.75rem', md: '0.85rem' },
+                              fontSize: { xs: '0.7rem', md: '0.8rem' },
                               color: colors.text,
                               lineHeight: 1,
                             }}
@@ -365,11 +361,11 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                             vibrate(haptics.light);
                           }}
                           sx={{
-                            minWidth: { xs: 22, md: 26 },
-                            width: { xs: 22, md: 26 },
+                            flex: 1,
+                            minWidth: 0,
                             height: { xs: 22, md: 26 },
                             p: 0,
-                            borderRadius: '50%',
+                            borderRadius: { xs: 0.5, md: 0.75 },
                             border: { xs: 1, md: 1.5 },
                             borderColor: colors.activeBorder,
                             color: colors.text,
@@ -380,9 +376,6 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                         >
                           <Plus size={10} />
                         </Button>
-
-                        {/* Spacer to align with toggle row remove button */}
-                        <Box sx={{ width: { xs: 18, md: 22 }, height: { xs: 18, md: 22 } }} />
                       </Box>
                     )}
                   </motion.div>

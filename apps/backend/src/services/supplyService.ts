@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
+import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyItem {
   id: number;
@@ -73,7 +74,7 @@ export async function getSupplyOrder(date: string): Promise<SupplyOrder | null> 
 
   return {
     id: order.id,
-    orderDate: order.order_date.toISOString().slice(0, 10),
+    orderDate: formatDate(order.order_date),
     totalCost: order.total_cost,
     createdBy: order.created_by,
     createdAt: order.created_at.toISOString(),
@@ -239,7 +240,7 @@ export async function listSupplyOrders(startDate: string, endDate: string): Prom
 
     orders.push({
       id: order.id,
-      orderDate: order.order_date.toISOString().slice(0, 10),
+      orderDate: formatDate(order.order_date),
       totalCost: order.total_cost,
       createdBy: order.created_by,
       createdAt: order.created_at.toISOString(),
@@ -284,7 +285,7 @@ export async function getSupplyOrderLogs(date: string): Promise<SupplyOrderLog[]
 
   return result.recordset.map((row: any) => ({
     id: row.id,
-    orderDate: row.order_date.toISOString().slice(0, 10),
+    orderDate: formatDate(row.order_date),
     action: row.action,
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),

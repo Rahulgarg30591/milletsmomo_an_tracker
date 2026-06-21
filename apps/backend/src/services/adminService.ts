@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
+import { formatDate } from '../utils/dateUtils.js';
 
 export async function getSummary(date: string, endDate?: string) {
   const pool = await getPool();
@@ -51,7 +52,7 @@ export async function getSummary(date: string, endDate?: string) {
     );
     orders.push({
       id: order.id,
-      orderDate: order.order_date.toISOString().slice(0, 10),
+      orderDate: formatDate(order.order_date),
       timeLabel: order.time_label,
       orderType: order.order_type,
       paymentMethod: order.payment_method,

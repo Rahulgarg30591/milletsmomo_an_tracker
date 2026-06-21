@@ -32,7 +32,7 @@ export default function SelectedItemsList() {
   const stepLabel = (item: { isHalf: boolean; isCustom: boolean }) => {
     if (item.isHalf) return '½';
     if (item.isCustom) return 'cst';
-    return 'pkt';
+    return 'pcs';
   };
 
   return (

@@ -109,7 +109,11 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
       const next = new Map(prev.items);
       const existing = next.get(menuItemId);
       if (existing) {
-        next.set(menuItemId, { ...existing, isHalf: false, isCustom: false, quantity: 6 });
+        if (!existing.isHalf && !existing.isCustom) {
+          next.set(menuItemId, { ...existing, quantity: existing.quantity + 6 });
+        } else {
+          next.set(menuItemId, { ...existing, isHalf: false, isCustom: false, quantity: 6 });
+        }
       }
       return { ...prev, items: next };
     });
@@ -120,7 +124,11 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
       const next = new Map(prev.items);
       const existing = next.get(menuItemId);
       if (existing) {
-        next.set(menuItemId, { ...existing, isHalf: true, isCustom: false, quantity: 3 });
+        if (existing.isHalf && !existing.isCustom) {
+          next.set(menuItemId, { ...existing, quantity: existing.quantity + 3 });
+        } else {
+          next.set(menuItemId, { ...existing, isHalf: true, isCustom: false, quantity: 3 });
+        }
       }
       return { ...prev, items: next };
     });
@@ -130,8 +138,12 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setDraft((prev) => {
       const next = new Map(prev.items);
       const existing = next.get(menuItemId);
-      if (existing && !existing.isCustom) {
-        next.set(menuItemId, { ...existing, isCustom: true, isHalf: false, quantity: 1 });
+      if (existing) {
+        if (existing.isCustom) {
+          next.set(menuItemId, { ...existing, quantity: existing.quantity + 1 });
+        } else {
+          next.set(menuItemId, { ...existing, isCustom: true, isHalf: false, quantity: 1 });
+        }
       }
       return { ...prev, items: next };
     });

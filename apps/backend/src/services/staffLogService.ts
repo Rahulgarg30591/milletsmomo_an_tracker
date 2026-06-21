@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
+import { formatDate } from '../utils/dateUtils.js';
 
 export interface StaffOperationLog {
   id: number;
@@ -60,7 +61,7 @@ export async function getLogs(
   const result = await request.query(query);
   return result.recordset.map((row: any) => ({
     id: row.id,
-    orderDate: row.order_date.toISOString().slice(0, 10),
+    orderDate: formatDate(row.order_date),
     operationType: row.operation_type,
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),

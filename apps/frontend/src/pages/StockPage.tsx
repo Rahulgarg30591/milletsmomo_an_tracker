@@ -235,44 +235,6 @@ export default function StockPage() {
           </Paper>
         </Box>
 
-        {/* Filling Breakdown Summary */}
-        {stockItems.length > 0 && (
-          <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider', mb: 2 }}>
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Remaining by Filling
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
-                {stockItems.map((item) => {
-                  const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn' : item.displayName.split(' ')[0];
-                  return (
-                    <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', backgroundColor: isDark ? 'rgba(27,107,58,0.06)' : 'transparent' }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
-                        {filling}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
-                          {item.remainingPackets} Packets
-                        </Typography>
-                        {item.remainingPieces > 0 && (
-                          <Typography sx={{ fontSize: '0.75rem', color: isDark ? '#4ADE80' : '#1B6B3A', fontWeight: 600 }}>
-                            + {item.remainingPieces} Loose Momos
-                          </Typography>
-                        )}
-                        <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 500, mt: 0.25 }}>
-                          {item.remainingTotalPieces} Total Momos
-                        </Typography>
-                      </Box>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-          </Paper>
-        )}
-
         {/* Stock Details */}
         <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
           <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

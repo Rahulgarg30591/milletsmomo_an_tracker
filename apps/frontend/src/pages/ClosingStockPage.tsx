@@ -170,7 +170,7 @@ export default function ClosingStockPage() {
   const closingStockMutation = useMutation({
     mutationFn: () => {
       if (!closingStock) return Promise.reject(new Error('No supply items to record'));
-      const items = closingStock.items.map((item) => {
+      const items = closingStock.items.filter((item) => item.category === 'momo_packet').map((item) => {
         const current = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
         return {
           supplyItemId: item.supplyItemId,
@@ -186,7 +186,7 @@ export default function ClosingStockPage() {
     onSuccess: () => {
       const conflictCount = Object.values(closingItems).filter((c) => c.hasConflict).length;
       const totalPackets = Object.values(closingItems).reduce((s, c) => s + c.packets, 0);
-      trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: closingStock!.items.length });
+      trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: closingStock!.items.filter((i) => i.category === 'momo_packet').length });
       qc.invalidateQueries({ queryKey: ['closingStock', targetDate] });
       setToast({ message: 'Closing stock saved!', type: 'success' });
       vibrate(haptics.success);
@@ -218,15 +218,6 @@ export default function ClosingStockPage() {
     });
   };
 
-  const updateWastage = (id: number, delta: number) => {
-    vibrate(haptics.light);
-    setClosingItems((prev) => {
-      const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
-      const next = Math.max(0, current.wastage + delta);
-      return { ...prev, [id]: { ...current, wastage: next } };
-    });
-  };
-
   const setPackets = (id: number, val: string) => {
     const num = parseInt(val, 10);
     setClosingItems((prev) => {
@@ -240,14 +231,6 @@ export default function ClosingStockPage() {
     setClosingItems((prev) => {
       const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
       return { ...prev, [id]: { ...current, pieces: isNaN(num) ? 0 : Math.min(num, maxPieces - 1) } };
-    });
-  };
-
-  const setWastage = (id: number, val: string) => {
-    const num = parseInt(val, 10);
-    setClosingItems((prev) => {
-      const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
-      return { ...prev, [id]: { ...current, wastage: isNaN(num) ? 0 : Math.max(0, num) } };
     });
   };
 
@@ -404,7 +387,7 @@ export default function ClosingStockPage() {
           </Box>
 
           <Box sx={{ p: { xs: 1.25, md: 1.5 } }}>
-            {closingStock.items.map((item) => {
+            {closingStock.items.filter((item) => item.category === 'momo_packet').map((item) => {
               const current = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
               const expected = getExpected(item.supplyItemId);
               const hasMismatch = expected && (current.packets !== expected.expectedPackets || current.pieces !== expected.expectedPieces);
@@ -534,61 +517,21 @@ export default function ClosingStockPage() {
                           </Box>
                           <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pcs</Typography>
                         </Box>
-                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
                       </>
                     )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => updateWastage(item.supplyItemId, -1)}
-                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
-                        >
-                          <Minus size={12} />
-                        </IconButton>
-                        <Box
-                          component="input"
-                          type="number"
-                          value={current.wastage}
-                          onChange={(e) => setWastage(item.supplyItemId, e.target.value)}
-                          sx={{
-                            width: 44,
-                            textAlign: 'center',
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            py: 0.5,
-                            px: 0,
-                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`,
-                            borderRadius: 1,
-                            background: 'transparent',
-                            color: 'inherit',
-                            outline: 'none',
-                            '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                            '-moz-appearance': 'textfield',
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => updateWastage(item.supplyItemId, 1)}
-                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
-                        >
-                          <Plus size={12} />
-                        </IconButton>
-                      </Box>
-                      <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>wastage</Typography>
-                    </Box>
-
                     {/* Conflict Toggle */}
-                    <Button
-                      size="small"
-                      variant={current.hasConflict ? 'contained' : 'outlined'}
-                      color={current.hasConflict ? 'error' : 'warning'}
-                      onClick={() => toggleConflict(item.supplyItemId)}
-                      startIcon={<AlertTriangle size={12} />}
-                      sx={{ ml: 'auto', minWidth: 0, px: 1, py: 0.5, fontSize: '0.65rem', fontWeight: 700, textTransform: 'none', height: 28 }}
-                    >
-                      {current.hasConflict ? 'Conflict' : 'Flag'}
-                    </Button>
+                    {(hasMismatch || current.hasConflict) && (
+                      <Button
+                        size="small"
+                        variant={current.hasConflict ? 'contained' : 'outlined'}
+                        color={current.hasConflict ? 'error' : 'warning'}
+                        onClick={() => toggleConflict(item.supplyItemId)}
+                        startIcon={<AlertTriangle size={12} />}
+                        sx={{ ml: 'auto', minWidth: 0, px: 1, py: 0.5, fontSize: '0.65rem', fontWeight: 700, textTransform: 'none', height: 28 }}
+                      >
+                        {current.hasConflict ? 'Conflict' : 'Flag'}
+                      </Button>
+                    )}
                   </Box>
 
                   {/* Conflict Reason */}

@@ -70,7 +70,7 @@ export default function PaymentSuccessDecoration({
                 variant="body1"
                 sx={{ color: '#FFFFFF', fontWeight: 700, mt: 1, fontSize: '1rem' }}
               >
-                Paid
+                Completed
               </Typography>
             </motion.div>
           </Box>

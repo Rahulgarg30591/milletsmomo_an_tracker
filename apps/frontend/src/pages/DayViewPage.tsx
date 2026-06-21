@@ -16,8 +16,8 @@ import { getClosingStock } from '../api/closingStockApi';
 import { trackNavigation, trackOrderComplete, trackButtonClick } from '../utils/tracking';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
-import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
+import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
 import Toast from '../components/Toast';
 import type { Order, SupplyVerification, ClosingStock } from '../types';
 import { vibrate, haptics } from '../theme/tokens';
@@ -113,7 +113,6 @@ export default function DayViewPage() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       trackOrderComplete(variables.id, { paymentMethod: variables.paymentMethod });
-      setToast({ message: 'Order completed!', type: 'success' });
       setPaymentModalOrder(null);
       setShowSuccess(true);
       vibrate(haptics.success);
@@ -560,6 +559,7 @@ export default function DayViewPage() {
         onResolve={handlePaymentResolve}
         onCancel={() => setPaymentModalOrder(null)}
       />
+
 
       <PaymentSuccessDecoration show={showSuccess} onDone={() => setShowSuccess(false)} />
 

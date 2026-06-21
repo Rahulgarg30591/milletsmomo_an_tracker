@@ -532,7 +532,7 @@ export default function SupplyOrderPage() {
                               ? (log.action === 'CREATE' ? (isDark ? '#4ADE80' : '#065F46') : (isDark ? '#60A5FA' : '#1E40AF'))
                               : (isDark ? '#FACC15' : '#854D0E'),
                           }}>
-                            {isSupply ? log.action : 'Verify'}
+                            {isSupply ? log.action : 'VERIFIED'}
                           </Typography>
                           <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary' }}>
                             {log.displayName}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Typography, Paper, useTheme } from '@mui/material';
-import { ArrowLeft, Clock, User, MonitorSmartphone } from 'lucide-react';
+import { ArrowLeft, Clock, User, MonitorSmartphone, Filter } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getStaffLogs } from '../api/staffLogApi';
 import { getClientLogs, type ClientLogEntry } from '../api/clientLogApi';
@@ -79,6 +79,7 @@ export default function StaffLogsPage() {
   const navigate = useNavigate();
   const [date, setDate] = useState(getToday());
   const [tab, setTab] = useState<'staff' | 'client'>('client');
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
 
   const { data: staffData } = useQuery({
     queryKey: ['staffLogs', date],
@@ -128,7 +129,31 @@ export default function StaffLogsPage() {
       durationMs: l.durationMs,
     })), [clientData]);
 
-  const logs = tab === 'staff' ? staffLogs : clientLogs;
+  const rawLogs = tab === 'staff' ? staffLogs : clientLogs;
+
+  const toggleFilter = (type: string) => {
+    setSelectedFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
+
+  const filteredLogs = selectedFilters.size > 0
+    ? rawLogs.filter(l => selectedFilters.has(l.type))
+    : rawLogs;
+
+  const staffCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const l of staffLogs) {
+      counts[l.type] = (counts[l.type] || 0) + 1;
+    }
+    return counts;
+  }, [staffLogs]);
 
   const clientCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -137,6 +162,9 @@ export default function StaffLogsPage() {
     }
     return counts;
   }, [clientLogs]);
+
+  const counts = tab === 'staff' ? staffCounts : clientCounts;
+  const typeConfig = tab === 'staff' ? staffTypeConfig : clientTypeConfig;
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 4 } }}>
@@ -177,6 +205,23 @@ export default function StaffLogsPage() {
                 '&::-webkit-calendar-picker-indicator': { filter: isDark ? 'invert(1)' : 'none', opacity: 0.6 },
               }}
             />
+            {date === getToday() && (
+              <Typography
+                sx={{
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  color: 'success.main',
+                  backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.1)',
+                  px: 0.5,
+                  py: 0.15,
+                  borderRadius: 0.5,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                }}
+              >
+                Today
+              </Typography>
+            )}
           </Box>
         </Box>
 
@@ -189,7 +234,7 @@ export default function StaffLogsPage() {
             onClick={() => setTab('client')}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 1, fontSize: '0.8rem' }}
           >
-            Client Activity
+            Staff Activity
           </Button>
           <Button
             variant={tab === 'staff' ? 'contained' : 'outlined'}
@@ -202,44 +247,76 @@ export default function StaffLogsPage() {
           </Button>
         </Box>
 
-        {/* Client: summary chips */}
-        {tab === 'client' && clientLogs.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-            {Object.entries(clientCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
-              const config = clientTypeConfig[type] || { label: type, color: '#6B7280' };
+        {/* Activity filter chips */}
+        {rawLogs.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 0.5, color: 'text.secondary' }}>
+              <Filter size={12} />
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Filter
+              </Typography>
+            </Box>
+            {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+              const config = typeConfig[type] || { label: type, color: '#6B7280' };
+              const isActive = selectedFilters.has(type);
               return (
-                <Box
+                <Button
                   key={type}
+                  size="small"
+                  onClick={() => toggleFilter(type)}
                   sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.375,
                     px: 0.75,
                     py: 0.25,
+                    minWidth: 0,
                     borderRadius: 1,
                     fontSize: '0.65rem',
                     fontWeight: 700,
-                    backgroundColor: isDark ? `${config.color}20` : `${config.color}12`,
-                    color: isDark ? config.color : config.color,
+                    textTransform: 'none',
+                    backgroundColor: isActive ? (isDark ? `${config.color}30` : `${config.color}20`) : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                    color: isActive ? config.color : (isDark ? '#9CA3AF' : '#6B7280'),
+                    border: 1,
+                    borderColor: isActive ? (isDark ? `${config.color}40` : `${config.color}30`) : 'transparent',
+                    '&:hover': {
+                      backgroundColor: isActive ? (isDark ? `${config.color}40` : `${config.color}30`) : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                    },
                   }}
                 >
                   {config.label} {count}
-                </Box>
+                </Button>
               );
             })}
+            {selectedFilters.size > 0 && (
+              <Button
+                size="small"
+                onClick={() => setSelectedFilters(new Set())}
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  minWidth: 0,
+                  borderRadius: 1,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  color: 'text.secondary',
+                  ml: 0.5,
+                }}
+              >
+                Clear
+              </Button>
+            )}
           </Box>
         )}
 
         {/* Logs list */}
-        {logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <Paper sx={{ borderRadius: 2, p: 3, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.03)' : undefined, border: 1, borderColor: 'divider' }}>
             <Typography sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.9rem' }}>
-              No {tab === 'client' ? 'client activity' : 'staff operation'} logs for this date
+              No {tab === 'client' ? 'staff activity' : 'staff operation'} logs for this date
             </Typography>
           </Paper>
         ) : (
           <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
-            {logs.map((log, index) => {
+            {filteredLogs.map((log, index) => {
               const logTime = new Date(log.timestamp);
               const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
@@ -248,7 +325,7 @@ export default function StaffLogsPage() {
                   key={log.id}
                   sx={{
                     p: { xs: 1.25, md: 1.5 },
-                    borderBottom: index < logs.length - 1 ? 1 : 0,
+                    borderBottom: index < filteredLogs.length - 1 ? 1 : 0,
                     borderColor: 'divider',
                   }}
                 >
