@@ -1,3 +1,5 @@
+import { formatDateTimeIST } from './dateUtils';
+
 export interface ClientLogEntry {
   id: string;
   timestamp: string;
@@ -83,7 +85,7 @@ export function addLog(entry: Omit<ClientLogEntry, 'id' | 'timestamp' | 'deviceI
   const userInfo = getUserInfo();
   const newEntry: ClientLogEntry = {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: formatDateTimeIST(),
     deviceInfo: getDeviceInfo(),
     userId: userInfo.userId,
     userRole: userInfo.userRole,

@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-import { formatDate } from '../utils/dateUtils.js';
+import { formatDate, getNowIST } from '../utils/dateUtils.js';
 import { formatTimeLabel } from '../utils/time.js';
 import { computeLineTotal, computeOrderTotal } from '../utils/pricing.js';
 import { buildMenu } from '../constants/menu.js';
@@ -72,7 +72,7 @@ export async function createOrder(
 ) {
   const pool = await getPool();
   const id = Date.now();
-  const timeLabel = formatTimeLabel(new Date());
+  const timeLabel = formatTimeLabel(getNowIST());
   const totalAmount = computeOrderTotal(data.items);
 
   // Compute cash/upi amounts based on payment method

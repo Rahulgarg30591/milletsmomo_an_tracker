@@ -2,10 +2,11 @@ import { BottomNavigation, BottomNavigationAction, Paper, useMediaQuery, useThem
 import { Home, PlusCircle, BarChart3 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getToday } from '../utils/dateUtils';
 
 function getDateFromPath(path: string): string {
   const match = path.match(/\/day\/([^\/]+)/);
-  return match ? match[1] : new Date().toISOString().split('T')[0];
+  return match ? match[1] : getToday();
 }
 
 export default function BottomNav() {

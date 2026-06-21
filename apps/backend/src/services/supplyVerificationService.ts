@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
+import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyVerificationItem {
   supplyItemId: number;
@@ -107,7 +108,7 @@ export async function listVerifications(startDate: string, endDate: string): Pro
   );
 
   return result.recordset.map((row: any) => {
-    const date = row.order_date instanceof Date ? row.order_date.toISOString().split('T')[0] : row.order_date;
+    const date = row.order_date instanceof Date ? formatDate(row.order_date) : row.order_date;
     return {
       orderDate: date,
       isFullyVerified: row.total_items > 0 && row.verified_items === row.total_items,

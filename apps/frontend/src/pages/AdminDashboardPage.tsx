@@ -873,8 +873,8 @@ export default function AdminDashboardPage() {
               </Box>
             </Paper>
 
-            {/* Stock Mismatch */}
-            {conflictItems.length > 0 && (
+            {/* Stock Discrepancies */}
+            {closingStock?.isSubmitted && conflictItems.length > 0 && (
               <Paper sx={{ borderRadius: 2, overflow: 'hidden', mb: 2, border: 1, borderColor: 'divider' }}>
                 <Box sx={{ px: 1.5, py: 1, display: 'flex', alignItems: 'center', gap: 0.75, borderBottom: 1, borderColor: 'divider' }}>
                   <Box sx={{ width: 28, height: 28, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(248,113,113,0.12)' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

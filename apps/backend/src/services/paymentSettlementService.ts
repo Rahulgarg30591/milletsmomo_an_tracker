@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
+import { formatDate } from '../utils/dateUtils.js';
 
 export interface DailyPaymentSettlement {
   id: number;
@@ -64,7 +65,7 @@ export async function getSettlement(date: string): Promise<DailyPaymentSettlemen
   const row = result.recordset[0];
   return {
     id: row.id,
-    orderDate: row.order_date.toISOString().split('T')[0],
+    orderDate: formatDate(row.order_date),
     expectedCash: parseFloat(row.expected_cash),
     expectedUpi: parseFloat(row.expected_upi),
     actualCash: parseFloat(row.actual_cash),
@@ -157,7 +158,7 @@ export async function listSettlements(startDate: string, endDate: string): Promi
 
   return result.recordset.map((row) => ({
     id: row.id,
-    orderDate: row.order_date instanceof Date ? row.order_date.toISOString().split('T')[0] : row.order_date,
+    orderDate: row.order_date instanceof Date ? formatDate(row.order_date) : row.order_date,
     expectedCash: parseFloat(row.expected_cash),
     expectedUpi: parseFloat(row.expected_upi),
     actualCash: parseFloat(row.actual_cash),
