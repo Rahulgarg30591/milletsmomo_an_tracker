@@ -200,36 +200,36 @@ export default function StockPage() {
 
         {/* Summary Cards */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' }, gap: { xs: 0.75, md: 1 }, mb: { xs: 1.5, md: 2 } }}>
-          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center' }}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center', backgroundColor: isDark ? 'rgba(27,107,58,0.1)' : 'transparent' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.5 }}>
               <Package size={16} color="#1B6B3A" />
-              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: isDark ? '#4ADE80' : 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Packets
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
               {totalRemainingPackets}
             </Typography>
           </Paper>
-          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center' }}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center', backgroundColor: isDark ? 'rgba(217,119,6,0.1)' : 'transparent' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.5 }}>
               <Layers size={16} color="#D97706" />
-              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: isDark ? '#FBBF24' : 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Loose
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: isDark ? '#FBBF24' : '#D97706' }}>
               {totalRemainingPieces}
             </Typography>
           </Paper>
-          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center' }}>
+          <Paper sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', textAlign: 'center', backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : 'transparent' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.5 }}>
               <PieChart size={16} color="#7C3AED" />
-              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: isDark ? '#C4A8E8' : 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Total Momos
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: isDark ? '#C4A8E8' : '#7C3AED' }}>
               {totalRemainingMomos}
             </Typography>
           </Paper>
@@ -248,20 +248,20 @@ export default function StockPage() {
                 {stockItems.map((item) => {
                   const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn' : item.displayName.split(' ')[0];
                   return (
-                    <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+                    <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', backgroundColor: isDark ? 'rgba(27,107,58,0.06)' : 'transparent' }}>
                       <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
                         {filling}
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#1B6B3A' }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
                           {item.remainingPackets} Packets
                         </Typography>
                         {item.remainingPieces > 0 && (
-                          <Typography sx={{ fontSize: '0.75rem', color: '#1B6B3A', fontWeight: 600 }}>
+                          <Typography sx={{ fontSize: '0.75rem', color: isDark ? '#4ADE80' : '#1B6B3A', fontWeight: 600 }}>
                             + {item.remainingPieces} Loose Momos
                           </Typography>
                         )}
-                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>
+                        <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 500, mt: 0.25 }}>
                           {item.remainingTotalPieces} Total Momos
                         </Typography>
                       </Box>
@@ -316,7 +316,7 @@ export default function StockPage() {
                     <Chip
                       size="small"
                       label="Expected"
-                      sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: '#FEF3C7', color: '#92400E' }}
+                      sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: isDark ? '#3D2E1A' : '#FEF3C7', color: isDark ? '#FBBF24' : '#92400E' }}
                     />
                   )}
                 </Box>
@@ -328,13 +328,15 @@ export default function StockPage() {
               </Box>
 
               {/* Progress bar */}
-              <Box sx={{ width: '100%', height: 6, borderRadius: 3, backgroundColor: 'divider', mb: 1 }}>
+              <Box sx={{ width: '100%', height: 6, borderRadius: 3, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', mb: 1 }}>
                 <Box
                   sx={{
                     width: `${item.openingTotalPieces > 0 ? (item.remainingTotalPieces / item.openingTotalPieces) * 100 : 0}%`,
                     height: '100%',
                     borderRadius: 3,
-                    backgroundColor: item.remainingTotalPieces > item.openingTotalPieces * 0.3 ? '#1B6B3A' : '#DC2626',
+                    backgroundColor: item.remainingTotalPieces > item.openingTotalPieces * 0.3
+                      ? (isDark ? '#4ADE80' : '#1B6B3A')
+                      : (isDark ? '#F87171' : '#DC2626'),
                     transition: 'width 0.5s ease',
                   }}
                 />
@@ -343,49 +345,49 @@ export default function StockPage() {
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
                 {/* Opening */}
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: isDark ? '#9CA3AF' : 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
                     Opening
                   </Typography>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
                     {item.openingPackets} pkt
                   </Typography>
                   {item.openingPieces > 0 && (
-                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 500 }}>
                       + {item.openingPieces} pcs
                     </Typography>
                   )}
-                  <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}>
+                  <Typography sx={{ fontSize: '0.6rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 600, mt: 0.25 }}>
                     {item.openingTotalPieces} total
                   </Typography>
                 </Box>
 
                 {/* Consumed */}
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: isDark ? '#9CA3AF' : 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
                     Consumed
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#DC2626' }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: isDark ? '#F87171' : '#DC2626' }}>
                     {item.consumedPieces} pcs
                   </Typography>
-                  <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}>
+                  <Typography sx={{ fontSize: '0.6rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 600, mt: 0.25 }}>
                     ~{Math.floor(item.consumedPieces / item.piecesPer)} pkt
                   </Typography>
                 </Box>
 
                 {/* Remaining */}
-                <Box sx={{ textAlign: 'center', p: 0.5, borderRadius: 1, backgroundColor: isDark ? 'rgba(27,107,58,0.08)' : '#F0FDF4' }}>
-                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#1B6B3A', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
+                <Box sx={{ textAlign: 'center', p: 0.5, borderRadius: 1, backgroundColor: isDark ? 'rgba(27,107,58,0.15)' : '#F0FDF4' }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: isDark ? '#4ADE80' : '#1B6B3A', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.25 }}>
                     Remaining
                   </Typography>
-                  <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#1B6B3A' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
                     {item.remainingPackets} pkt
                   </Typography>
                   {item.remainingPieces > 0 && (
-                    <Typography sx={{ fontSize: '0.65rem', color: '#1B6B3A', fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#4ADE80' : '#1B6B3A', fontWeight: 500 }}>
                       + {item.remainingPieces} pcs
                     </Typography>
                   )}
-                  <Typography sx={{ fontSize: '0.6rem', color: '#1B6B3A', fontWeight: 700, mt: 0.25 }}>
+                  <Typography sx={{ fontSize: '0.6rem', color: isDark ? '#4ADE80' : '#1B6B3A', fontWeight: 700, mt: 0.25 }}>
                     {item.remainingTotalPieces} total
                   </Typography>
                 </Box>
