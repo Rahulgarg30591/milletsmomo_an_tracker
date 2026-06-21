@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { getAdminSummary } from '../api/adminApi';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
-import { listSupplyVerifications } from '../api/supplyVerificationApi';
+import { listSupplyVerifications, getSupplyVerification } from '../api/supplyVerificationApi';
+import { getClosingStock } from '../api/closingStockApi';
+import { getOrders } from '../api/ordersApi';
 import { getStaffLogs } from '../api/staffLogApi';
 import { getMenu } from '../api/menuApi';
 import { getToday, getYesterday, addDays, formatDateLabel } from '../utils/dateUtils';
@@ -116,6 +118,30 @@ export default function AdminDashboardPage() {
     queryFn: () => listSupplyVerifications(startDate, endDate),
   });
 
+  const { data: closingStock } = useQuery({
+    queryKey: ['closingStock', startDate],
+    queryFn: () => getClosingStock(startDate),
+    enabled: startDate === endDate,
+  });
+
+  const { data: supplyVerificationDetail } = useQuery({
+    queryKey: ['supplyVerification', startDate],
+    queryFn: () => getSupplyVerification(startDate),
+    enabled: startDate === endDate,
+  });
+
+  const { data: yesterdayClosingStock } = useQuery({
+    queryKey: ['closingStockYesterday'],
+    queryFn: () => getClosingStock(addDays(startDate, -1)),
+    enabled: startDate === endDate,
+  });
+
+  const { data: ordersData } = useQuery({
+    queryKey: ['ordersAdmin', startDate],
+    queryFn: () => getOrders(startDate),
+    enabled: startDate === endDate,
+  });
+
   const { data: staffLogsData } = useQuery({
     queryKey: ['staffLogs', startDate],
     queryFn: () => getStaffLogs(startDate),
@@ -214,6 +240,91 @@ export default function AdminDashboardPage() {
       .map(([name, stat]) => ({ name, totalQuantity: stat.quantity, totalRevenue: stat.revenue }))
       .filter((s) => s.totalQuantity > 0);
   }, [allItemsBreakdown]);
+
+  const conflictItems = useMemo(() => {
+    if (!closingStock?.items || closingStock.items.length === 0) return [];
+    const conflicts: {
+      supplyItemId: number;
+      displayName: string;
+      category: string;
+      piecesPer: number;
+      expectedPackets: number;
+      expectedPieces: number;
+      expectedTotalPieces: number;
+      actualPackets: number;
+      actualPieces: number;
+      actualTotalPieces: number;
+      difference: number;
+      hasConflict: boolean;
+      conflictReason: string | null;
+    }[] = [];
+
+    const menuMap = new Map<number, { id: number; filling: string; displayName: string }>((menuData?.items || []).map((mi: any) => [mi.id, mi]));
+
+    for (const item of closingStock.items) {
+      const piecesPer = item.piecesPer || 24;
+      const actualTotalPieces = item.packetsLeft * piecesPer + item.piecesLeft;
+
+      let expectedPackets = 0;
+      let expectedPieces = 0;
+      let expectedTotalPieces = 0;
+
+      const yestItem = yesterdayClosingStock?.items.find((i) => i.supplyItemId === item.supplyItemId);
+      const yestTotalPieces = yestItem ? yestItem.packetsLeft * piecesPer + yestItem.piecesLeft : 0;
+
+      const verItem = supplyVerificationDetail?.items.find((i) => i.supplyItemId === item.supplyItemId);
+      const supplyQty = verItem ? (verItem.actualQty ?? verItem.expectedQty) : 0;
+      const supplyTotalPieces = supplyQty * piecesPer;
+
+      const openingTotalPieces = yestTotalPieces + supplyTotalPieces;
+
+      const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn'
+        : (item.category === 'sauce' || item.category === 'dip') ? '' : item.displayName.split(' ')[0];
+
+      let consumedPieces = 0;
+      for (const order of ordersData?.orders || []) {
+        for (const orderItem of order.items) {
+          const menuItem = menuMap.get(orderItem.menuItemId);
+          if (!menuItem) continue;
+          if (menuItem.filling === filling) {
+            consumedPieces += orderItem.quantity;
+          } else if (menuItem.filling === 'Platter') {
+            const perType = Math.round(orderItem.quantity / 3);
+            if (filling === 'Veg' || filling === 'Paneer' || filling === 'Cheese Corn') {
+              consumedPieces += perType;
+            }
+          }
+        }
+      }
+
+      expectedTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
+      expectedPackets = Math.floor(expectedTotalPieces / piecesPer);
+      expectedPieces = expectedTotalPieces % piecesPer;
+
+      const difference = actualTotalPieces - expectedTotalPieces;
+      const hasMismatch = Math.abs(difference) > 0;
+
+      if (hasMismatch || item.hasConflict) {
+        conflicts.push({
+          supplyItemId: item.supplyItemId,
+          displayName: item.displayName,
+          category: item.category,
+          piecesPer,
+          expectedPackets,
+          expectedPieces,
+          expectedTotalPieces,
+          actualPackets: item.packetsLeft,
+          actualPieces: item.piecesLeft,
+          actualTotalPieces,
+          difference,
+          hasConflict: item.hasConflict,
+          conflictReason: item.conflictReason,
+        });
+      }
+    }
+
+    return conflicts.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+  }, [closingStock, yesterdayClosingStock, supplyVerificationDetail, ordersData, menuData]);
 
   const filteredOrders = useMemo(() => {
     if (!data?.orders) return [];
@@ -761,6 +872,106 @@ export default function AdminDashboardPage() {
                 )}
               </Box>
             </Paper>
+
+            {/* Stock Mismatch */}
+            {conflictItems.length > 0 && (
+              <Paper sx={{ borderRadius: 2, overflow: 'hidden', mb: 2, border: 1, borderColor: 'divider' }}>
+                <Box sx={{ px: 1.5, py: 1, display: 'flex', alignItems: 'center', gap: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                  <Box sx={{ width: 28, height: 28, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(248,113,113,0.12)' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <AlertTriangle size={14} color={isDark ? '#F87171' : '#DC2626'} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary', lineHeight: 1.2 }}>
+                      Stock Discrepancies
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, lineHeight: 1.2 }}>
+                      {conflictItems.length} item{conflictItems.length !== 1 ? 's' : ''} with mismatch
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  {conflictItems.map((item, idx) => {
+                    const ratio = item.expectedTotalPieces > 0 ? Math.min(item.actualTotalPieces / item.expectedTotalPieces, 1) : 0;
+                    const isSurplus = item.difference > 0;
+                    const diffColor = isSurplus ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626');
+                    const diffBg = isSurplus ? (isDark ? 'rgba(74,222,128,0.1)' : '#DCFCE7') : (isDark ? 'rgba(248,113,113,0.1)' : '#FEE2E2');
+                    const diffLabel = isSurplus ? 'Surplus' : 'Short';
+                    const barColor = isSurplus ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626');
+
+                    return (
+                      <Box
+                        key={item.supplyItemId}
+                        sx={{
+                          px: 1.5,
+                          py: 1.25,
+                          borderBottom: idx < conflictItems.length - 1 ? 1 : 0,
+                          borderColor: 'divider',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 0.75,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary', lineHeight: 1.2 }}>
+                              {item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '')}
+                            </Typography>
+                            {item.hasConflict && (
+                              <Chip
+                                size="small"
+                                label="Flagged"
+                                color="error"
+                                sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, flexShrink: 0 }}
+                              />
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                            <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, backgroundColor: diffBg, display: 'flex', alignItems: 'center', gap: 0.375 }}>
+                              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: diffColor }}>
+                                {diffLabel} {Math.abs(item.difference)} momos
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Visual bar */}
+                        <Box sx={{ width: '100%', height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', overflow: 'hidden' }}>
+                          <Box sx={{ width: `${ratio * 100}%`, height: '100%', borderRadius: 2, backgroundColor: barColor, transition: 'width 0.5s ease' }} />
+                        </Box>
+
+                        {/* Numbers row */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isDark ? '#4ADE80' : '#16A34A' }} />
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
+                              Expected: {item.expectedPackets} pkt {item.expectedPieces > 0 ? `+ ${item.expectedPieces} pcs` : ''}
+                              <Box component="span" sx={{ color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: 600, ml: 0.5 }}>
+                                ({item.expectedTotalPieces} momos)
+                              </Box>
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: diffColor }} />
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
+                              Actual: {item.actualPackets} pkt {item.actualPieces > 0 ? `+ ${item.actualPieces} pcs` : ''}
+                              <Box component="span" sx={{ color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: 600, ml: 0.5 }}>
+                                ({item.actualTotalPieces} momos)
+                              </Box>
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {item.conflictReason && (
+                          <Typography sx={{ fontSize: '0.75rem', color: isDark ? '#F87171' : '#DC2626', fontWeight: 600, fontStyle: 'italic' }}>
+                            Staff note: {item.conflictReason}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Paper>
+            )}
 
             {/* Charts grid: 2x2 */}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 2 }}>

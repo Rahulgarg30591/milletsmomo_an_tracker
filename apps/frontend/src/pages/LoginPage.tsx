@@ -6,7 +6,7 @@ import { Leaf, Shield, User } from 'lucide-react';
 import PinPad from '../components/PinPad';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../api/authApi';
-import { trackLogin } from '../utils/tracking';
+import { trackLogin, markSessionStart } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 import { getToday } from '../utils/dateUtils';
 
@@ -33,7 +33,8 @@ export default function LoginPage() {
     try {
       const res = await login({ role, pin });
       doLogin(res.token, res.role, res.displayName);
-      trackLogin();
+      markSessionStart();
+      trackLogin({ role: res.role, displayName: res.displayName });
       vibrate(haptics.success);
       if (redirectPath) {
         navigate(redirectPath, { replace: true });

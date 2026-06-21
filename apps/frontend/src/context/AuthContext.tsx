@@ -32,13 +32,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    trackLogout();
+    trackLogout({ role: auth.role, displayName: auth.displayName });
     await flushLogs();
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('role');
     sessionStorage.removeItem('displayName');
+    sessionStorage.removeItem('mm_session_start');
     setAuth({ token: null, role: null, displayName: null });
-  }, []);
+  }, [auth.role, auth.displayName]);
 
   const isAuthenticated = useCallback(() => {
     return !!auth.token;

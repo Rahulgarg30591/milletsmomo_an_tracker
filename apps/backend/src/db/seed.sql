@@ -1,5 +1,8 @@
--- Menu items (24 rows)
--- Use MERGE for idempotent seeding
+SET NOCOUNT ON;
+
+-- ============================================
+-- 1. Menu items (24 rows)
+-- ============================================
 MERGE INTO MenuItems AS target
 USING (VALUES
   ('Veg', 'Steam', 'Veg Steam', 89.00, 50.00),
@@ -32,8 +35,15 @@ WHEN NOT MATCHED THEN
   INSERT (filling, preparation, display_name, full_price, half_price)
   VALUES (source.filling, source.preparation, source.display_name, source.full_price, source.half_price);
 
--- User accounts
--- Generate hashes: npx tsx apps/backend/scripts/generatePinHash.ts <pin>
+-- ============================================
+-- 2. User accounts
+-- ============================================
+-- PINs for login (4-digit):
+--   Admin  -> 1703
+--   Staff  -> 9865
+--
+-- Generate new hashes: npm run generate-pin-hash <pin>
+--
 MERGE INTO Users AS target
 USING (VALUES
   ('staff', 'staff', '$2b$10$veSawKHMM2U3EV08JXrs/uFmhfLxsHqLvOij6JjB2.1NG6iGsttA2', 'Cart Staff'),
@@ -46,7 +56,9 @@ WHEN NOT MATCHED THEN
   INSERT (username, role, pin_hash, display_name)
   VALUES (source.username, source.role, source.pin_hash, source.display_name);
 
--- Supply items (8 items: 3 momo packets + 5 sauces/dips)
+-- ============================================
+-- 3. Supply items (8 items: 3 momo packets + 5 sauces/dips)
+-- ============================================
 MERGE INTO SupplyItems AS target
 USING (VALUES
   ('veg_packet', 'momo_packet', 138.00, 24, 'Veg Momo Packet (24 Pcs)'),

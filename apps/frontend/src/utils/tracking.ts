@@ -1,7 +1,7 @@
 export interface ClientLogEntry {
   id: string;
   timestamp: string;
-  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation';
+  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout';
   page: string;
   details: string;
   metadata?: Record<string, any>;
@@ -13,6 +13,7 @@ export interface ClientLogEntry {
 
 const LOG_KEY = 'mm_activity_logs';
 const LAST_FLUSH_KEY = 'mm_last_flush';
+const SESSION_START_KEY = 'mm_session_start';
 const BATCH_SIZE = 100;
 const FLUSH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -43,7 +44,7 @@ function setStoredLogs(logs: ClientLogEntry[]) {
 
 function getUserInfo(): { userId?: number; userRole?: string } {
   try {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) return {};
     const payload = JSON.parse(atob(token.split('.')[1]));
     return { userId: payload.id, userRole: payload.role };
@@ -135,9 +136,21 @@ export function clearLogs() {
   localStorage.removeItem(LOG_KEY);
 }
 
+// Session tracking
+
+export function markSessionStart() {
+  sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
+}
+
+export function getSessionDurationMs(): number | undefined {
+  const start = sessionStorage.getItem(SESSION_START_KEY);
+  if (!start) return undefined;
+  return Date.now() - parseInt(start, 10);
+}
+
 // Trackers
-export function trackLogin() {
-  addLog({ type: 'login', page: 'login', details: 'User logged in', metadata: { url: window.location.href } });
+export function trackLogin(metadata?: Record<string, any>) {
+  addLog({ type: 'login', page: 'login', details: 'User logged in', metadata: { url: window.location.href, device: getDeviceInfo(), ...metadata } });
 }
 
 export function trackPageView(page: string, details?: string) {
@@ -183,8 +196,9 @@ export function trackFormSubmit(page: string, formName: string, metadata?: Recor
   addLog({ type: 'form_submit', page, details: `Form submitted: ${formName}`, metadata });
 }
 
-export function trackLogout() {
-  addLog({ type: 'login', page: 'logout', details: 'User logged out', metadata: { url: window.location.href } });
+export function trackLogout(metadata?: Record<string, any>) {
+  const durationMs = getSessionDurationMs();
+  addLog({ type: 'logout', page: 'logout', details: 'User logged out', metadata: { url: window.location.href, device: getDeviceInfo(), sessionDurationMs: durationMs, ...metadata } });
 }
 
 // Send remaining logs on page unload

@@ -73,15 +73,15 @@ GitHub Actions (`.github/workflows/azure-deploy.yml`) uses `Azure/static-web-app
 ## Build order (from PRD)
 
 1. ✅ **Monorepo scaffolding** — root workspaces, `.gitignore`, `.editorconfig`, ESLint/Prettier, empty Vite/Functions projects, `packages/shared` (24 menu items, pricing).
-2. **Theme** — MUI theme per PRD Section 6.
-3. **Database** — schema.sql, seed.sql, pool.ts, migration scripts.
-4. **Backend auth** — auth service, controller, routes, middleware, rate-limiter, Express app skeleton.
-5. **Backend menu & orders** — menu + orders + admin controllers/services.
-6. **Frontend auth** — AuthContext, axios client, LoginPage with PinPad, routing.
-7. **Frontend Staff flow** — DateSelectPage, DayViewPage, NewOrderPage, OrderDraftContext.
-8. **Payment flow** — PaymentModal for pending-payment completion.
-9. **Admin dashboard** — summary cards, item breakdown table.
-10. **PWA** — vite-plugin-pwa, manifest, icons, iOS meta tags.
-11. **Polish** — animations, responsive QA, validation messages, toasts.
-12. **Documentation** — README.md, docs/ARCHITECTURE.md, docs/API.md, docs/DEPLOYMENT.md.
-13. **Deployment** — provision Azure resources, configure GitHub Actions, set env vars, run migrations.
+2. ✅ **Database** — schema.sql, seed.sql, pool.ts, migration scripts. PINs (admin: 1703, staff: 9865) verified on fresh system.
+3. ✅ **Theme** — MUI theme per PRD Section 6.
+4. ✅ **Backend auth** — auth service, controller, routes, middleware, rate-limiter, Express app skeleton.
+5. ✅ **Backend menu & orders** — menu + orders + admin controllers/services.
+6. ✅ **Frontend auth** — AuthContext, axios client, LoginPage with PinPad, routing.
+7. ✅ **Frontend Staff flow** — DateSelectPage, DayViewPage, NewOrderPage, OrderDraftContext.
+8. ✅ **Payment flow** — PaymentModal for pending-payment completion.
+9. ✅ **Admin dashboard** — summary cards, item breakdown table.
+10. ✅ **PWA** — vite-plugin-pwa, manifest, icons, iOS meta tags.
+11. ✅ **Polish** — animations, responsive QA, validation messages, toasts.
+12. ✅ **Documentation** — README.md, docs/ARCHITECTURE.md, docs/API.md, docs/DEPLOYMENT.md.
+13. ✅ **Deployment** — provision Azure resources, configure GitHub Actions, set env vars, run migrations.

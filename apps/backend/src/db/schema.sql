@@ -1,3 +1,6 @@
+SET NOCOUNT ON;
+
+-- Drop all existing tables in correct dependency order (child tables first)
 IF OBJECT_ID('ClientActivityLogs', 'U') IS NOT NULL DROP TABLE ClientActivityLogs;
 IF OBJECT_ID('StaffOperationLogs', 'U') IS NOT NULL DROP TABLE StaffOperationLogs;
 IF OBJECT_ID('DailyClosingStock', 'U') IS NOT NULL DROP TABLE DailyClosingStock;
@@ -9,6 +12,7 @@ IF OBJECT_ID('SupplyItems', 'U') IS NOT NULL DROP TABLE SupplyItems;
 IF OBJECT_ID('OrderItems', 'U') IS NOT NULL DROP TABLE OrderItems;
 IF OBJECT_ID('Orders', 'U') IS NOT NULL DROP TABLE Orders;
 IF OBJECT_ID('MenuItems', 'U') IS NOT NULL DROP TABLE MenuItems;
+IF OBJECT_ID('DailyPaymentSettlements', 'U') IS NOT NULL DROP TABLE DailyPaymentSettlements;
 IF OBJECT_ID('Users', 'U') IS NOT NULL DROP TABLE Users;
 
 CREATE TABLE Users (

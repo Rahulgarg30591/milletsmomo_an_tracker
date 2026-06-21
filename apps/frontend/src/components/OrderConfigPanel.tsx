@@ -4,6 +4,7 @@ import { keyframes } from '@emotion/react';
 import { Utensils, Package, Banknote, Smartphone, Clock, Split } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
 import { calculateOrderTotal } from '../utils/pricing';
+import { trackButtonClick } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 
 const shake = keyframes`
@@ -151,6 +152,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                 size="small"
                 onClick={() => {
                   vibrate(haptics.light);
+                  trackButtonClick('new_order', `select_type_${type.key}`);
                   setOrderType(type.key);
                 }}
                 startIcon={type.icon}
@@ -235,6 +237,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                 size="small"
                 onClick={() => {
                   vibrate(haptics.light);
+                  trackButtonClick('new_order', `select_payment_${method.key}`);
                   setPaymentMethod(method.key);
                 }}
                 startIcon={method.icon}

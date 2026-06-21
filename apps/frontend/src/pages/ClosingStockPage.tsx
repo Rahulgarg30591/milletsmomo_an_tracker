@@ -1,22 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Box, Button, Typography, Paper, useTheme, IconButton, TextField, Chip,
+  Box, Button, Typography, Paper, useTheme, IconButton, TextField, Chip, Collapse,
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, CheckCircle2, Package, Minus, Plus, AlertTriangle,
+  ArrowLeft, CheckCircle2, Package, Minus, Plus, AlertTriangle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { getClosingStock, submitClosingStock } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getOrders } from '../api/ordersApi';
-import { getSupplyItems } from '../api/supplyApi';
 import { getMenu } from '../api/menuApi';
 import { addDays } from '../utils/dateUtils';
 import { trackPageView, trackClosingStockSubmit } from '../utils/tracking';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
-import type { ClosingStock } from '../types';
+import type { ClosingStock, SupplyVerification } from '../types';
 
 interface ExpectedStockItem {
   supplyItemId: number;
@@ -37,6 +36,7 @@ export default function ClosingStockPage() {
 
   const [closingItems, setClosingItems] = useState<Record<number, { packets: number; pieces: number; wastage: number; hasConflict: boolean; conflictReason: string }>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [liveStockExpanded, setLiveStockExpanded] = useState(true);
 
   const { data: closingStock } = useQuery<ClosingStock>({
     queryKey: ['closingStock', targetDate],
@@ -60,11 +60,6 @@ export default function ClosingStockPage() {
     queryKey: ['orders', targetDate],
     queryFn: () => getOrders(targetDate),
     enabled: !!targetDate,
-  });
-
-  const { data: supplyItems } = useQuery({
-    queryKey: ['supplyItems'],
-    queryFn: getSupplyItems,
   });
 
   const { data: menuData } = useQuery({
@@ -93,29 +88,50 @@ export default function ClosingStockPage() {
   }, [closingStock]);
 
   const expectedStock = useMemo<ExpectedStockItem[]>(() => {
-    if (!supplyItems || !supplyVerification) return [];
     const menuItems = (menuData?.items || []) as Array<{ id: number; filling: string; displayName: string }>;
     const menuMap = new Map(menuItems.map((mi) => [mi.id, mi]));
 
+    const itemMap = new Map<number, { supplyItemId: number; displayName: string; piecesPer: number; closingTotalPieces: number; supplyTotalPieces: number }>();
+
+    for (const cItem of yesterdayClosing?.items || []) {
+      if (cItem.category !== 'momo_packet') continue;
+      const piecesPer = cItem.piecesPer || 24;
+      itemMap.set(cItem.supplyItemId, {
+        supplyItemId: cItem.supplyItemId,
+        displayName: cItem.displayName,
+        piecesPer,
+        closingTotalPieces: cItem.packetsLeft * piecesPer + cItem.piecesLeft,
+        supplyTotalPieces: 0,
+      });
+    }
+
+    for (const vItem of (supplyVerification as SupplyVerification | null)?.items || []) {
+      if (vItem.category !== 'momo_packet') continue;
+      const piecesPer = vItem.piecesPer || 24;
+      const supplyQty = vItem.actualQty ?? vItem.expectedQty;
+      const supplyTotalPieces = supplyQty * piecesPer;
+      const existing = itemMap.get(vItem.supplyItemId);
+      if (existing) {
+        existing.supplyTotalPieces = supplyTotalPieces;
+      } else {
+        itemMap.set(vItem.supplyItemId, {
+          supplyItemId: vItem.supplyItemId,
+          displayName: vItem.displayName,
+          piecesPer,
+          closingTotalPieces: 0,
+          supplyTotalPieces,
+        });
+      }
+    }
+
+    const orders = ordersData?.orders || [];
     const items: ExpectedStockItem[] = [];
-    for (const si of supplyItems) {
-      if (si.category !== 'momo_packet') continue;
-      const piecesPer = si.piecesPer || 24;
-      const siFilling = si.displayName.split(' ')[0];
-      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : siFilling;
 
-      const yestItem = yesterdayClosing?.items.find((i) => i.supplyItemId === si.id);
-      const yestPackets = yestItem?.packetsLeft || 0;
-      const yestPieces = yestItem?.piecesLeft || 0;
-      const yestTotalPieces = yestPackets * piecesPer + yestPieces;
+    for (const si of itemMap.values()) {
+      const piecesPer = si.piecesPer;
+      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : si.displayName.split(' ')[0];
 
-      const verItem = supplyVerification.items.find((i) => i.supplyItemId === si.id);
-      const verQty = verItem?.actualQty ?? 0;
-      const verTotalPieces = verQty * piecesPer;
-
-      const openingTotalPieces = yestTotalPieces + verTotalPieces;
-
-      const orders = ordersData?.orders || [];
+      const openingTotalPieces = si.closingTotalPieces + si.supplyTotalPieces;
       let consumedPieces = 0;
       for (const order of orders) {
         for (const orderItem of order.items) {
@@ -135,19 +151,17 @@ export default function ClosingStockPage() {
       }
 
       const remainingTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
-      const remainingPackets = Math.floor(remainingTotalPieces / piecesPer);
-      const remainingPieces = remainingTotalPieces % piecesPer;
-
       items.push({
-        supplyItemId: si.id,
+        supplyItemId: si.supplyItemId,
         displayName: si.displayName,
-        expectedPackets: remainingPackets,
-        expectedPieces: remainingPieces,
+        expectedPackets: Math.floor(remainingTotalPieces / piecesPer),
+        expectedPieces: remainingTotalPieces % piecesPer,
         expectedTotalPieces: remainingTotalPieces,
       });
     }
+
     return items;
-  }, [supplyItems, supplyVerification, yesterdayClosing, ordersData, menuData]);
+  }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
 
   const getExpected = (supplyItemId: number): ExpectedStockItem | undefined => {
     return expectedStock.find((e) => e.supplyItemId === supplyItemId);
@@ -170,7 +184,9 @@ export default function ClosingStockPage() {
       return submitClosingStock({ orderDate: targetDate, items });
     },
     onSuccess: () => {
-      trackClosingStockSubmit(targetDate);
+      const conflictCount = Object.values(closingItems).filter((c) => c.hasConflict).length;
+      const totalPackets = Object.values(closingItems).reduce((s, c) => s + c.packets, 0);
+      trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: closingStock!.items.length });
       qc.invalidateQueries({ queryKey: ['closingStock', targetDate] });
       setToast({ message: 'Closing stock saved!', type: 'success' });
       vibrate(haptics.success);
@@ -291,44 +307,74 @@ export default function ClosingStockPage() {
           </Box>
         </Box>
 
-        {/* Expected Stock Summary */}
+        {/* Liv Stock Summary */}
         {expectedStock.length > 0 && (
-          <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider', mb: 2, background: isDark ? 'rgba(27,107,58,0.04)' : '#F9FAFB' }}>
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Expected Stock (Calculated)
-              </Typography>
-              <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: 0.25 }}>
-                Based on yesterday's closing + verified supply - consumed today
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
-                {expectedStock.map((item) => {
-                  const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn' : item.displayName.split(' ')[0];
-                  return (
-                    <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
-                        {filling}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#6B8E6B' }}>
-                          {item.expectedPackets} Packets
-                        </Typography>
-                        {item.expectedPieces > 0 && (
-                          <Typography sx={{ fontSize: '0.75rem', color: '#6B8E6B', fontWeight: 600 }}>
-                            + {item.expectedPieces} Loose
-                          </Typography>
-                        )}
-                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>
-                          {item.expectedTotalPieces} Total Momos
-                        </Typography>
-                      </Box>
-                    </Box>
-                  );
-                })}
+          <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider', mb: 2 }}>
+            <Box
+              onClick={() => setLiveStockExpanded((v) => !v)}
+              sx={{
+                p: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                background: isDark ? 'rgba(27,107,58,0.08)' : '#F0FDF4',
+                '&:hover': { background: isDark ? 'rgba(27,107,58,0.14)' : '#DCFCE7' },
+                transition: 'background 0.15s',
+              }}
+            >
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: isDark ? '#4ADE80' : '#1B6B3A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Live Stock
+                </Typography>
+                <Typography sx={{ fontSize: '0.7rem', color: isDark ? '#9CA3AF' : 'text.secondary', mt: 0.125 }}>
+                  Expected remaining · tap to {liveStockExpanded ? 'hide' : 'show'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Package size={14} color={isDark ? '#4ADE80' : '#1B6B3A'} />
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
+                    {expectedStock.reduce((s, i) => s + i.expectedPackets, 0)} pkt
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: isDark ? '#9CA3AF' : 'text.secondary' }}>
+                    {expectedStock.reduce((s, i) => s + i.expectedTotalPieces, 0)} momos
+                  </Typography>
+                </Box>
+                {liveStockExpanded ? <ChevronUp size={16} color={isDark ? '#4ADE80' : '#1B6B3A'} /> : <ChevronDown size={16} color={isDark ? '#4ADE80' : '#1B6B3A'} />}
               </Box>
             </Box>
+            <Collapse in={liveStockExpanded}>
+              <Box sx={{ p: 1.5, pt: 1 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+                  {expectedStock.map((item) => {
+                    const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn' : item.displayName.split(' ')[0];
+                    return (
+                      <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', backgroundColor: isDark ? 'rgba(27,107,58,0.06)' : 'transparent' }}>
+                        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+                          {filling}
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
+                            {item.expectedPackets} pkt
+                          </Typography>
+                          {item.expectedPieces > 0 && (
+                            <Typography sx={{ fontSize: '0.75rem', color: isDark ? '#4ADE80' : '#1B6B3A', fontWeight: 600 }}>
+                              + {item.expectedPieces} pcs
+                            </Typography>
+                          )}
+                          <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : 'text.secondary', fontWeight: 500, mt: 0.25 }}>
+                            {item.expectedTotalPieces} total
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            </Collapse>
           </Paper>
         )}
 

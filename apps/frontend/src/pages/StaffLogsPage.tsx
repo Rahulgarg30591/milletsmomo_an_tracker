@@ -1,43 +1,149 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Typography, Paper, Chip, useTheme } from '@mui/material';
-import { ArrowLeft, Clock, ClipboardList, Truck, Package, Filter } from 'lucide-react';
+import { Box, Button, Typography, Paper, useTheme } from '@mui/material';
+import { ArrowLeft, Clock, User, MonitorSmartphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getStaffLogs } from '../api/staffLogApi';
+import { getClientLogs, type ClientLogEntry } from '../api/clientLogApi';
 import { getToday } from '../utils/dateUtils';
 import type { StaffOperationLog } from '../types';
 
-const typeLabels: Record<string, { label: string; color: string; icon: React.ReactElement }> = {
-  verification: { label: 'Verification', color: '#3B82F6', icon: <Truck size={14} /> },
-  closing_stock: { label: 'Closing Stock', color: '#10B981', icon: <Package size={14} /> },
-  order_create: { label: 'Order', color: '#F59E0B', icon: <ClipboardList size={14} /> },
+const staffTypeConfig: Record<string, { label: string; color: string; icon: string }> = {
+  verification: { label: 'Verification', color: '#3B82F6', icon: '🚚' },
+  closing_stock: { label: 'Closing Stock', color: '#10B981', icon: '📦' },
+  order_create: { label: 'Order', color: '#F59E0B', icon: '📋' },
 };
+
+const clientTypeConfig: Record<string, { label: string; color: string }> = {
+  login: { label: 'Login', color: '#22C55E' },
+  logout: { label: 'Logout', color: '#EF4444' },
+  page_view: { label: 'Page View', color: '#8B5CF6' },
+  button_click: { label: 'Button', color: '#F97316' },
+  navigation: { label: 'Navigate', color: '#06B6D4' },
+  order_submit: { label: 'Order Sent', color: '#F59E0B' },
+  order_complete: { label: 'Order Done', color: '#10B981' },
+  verification_submit: { label: 'Verify', color: '#3B82F6' },
+  closing_stock_submit: { label: 'Close Stock', color: '#8B5CF6' },
+  action_start: { label: 'Start', color: '#6366F1' },
+  action_end: { label: 'End', color: '#6366F1' },
+  form_submit: { label: 'Form', color: '#EC4899' },
+};
+
+type UnifiedLog = {
+  id: string;
+  timestamp: string;
+  source: 'staff' | 'client';
+  type: string;
+  label: string;
+  color: string;
+  icon?: string;
+  user: string;
+  role: string;
+  details: string;
+  metadata: Record<string, any> | null;
+  deviceInfo: string | null;
+  durationMs: number | null;
+};
+
+function toClientLogLabel(type: string): string {
+  return clientTypeConfig[type]?.label || type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function toClientLogColor(type: string): string {
+  return clientTypeConfig[type]?.color || '#6B7280';
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms === null || ms === undefined) return '';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatMetadataShort(m: Record<string, any> | null): string {
+  if (!m) return '';
+  const parts: string[] = [];
+  if (m.role) parts.push(m.role);
+  if (m.displayName) parts.push(m.displayName);
+  if (m.device) parts.push(m.device.split(',')[0]?.trim()?.replace('Platform: ', '') || '');
+  if (m.sessionDurationMs) parts.push(formatDuration(m.sessionDurationMs));
+  if (m.itemId) parts.push(`item:${m.itemId}`);
+  if (m.reason) parts.push(m.reason);
+  if (m.conflictCount !== undefined) parts.push(`${m.conflictCount} conflicts`);
+  if (m.actionId) parts.push(`action:${m.actionId.slice(-6)}`);
+  return parts.join(' · ');
+}
 
 export default function StaffLogsPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const navigate = useNavigate();
   const [date, setDate] = useState(getToday());
-  const [filterType, setFilterType] = useState<string | null>(null);
+  const [tab, setTab] = useState<'staff' | 'client'>('client');
 
-  const { data } = useQuery({
-    queryKey: ['staffLogs', date, filterType],
-    queryFn: () => getStaffLogs(date, filterType || undefined),
+  const { data: staffData } = useQuery({
+    queryKey: ['staffLogs', date],
+    queryFn: () => getStaffLogs(date),
+    enabled: tab === 'staff',
   });
 
-  const logs = useMemo(() => data?.logs ?? [], [data]);
+  const { data: clientData } = useQuery({
+    queryKey: ['clientLogs', date],
+    queryFn: () => getClientLogs(date),
+    enabled: tab === 'client',
+  });
 
-  const filteredLogs = useMemo(() => {
-    if (!filterType) return logs;
-    return logs.filter((l) => l.operationType === filterType);
-  }, [logs, filterType]);
+  const staffLogs: UnifiedLog[] = useMemo(() =>
+    (staffData?.logs ?? []).map((l: StaffOperationLog) => {
+      const config = staffTypeConfig[l.operationType] || { label: l.operationType, color: '#6B7280', icon: '📝' };
+      return {
+        id: `s-${l.id}`,
+        timestamp: l.createdAt,
+        source: 'staff' as const,
+        type: l.operationType,
+        label: config.label,
+        color: config.color,
+        icon: config.icon,
+        user: l.displayName,
+        role: 'staff',
+        details: l.details,
+        metadata: null,
+        deviceInfo: null,
+        durationMs: null,
+      };
+    }), [staffData]);
+
+  const clientLogs: UnifiedLog[] = useMemo(() =>
+    (clientData?.logs ?? []).map((l: ClientLogEntry) => ({
+      id: `c-${l.id}`,
+      timestamp: l.createdAt,
+      source: 'client' as const,
+      type: l.type,
+      label: toClientLogLabel(l.type),
+      color: toClientLogColor(l.type),
+      user: l.userRole || 'unknown',
+      role: l.userRole || '',
+      details: l.details || '',
+      metadata: l.metadata,
+      deviceInfo: l.deviceInfo,
+      durationMs: l.durationMs,
+    })), [clientData]);
+
+  const logs = tab === 'staff' ? staffLogs : clientLogs;
+
+  const clientCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const l of clientLogs) {
+      counts[l.type] = (counts[l.type] || 0) + 1;
+    }
+    return counts;
+  }, [clientLogs]);
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: 1.5, pb: 2, pt: 1, overflowY: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}>
-      <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 4 } }}>
+      <Box sx={{ maxWidth: 700, mx: 'auto' }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1.5, md: 2 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1 } }}>
             <Button
               size="small"
               startIcon={<ArrowLeft size={16} />}
@@ -46,8 +152,8 @@ export default function StaffLogsPage() {
             >
               Back
             </Button>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'text.primary', letterSpacing: '-0.3px' }}>
-              Staff Logs
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: '1rem', md: '1.25rem' }, color: 'text.primary', letterSpacing: '-0.3px' }}>
+              Activity Logs
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
@@ -66,118 +172,127 @@ export default function StaffLogsPage() {
                 outline: 'none',
                 fontFamily: 'inherit',
                 cursor: 'pointer',
-                width: 110,
+                width: 120,
                 p: 0,
-                '&::-webkit-calendar-picker-indicator': {
-                  filter: isDark ? 'invert(1)' : 'none',
-                  opacity: 0.6,
-                },
+                '&::-webkit-calendar-picker-indicator': { filter: isDark ? 'invert(1)' : 'none', opacity: 0.6 },
               }}
             />
           </Box>
         </Box>
 
-        {/* Filters */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-          <Chip
-            icon={<Filter size={12} />}
-            label="All"
+        {/* Tab switcher */}
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Button
+            variant={tab === 'client' ? 'contained' : 'outlined'}
             size="small"
-            onClick={() => setFilterType(null)}
-            sx={{
-              fontWeight: 700,
-              fontSize: '0.75rem',
-              borderRadius: 1,
-              height: 28,
-              background: filterType === null ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)') : undefined,
-              color: filterType === null ? 'text.primary' : 'text.secondary',
-            }}
-          />
-          {Object.entries(typeLabels).map(([key, config]) => (
-            <Chip
-              key={key}
-              icon={config.icon}
-              label={config.label}
-              size="small"
-              onClick={() => setFilterType(filterType === key ? null : key)}
-              sx={{
-                fontWeight: 700,
-                fontSize: '0.75rem',
-                borderRadius: 1,
-                height: 28,
-                background: filterType === key ? (isDark ? `${config.color}25` : `${config.color}18`) : undefined,
-                color: filterType === key ? config.color : 'text.secondary',
-                border: `1px solid ${filterType === key ? config.color : 'transparent'}`,
-              }}
-            />
-          ))}
+            startIcon={<MonitorSmartphone size={14} />}
+            onClick={() => setTab('client')}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 1, fontSize: '0.8rem' }}
+          >
+            Client Activity
+          </Button>
+          <Button
+            variant={tab === 'staff' ? 'contained' : 'outlined'}
+            size="small"
+            startIcon={<User size={14} />}
+            onClick={() => setTab('staff')}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 1, fontSize: '0.8rem' }}
+          >
+            Staff Operations
+          </Button>
         </Box>
 
-        {/* Logs */}
-        {filteredLogs.length === 0 ? (
-          <Paper sx={{
-            borderRadius: 2,
-            p: 3,
-            textAlign: 'center',
-            background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
-            border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
-          }}>
+        {/* Client: summary chips */}
+        {tab === 'client' && clientLogs.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
+            {Object.entries(clientCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+              const config = clientTypeConfig[type] || { label: type, color: '#6B7280' };
+              return (
+                <Box
+                  key={type}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.375,
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    backgroundColor: isDark ? `${config.color}20` : `${config.color}12`,
+                    color: isDark ? config.color : config.color,
+                  }}
+                >
+                  {config.label} {count}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+
+        {/* Logs list */}
+        {logs.length === 0 ? (
+          <Paper sx={{ borderRadius: 2, p: 3, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.03)' : undefined, border: 1, borderColor: 'divider' }}>
             <Typography sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.9rem' }}>
-              No logs for this date
+              No {tab === 'client' ? 'client activity' : 'staff operation'} logs for this date
             </Typography>
           </Paper>
         ) : (
-          <Paper sx={{
-            borderRadius: 2,
-            overflow: 'hidden',
-            background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
-            border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
-          }}>
-            {filteredLogs.map((log: StaffOperationLog, index: number) => {
-              const config = typeLabels[log.operationType] || typeLabels.order_create;
-              const logTime = new Date(log.createdAt);
+          <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
+            {logs.map((log, index) => {
+              const logTime = new Date(log.timestamp);
               const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-              const dateStr = logTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
               return (
                 <Box
                   key={log.id}
                   sx={{
-                    p: 1.5,
-                    borderBottom: index < filteredLogs.length - 1 ? 1 : 0,
+                    p: { xs: 1.25, md: 1.5 },
+                    borderBottom: index < logs.length - 1 ? 1 : 0,
                     borderColor: 'divider',
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={{
-                        fontWeight: 700,
-                        fontSize: '0.65rem',
-                        px: 0.75,
-                        py: 0.25,
-                        borderRadius: 1,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        backgroundColor: isDark ? `${config.color}25` : `${config.color}18`,
-                        color: config.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                      }}>
-                        {config.icon}
-                        {config.label}
-                      </Typography>
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary' }}>
-                        {log.displayName}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1, minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          px: 0.5,
+                          py: 0.15,
+                          borderRadius: 0.75,
+                          fontSize: '0.6rem',
+                          fontWeight: 700,
+                          backgroundColor: isDark ? `${log.color}25` : `${log.color}14`,
+                          color: log.color,
+                          whiteSpace: 'nowrap',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.03em',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {log.icon ? `${log.icon} ` : ''}{log.label}
+                      </Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {log.user}
                       </Typography>
                     </Box>
-                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
-                      {dateStr} {timeStr}
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, flexShrink: 0, ml: 1 }}>
+                      {timeStr}
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.4, fontWeight: 500 }}>
+
+                  <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.4, fontWeight: 500, mb: 0.25 }}>
                     {log.details}
                   </Typography>
+
+                  {(log.durationMs || log.metadata || log.deviceInfo) && (
+                    <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : '#6B7280', lineHeight: 1.4, fontWeight: 400 }}>
+                      {[
+                        log.durationMs ? `⏱ ${formatDuration(log.durationMs)}` : null,
+                        formatMetadataShort(log.metadata),
+                        log.deviceInfo ? `📱 ${log.deviceInfo.split(',')[0]?.replace('Platform: ', '')}` : null,
+                      ].filter(Boolean).join(' · ')}
+                    </Typography>
+                  )}
                 </Box>
               );
             })}

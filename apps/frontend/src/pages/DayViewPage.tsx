@@ -13,7 +13,7 @@ import {
 import { getOrders, completeOrder } from '../api/ordersApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
-import { trackNavigation } from '../utils/tracking';
+import { trackNavigation, trackOrderComplete, trackButtonClick } from '../utils/tracking';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
@@ -110,8 +110,9 @@ export default function DayViewPage() {
   const completeMutation = useMutation({
     mutationFn: ({ id, paymentMethod, cashAmount, upiAmount }: { id: number; paymentMethod?: 'cash' | 'upi' | 'split'; cashAmount?: number; upiAmount?: number }) =>
       completeOrder(id, paymentMethod, cashAmount, upiAmount),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
+      trackOrderComplete(variables.id, { paymentMethod: variables.paymentMethod });
       setToast({ message: 'Order completed!', type: 'success' });
       setPaymentModalOrder(null);
       setShowSuccess(true);
@@ -211,6 +212,8 @@ export default function DayViewPage() {
               startIcon={<Plus size={14} />}
               onClick={() => {
                 vibrate(haptics.medium);
+                trackButtonClick('day_view', 'new_order_desktop');
+                trackNavigation('day_view', `day/${date}/new`, { reason: 'new_order' });
                 navigate(`/day/${date}/new`);
               }}
               sx={{
@@ -502,6 +505,8 @@ export default function DayViewPage() {
           color="primary"
           onClick={() => {
             vibrate(haptics.medium);
+            trackButtonClick('day_view', 'new_order_mobile');
+            trackNavigation('day_view', `day/${date}/new`, { reason: 'new_order' });
             navigate(`/day/${date}/new`);
           }}
           sx={{
@@ -524,6 +529,8 @@ export default function DayViewPage() {
           color="primary"
           onClick={() => {
             vibrate(haptics.medium);
+            trackButtonClick('day_view', 'new_order_desktop_fab');
+            trackNavigation('day_view', `day/${date}/new`, { reason: 'new_order' });
             navigate(`/day/${date}/new`);
           }}
           sx={{
