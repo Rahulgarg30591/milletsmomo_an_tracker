@@ -288,6 +288,8 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                           p: 0,
                           borderRadius: '50%',
                           color: 'error.main',
+                          border: '1px solid',
+                          borderColor: 'error.main',
                           '&:hover': { backgroundColor: 'error.light' },
                         }}
                       >
