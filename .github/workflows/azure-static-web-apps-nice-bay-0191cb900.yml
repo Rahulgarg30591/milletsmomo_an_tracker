@@ -52,6 +52,7 @@ jobs:
           cp ../host.json .
           cp ../package.json .
           npm install --omit=dev --ignore-scripts
+          echo '{"IsEncrypted":false,"Values":{"FUNCTIONS_WORKER_RUNTIME":"node","AzureWebJobsStorage":""}}' > local.settings.json
 
       - name: Build And Deploy
         id: builddeploy
