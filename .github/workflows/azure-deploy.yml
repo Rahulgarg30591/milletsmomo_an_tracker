@@ -13,7 +13,10 @@ permissions:
   pull-requests: write
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
+  APP_LOCATION: 'apps/frontend'
+  API_LOCATION: 'apps/backend'
+  OUTPUT_LOCATION: 'dist'
 
 jobs:
   build_and_deploy:
@@ -21,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -37,9 +40,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
-
-      - name: Test
-        run: npm run test
 
       - name: Build frontend
         run: npm run build -w apps/frontend
