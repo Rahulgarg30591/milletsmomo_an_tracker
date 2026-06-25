@@ -47,12 +47,11 @@ jobs:
         run: npm run build -w apps/backend
 
       - name: Prepare API for deployment
-        working-directory: apps/backend
+        working-directory: apps/backend/dist
         run: |
+          cp ../host.json .
+          cp ../package.json .
           npm install --omit=dev --ignore-scripts
-          cp host.json dist/host.json
-          cp package.json dist/package.json
-          cp -r node_modules dist/node_modules
 
       - name: Build And Deploy
         id: builddeploy
