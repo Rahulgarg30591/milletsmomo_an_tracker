@@ -50,7 +50,7 @@ jobs:
         working-directory: apps/backend/dist
         run: |
           cp ../host.json .
-          cp ../package.json .
+          sed 's|"main": "dist/functions/api.js"|"main": "functions/api.js"|' ../package.json > package.json
           npm install --omit=dev --ignore-scripts
           echo '{"IsEncrypted":false,"Values":{"FUNCTIONS_WORKER_RUNTIME":"node","AzureWebJobsStorage":""}}' > local.settings.json
 
