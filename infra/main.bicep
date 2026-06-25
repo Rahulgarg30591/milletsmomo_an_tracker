@@ -21,8 +21,8 @@ param jwtSecret string
 @description('Client public IP for SQL firewall (leave empty to skip)')
 param clientIp string = ''
 
-@description('Allowed CORS origin (SWA default hostname)')
-param allowedOrigin string = ''
+@description('Allowed CORS origins (comma-separated, e.g. https://foo.azurestaticapps.net,https://bar.azurestaticapps.net)')
+param allowedOrigins string = ''
 
 @description('GitHub repo for SWA deployment source (e.g. owner/repo)')
 param repoUrl string = ''
@@ -131,7 +131,7 @@ resource swaAppSettings 'Microsoft.Web/staticSites/configuredAppSettings@2023-12
       SQL_TRUST_CERT: 'false'
       JWT_SECRET: jwtSecret
       JWT_EXPIRY: '12h'
-      ALLOWED_ORIGIN: empty(allowedOrigin) ? 'https://${swaHostName}' : allowedOrigin
+      ALLOWED_ORIGINS: empty(allowedOrigins) ? 'https://${swaHostName}' : allowedOrigins
       NODE_ENV: 'production'
     }
   }

@@ -44,8 +44,10 @@ function loadLocalSettings() {
   }
 }
 
-loadEnvConfig();
-loadLocalSettings();
+if (process.env.NODE_ENV !== 'production') {
+  loadEnvConfig();
+  loadLocalSettings();
+}
 
 const config: sql.config = {
   server: process.env.SQL_SERVER || '',

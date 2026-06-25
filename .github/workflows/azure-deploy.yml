@@ -14,9 +14,6 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  APP_LOCATION: 'apps/frontend'
-  API_LOCATION: 'apps/backend'
-  OUTPUT_LOCATION: 'dist'
 
 jobs:
   build_and_deploy:
@@ -50,6 +47,14 @@ jobs:
       - name: Build backend
         run: npm run build -w apps/backend
 
+      - name: Prepare API for deployment
+        working-directory: apps/backend
+        run: |
+          npm install --omit=dev --ignore-scripts
+          cp host.json dist/host.json
+          cp package.json dist/package.json
+          cp -r node_modules dist/node_modules
+
       - name: Deploy to Azure Static Web Apps
         id: swa_deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -57,9 +62,11 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: ${{ env.APP_LOCATION }}
-          api_location: ${{ env.API_LOCATION }}
-          output_location: ${{ env.OUTPUT_LOCATION }}
+          app_location: 'apps/frontend'
+          api_location: 'apps/backend/dist'
+          output_location: 'dist'
+          skip_app_build: true
+          skip_api_build: true
 
       - name: Comment PR with preview URL
         if: github.event_name == 'pull_request'
