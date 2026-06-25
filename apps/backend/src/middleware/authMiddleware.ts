@@ -9,11 +9,9 @@ export interface AuthUser {
   displayName: string;
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthUser;
-    }
+declare module 'express' {
+  interface Request {
+    user?: AuthUser;
   }
 }
 
