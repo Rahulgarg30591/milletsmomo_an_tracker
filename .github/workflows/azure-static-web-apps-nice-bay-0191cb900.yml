@@ -61,9 +61,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_NICE_BAY_0191CB900 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "apps/frontend"
+          app_location: "apps/frontend/dist"
           api_location: "apps/backend/dist"
-          output_location: "dist"
+          output_location: "."
           skip_app_build: true
           skip_api_build: true
 
