@@ -5,7 +5,7 @@ import { Socket } from 'net';
 
 async function azureToExpressReq(azureReq: HttpRequest): Promise<IncomingMessage> {
   const url = new URL(azureReq.url);
-  const socket = new Socket();
+  const socket = new Socket({ readable: false });
 
   const req = new IncomingMessage(socket);
   req.method = azureReq.method;
@@ -17,25 +17,23 @@ async function azureToExpressReq(azureReq: HttpRequest): Promise<IncomingMessage
   });
   req.headers = headers;
 
-  let rawBody: string | null = null;
+  let parsedBody: any = undefined;
   if (azureReq.bodyUsed || azureReq.body) {
     try {
-      rawBody = await azureReq.text();
+      parsedBody = await azureReq.json();
     } catch {
-      rawBody = null;
+      try {
+        parsedBody = await azureReq.text();
+      } catch {
+        parsedBody = null;
+      }
     }
   }
 
-  if (rawBody !== null) {
-    socket.push(Buffer.from(rawBody, 'utf-8'));
-  }
-  socket.push(null);
-
-  try {
-    (req as any).body = rawBody !== null ? JSON.parse(rawBody) : undefined;
-  } catch {
-    (req as any).body = rawBody;
-  }
+  (req as any).body = parsedBody;
+  delete (req.headers as any)['content-type'];
+  delete (req.headers as any)['content-length'];
+  delete (req.headers as any)['transfer-encoding'];
   (req as any).query = Object.fromEntries(azureReq.query.entries());
   (req as any).ip = (azureReq.headers.get('x-forwarded-for') || '').split(',')[0]?.trim()
     || azureReq.headers.get('x-client-ip')

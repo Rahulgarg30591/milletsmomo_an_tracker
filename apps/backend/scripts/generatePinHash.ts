@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const pin = process.argv[2];
 if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
