@@ -59,6 +59,7 @@ const config: sql.config = {
     encrypt: process.env.SQL_ENCRYPT !== 'false',
     trustServerCertificate: process.env.SQL_TRUST_CERT === 'true',
     enableArithAbort: true,
+    connectTimeout: 5000,
   },
   pool: {
     max: 10,
@@ -70,6 +71,9 @@ const config: sql.config = {
 let pool: sql.ConnectionPool | null = null;
 
 export async function getPool(): Promise<sql.ConnectionPool> {
+  if (!config.server) {
+    throw new Error('Database not configured: SQL_SERVER environment variable is not set');
+  }
   if (pool && pool.connected) return pool;
   if (pool && pool.connecting) {
     return new Promise<sql.ConnectionPool>((resolve, reject) => {

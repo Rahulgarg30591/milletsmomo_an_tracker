@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import expressApp from '../src/app.js';
 import { IncomingMessage, ServerResponse } from 'http';
@@ -6,7 +5,7 @@ import { Socket } from 'net';
 
 async function azureToExpressReq(azureReq: HttpRequest): Promise<IncomingMessage> {
   const url = new URL(azureReq.url);
-  const socket = new Socket({ readable: false });
+  const socket = new Socket();
 
   const req = new IncomingMessage(socket);
   req.method = azureReq.method;
@@ -18,20 +17,25 @@ async function azureToExpressReq(azureReq: HttpRequest): Promise<IncomingMessage
   });
   req.headers = headers;
 
-  let parsedBody: any = undefined;
+  let rawBody: string | null = null;
   if (azureReq.bodyUsed || azureReq.body) {
     try {
-      parsedBody = await azureReq.json();
+      rawBody = await azureReq.text();
     } catch {
-      try {
-        parsedBody = await azureReq.text();
-      } catch {
-        parsedBody = null;
-      }
+      rawBody = null;
     }
   }
 
-  (req as any).body = parsedBody;
+  if (rawBody !== null) {
+    socket.push(Buffer.from(rawBody, 'utf-8'));
+  }
+  socket.push(null);
+
+  try {
+    (req as any).body = rawBody !== null ? JSON.parse(rawBody) : undefined;
+  } catch {
+    (req as any).body = rawBody;
+  }
   (req as any).query = Object.fromEntries(azureReq.query.entries());
   (req as any).ip = (azureReq.headers.get('x-forwarded-for') || '').split(',')[0]?.trim()
     || azureReq.headers.get('x-client-ip')
