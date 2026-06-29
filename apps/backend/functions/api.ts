@@ -32,8 +32,6 @@ async function azureToExpressReq(azureReq: HttpRequest): Promise<IncomingMessage
 
   (req as any).body = parsedBody;
   delete (req.headers as any)['content-type'];
-  delete (req.headers as any)['content-length'];
-  delete (req.headers as any)['transfer-encoding'];
   (req as any).query = Object.fromEntries(azureReq.query.entries());
   (req as any).ip = (azureReq.headers.get('x-forwarded-for') || '').split(',')[0]?.trim()
     || azureReq.headers.get('x-client-ip')
