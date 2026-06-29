@@ -44,8 +44,8 @@ function loadLocalSettings() {
   }
 }
 
+loadEnvConfig();
 if (process.env.NODE_ENV !== 'production') {
-  loadEnvConfig();
   loadLocalSettings();
 }
 
