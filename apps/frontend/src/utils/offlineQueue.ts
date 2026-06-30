@@ -37,7 +37,7 @@ export async function queueMutation(config: {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   data: unknown;
 }): Promise<void> {
-  const token = sessionStorage.getItem('token');
+  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 

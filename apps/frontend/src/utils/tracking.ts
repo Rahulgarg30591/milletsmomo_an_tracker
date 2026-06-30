@@ -46,7 +46,7 @@ function setStoredLogs(logs: ClientLogEntry[]) {
 
 function getUserInfo(): { userId?: number; userRole?: string } {
   try {
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (!token) return {};
     const payload = JSON.parse(atob(token.split('.')[1]));
     return { userId: payload.id, userRole: payload.role };
@@ -104,7 +104,7 @@ export function flushLogs(): Promise<ClientLogEntry[]> {
   if (logs.length === 0) return Promise.resolve([]);
 
   const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -212,7 +212,7 @@ window.addEventListener('beforeunload', () => {
   const logs = getStoredLogs();
   if (logs.length > 0) {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     fetch(`${apiUrl}/api/client-logs`, {

@@ -12,7 +12,7 @@ export const client = axios.create({
 });
 
 client.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -49,9 +49,9 @@ client.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('role');
-      sessionStorage.removeItem('displayName');
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('displayName');
       window.location.href = '/login';
     }
     return Promise.reject(error);

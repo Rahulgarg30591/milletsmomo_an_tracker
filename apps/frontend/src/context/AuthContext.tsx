@@ -18,25 +18,25 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(() => {
-    const token = sessionStorage.getItem('token');
-    const role = sessionStorage.getItem('role');
-    const displayName = sessionStorage.getItem('displayName');
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    const displayName = localStorage.getItem('displayName');
     return { token, role, displayName };
   });
 
   const login = useCallback((token: string, role: string, displayName: string) => {
-    sessionStorage.setItem('token', token);
-    sessionStorage.setItem('role', role);
-    sessionStorage.setItem('displayName', displayName);
+    localStorage.setItem('token', token);
+    localStorage.setItem('role', role);
+    localStorage.setItem('displayName', displayName);
     setAuth({ token, role, displayName });
   }, []);
 
   const logout = useCallback(async () => {
     trackLogout({ role: auth.role, displayName: auth.displayName });
     await flushLogs();
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('role');
-    sessionStorage.removeItem('displayName');
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('displayName');
     sessionStorage.removeItem('mm_session_start');
     setAuth({ token: null, role: null, displayName: null });
   }, [auth.role, auth.displayName]);
