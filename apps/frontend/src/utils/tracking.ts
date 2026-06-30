@@ -106,7 +106,7 @@ export function flushLogs(): Promise<ClientLogEntry[]> {
   const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['X-Auth-Token'] = token;
 
   const promise = fetch(`${apiUrl}/api/client-logs`, {
     method: 'POST',
@@ -214,7 +214,7 @@ window.addEventListener('beforeunload', () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
     const token = localStorage.getItem('token');
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (token) headers['X-Auth-Token'] = token;
     fetch(`${apiUrl}/api/client-logs`, {
       method: 'POST',
       headers,

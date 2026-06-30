@@ -15,11 +15,23 @@ export default function LoginPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login: doLogin } = useAuth();
+  const { login: doLogin, isAuthenticated, auth } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const theme = useTheme();
   const redirectPath = searchParams.get('redirect') || null;
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+      } else if (auth.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(`/day/${getToday()}`, { replace: true });
+      }
+    }
+  }, []); // intentionally runs once on mount to redirect already-authenticated users
 
   useEffect(() => {
     if (error) {

@@ -39,7 +39,7 @@ export async function queueMutation(config: {
 }): Promise<void> {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['X-Auth-Token'] = token;
 
   const mutation: QueuedMutation = {
     id: generateId(),

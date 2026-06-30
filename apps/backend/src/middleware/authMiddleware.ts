@@ -20,13 +20,15 @@ export function authMiddleware(
   res: Response,
   next: NextFunction,
 ): void {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  // Azure SWA injects its own Authorization header when proxying to managed functions,
+  // so we use a custom header to carry the user's JWT instead.
+  const customToken = req.headers['x-auth-token'] as string | undefined;
+  if (!customToken) {
     res.status(401).json({ error: 'Missing or invalid token' });
     return;
   }
 
-  const token = header.slice(7);
+  const token = customToken;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = {
