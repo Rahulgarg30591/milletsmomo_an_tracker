@@ -3,7 +3,9 @@
     ".js": "application/javascript",
     ".mjs": "application/javascript",
     ".css": "text/css",
-    ".wasm": "application/wasm"
+    ".wasm": "application/wasm",
+    ".webmanifest": "application/manifest+json",
+    ".json": "application/json"
   },
   "routes": [
     {
