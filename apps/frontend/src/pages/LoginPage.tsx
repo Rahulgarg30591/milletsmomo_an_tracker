@@ -23,12 +23,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated()) {
-      if (redirectPath) {
-        navigate(redirectPath, { replace: true });
-      } else if (auth.role === 'admin') {
-        navigate('/admin', { replace: true });
+      if (auth.role === 'admin') {
+        navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
       } else {
-        navigate(`/day/${getToday()}`, { replace: true });
+        navigate(redirectPath || `/day/${getToday()}`, { replace: true });
       }
     }
   }, []); // intentionally runs once on mount to redirect already-authenticated users
@@ -51,12 +49,10 @@ export default function LoginPage() {
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });
       vibrate(haptics.success);
-      if (redirectPath) {
-        navigate(redirectPath, { replace: true });
-      } else if (res.role === 'admin') {
-        navigate('/admin', { replace: true });
+      if (res.role === 'admin') {
+        navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
       } else {
-        navigate(`/day/${getToday()}`, { replace: true });
+        navigate(redirectPath || `/day/${getToday()}`, { replace: true });
       }
     } catch {
       setError(true);
