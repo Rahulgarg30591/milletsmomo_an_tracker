@@ -51,7 +51,7 @@ export async function getSummary(date: string, endDate?: string) {
        FROM OrderItems WHERE order_id = @orderId`,
     );
     orders.push({
-      id: order.id,
+      id: Number(order.id),
       orderDate: formatDate(order.order_date),
       timeLabel: order.time_label,
       orderType: order.order_type,

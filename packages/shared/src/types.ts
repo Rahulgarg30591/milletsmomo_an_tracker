@@ -160,7 +160,7 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update';
   createdBy: number;
   createdAt: string;
   details: string;

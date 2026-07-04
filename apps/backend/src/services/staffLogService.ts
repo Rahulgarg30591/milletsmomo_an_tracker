@@ -5,7 +5,7 @@ import { formatDate } from '../utils/dateUtils.js';
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update';
   createdBy: number;
   createdAt: string;
   details: string;
@@ -14,7 +14,7 @@ export interface StaffOperationLog {
 
 export async function createLog(
   orderDate: string,
-  operationType: 'verification' | 'closing_stock' | 'order_create',
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update',
   createdBy: number,
   details: string,
 ): Promise<void> {

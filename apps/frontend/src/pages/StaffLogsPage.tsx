@@ -12,6 +12,7 @@ const staffTypeConfig: Record<string, { label: string; color: string; icon: stri
   verification: { label: 'Verification', color: '#3B82F6', icon: '🚚' },
   closing_stock: { label: 'Closing Stock', color: '#10B981', icon: '📦' },
   order_create: { label: 'Order', color: '#F59E0B', icon: '📋' },
+  order_update: { label: 'Order Edit', color: '#8B5CF6', icon: '✏️' },
 };
 
 const clientTypeConfig: Record<string, { label: string; color: string }> = {

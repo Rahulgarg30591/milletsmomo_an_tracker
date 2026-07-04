@@ -25,6 +25,22 @@ export const completeOrderSchema = z.object({
   upiAmount: z.number().min(0).optional(),
 });
 
+export const updateOrderSchema = z.object({
+  orderType: z.enum(['dine', 'pack']),
+  paymentMethod: z.enum(['cash', 'upi', 'split', 'pending']),
+  cashAmount: z.number().min(0).optional(),
+  upiAmount: z.number().min(0).optional(),
+  items: z
+    .array(
+      z.object({
+        menuItemId: z.number().int().positive(),
+        quantity: z.number().int().positive(),
+        isHalf: z.boolean().optional().default(false),
+      }),
+    )
+    .min(1, 'At least one item is required'),
+});
+
 export const dateQuerySchema = z.object({
   date: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
   endDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)').optional(),

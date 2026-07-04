@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-import { formatDate, getNowIST } from '../utils/dateUtils.js';
+import { formatDate } from '../utils/dateUtils.js';
 import { formatTimeLabel } from '../utils/time.js';
 import { computeLineTotal, computeOrderTotal } from '../utils/pricing.js';
 import { buildMenu } from '../constants/menu.js';
@@ -36,7 +36,7 @@ export async function getOrders(date: string) {
        FROM OrderItems WHERE order_id = @orderId`,
     );
     orders.push({
-      id: order.id,
+      id: Number(order.id),
       orderDate: formatDate(order.order_date),
       timeLabel: order.time_label,
       orderType: order.order_type,
@@ -72,7 +72,7 @@ export async function createOrder(
 ) {
   const pool = await getPool();
   const id = Date.now();
-  const timeLabel = formatTimeLabel(getNowIST());
+  const timeLabel = formatTimeLabel(new Date());
   const totalAmount = computeOrderTotal(data.items);
 
   // Compute cash/upi amounts based on payment method
@@ -228,4 +228,111 @@ export async function deleteOrder(id: number) {
 
   await request.query('DELETE FROM Orders WHERE id = @id');
   return { deleted: true, id };
+}
+
+export async function updateOrder(
+  id: number,
+  data: {
+    orderType: string;
+    paymentMethod: string;
+    cashAmount?: number;
+    upiAmount?: number;
+    items: { menuItemId: number; quantity: number; isHalf: boolean }[];
+  },
+) {
+  const pool = await getPool();
+  const checkRequest = pool.request();
+  checkRequest.input('id', sql.BigInt, id);
+  const check = await checkRequest.query(
+    'SELECT id, order_date, is_completed FROM Orders WHERE id = @id',
+  );
+  if (check.recordset.length === 0) {
+    throw Object.assign(new Error('Order not found'), { status: 404 });
+  }
+  const existing = check.recordset[0];
+  if (existing.is_completed) {
+    throw Object.assign(new Error('Cannot edit a completed order'), { status: 400 });
+  }
+
+  const orderDate = formatDate(existing.order_date);
+  const totalAmount = computeOrderTotal(data.items);
+
+  let cashAmount = 0;
+  let upiAmount = 0;
+  if (data.paymentMethod === 'cash') {
+    cashAmount = totalAmount;
+  } else if (data.paymentMethod === 'upi') {
+    upiAmount = totalAmount;
+  } else if (data.paymentMethod === 'split') {
+    cashAmount = data.cashAmount ?? 0;
+    upiAmount = data.upiAmount ?? 0;
+  }
+
+  const transaction = pool.transaction();
+  await transaction.begin();
+
+  try {
+    const updateRequest = transaction.request();
+    updateRequest.input('id', sql.BigInt, id);
+    updateRequest.input('orderType', sql.NVarChar, data.orderType);
+    updateRequest.input('paymentMethod', sql.NVarChar, data.paymentMethod);
+    updateRequest.input('totalAmount', sql.Decimal(8, 2), totalAmount);
+    updateRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
+    updateRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
+
+    await updateRequest.query(
+      `UPDATE Orders SET order_type = @orderType, payment_method = @paymentMethod, total_amount = @totalAmount, cash_amount = @cashAmount, upi_amount = @upiAmount WHERE id = @id`,
+    );
+
+    const deleteItemsRequest = transaction.request();
+    deleteItemsRequest.input('orderId', sql.BigInt, id);
+    await deleteItemsRequest.query('DELETE FROM OrderItems WHERE order_id = @orderId');
+
+    for (const item of data.items) {
+      const menuItem = findMenuItem(item.menuItemId);
+      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
+
+      const itemRequest = transaction.request();
+      itemRequest.input('orderId', sql.BigInt, id);
+      itemRequest.input('menuItemId', sql.Int, item.menuItemId);
+      itemRequest.input('itemName', sql.NVarChar, menuItem.displayName);
+      itemRequest.input('quantity', sql.Int, item.quantity);
+      itemRequest.input('isHalf', sql.Bit, item.isHalf ? 1 : 0);
+      itemRequest.input('unitPrice', sql.Decimal(6, 2), unitPrice);
+      itemRequest.input('lineTotal', sql.Decimal(8, 2), lineTotal);
+
+      await itemRequest.query(
+        `INSERT INTO OrderItems (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
+         VALUES (@orderId, @menuItemId, @itemName, @quantity, @isHalf, @unitPrice, @lineTotal)`,
+      );
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+
+  return {
+    id,
+    orderDate,
+    orderType: data.orderType,
+    paymentMethod: data.paymentMethod,
+    isCompleted: false,
+    totalAmount,
+    cashAmount,
+    upiAmount,
+    items: data.items.map((item) => {
+      const menuItem = findMenuItem(item.menuItemId);
+      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
+      return {
+        menuItemId: item.menuItemId,
+        itemName: menuItem.displayName,
+        quantity: item.quantity,
+        isHalf: item.isHalf,
+        unitPrice,
+        lineTotal,
+      };
+    }),
+  };
 }

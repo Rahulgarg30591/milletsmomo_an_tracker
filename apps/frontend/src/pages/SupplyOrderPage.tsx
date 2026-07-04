@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download, ClipboardCopy } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder } from '../api/supplyApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
@@ -113,6 +113,40 @@ export default function SupplyOrderPage() {
   }, [items, quantities]);
 
   const hasItems = Object.keys(quantities).length > 0;
+
+  const createOrderText = () => {
+    const dateObj = new Date(date + 'T00:00:00');
+    const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const lines: string[] = [`*Date: ${formattedDate}*`];
+
+    let idx = 1;
+    const allItems = [
+      ...momoPackets.map((i) => ({ ...i, minQty: 0 })),
+      ...sauces.map((i) => ({ ...i, minQty: 1 })),
+    ];
+    allItems.forEach((item) => {
+      const qty = quantities[item.id] || 0;
+      if (qty > item.minQty) {
+        const name = item.displayName.replace(/\s*\(\d+\s*Pcs\)/i, '').replace(/\s*packet\s*/i, '');
+        lines.push(`${idx}. ${name}: ${qty}`);
+        idx++;
+      }
+    });
+
+    return lines.join('\n');
+  };
+
+  const handleCopyOrderText = async () => {
+    const text = createOrderText();
+    try {
+      await navigator.clipboard.writeText(text);
+      vibrate(haptics.success);
+      setToast({ message: 'Order text copied to clipboard!', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to copy text', type: 'error' });
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -480,6 +514,25 @@ export default function SupplyOrderPage() {
           }}
         >
           {saveMutation.isPending ? 'Saving...' : existingOrder?.id ? 'Update Order' : 'Save Order'}
+        </Button>
+
+        <Button
+          fullWidth
+          variant="outlined"
+          size="large"
+          disabled={!hasItems}
+          onClick={handleCopyOrderText}
+          startIcon={<ClipboardCopy size={18} />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: 2,
+            py: 1.5,
+            fontSize: '0.95rem',
+            mt: 1.5,
+          }}
+        >
+          Create Order Text
         </Button>
 
         {/* Supply Change Logs */}

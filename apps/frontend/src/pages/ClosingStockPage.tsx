@@ -218,6 +218,15 @@ export default function ClosingStockPage() {
     });
   };
 
+  const updateWastage = (id: number, delta: number) => {
+    vibrate(haptics.light);
+    setClosingItems((prev) => {
+      const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
+      const next = Math.max(0, current.wastage + delta);
+      return { ...prev, [id]: { ...current, wastage: next } };
+    });
+  };
+
   const setPackets = (id: number, val: string) => {
     const num = parseInt(val, 10);
     setClosingItems((prev) => {
@@ -231,6 +240,14 @@ export default function ClosingStockPage() {
     setClosingItems((prev) => {
       const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
       return { ...prev, [id]: { ...current, pieces: isNaN(num) ? 0 : Math.min(num, maxPieces - 1) } };
+    });
+  };
+
+  const setWastage = (id: number, val: string) => {
+    const num = parseInt(val, 10);
+    setClosingItems((prev) => {
+      const current = prev[id] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
+      return { ...prev, [id]: { ...current, wastage: isNaN(num) ? 0 : Math.max(0, num) } };
     });
   };
 
@@ -517,8 +534,50 @@ export default function ClosingStockPage() {
                           </Box>
                           <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>pcs</Typography>
                         </Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mx: 0.5 }}>+</Typography>
                       </>
                     )}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => updateWastage(item.supplyItemId, -1)}
+                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
+                        >
+                          <Minus size={12} />
+                        </IconButton>
+                        <Box
+                          component="input"
+                          type="number"
+                          value={current.wastage}
+                          onChange={(e) => setWastage(item.supplyItemId, e.target.value)}
+                          sx={{
+                            width: 44,
+                            textAlign: 'center',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            py: 0.5,
+                            px: 0,
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`,
+                            borderRadius: 1,
+                            background: 'transparent',
+                            color: 'inherit',
+                            outline: 'none',
+                            '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
+                            '-moz-appearance': 'textfield',
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={() => updateWastage(item.supplyItemId, 1)}
+                          sx={{ width: 28, height: 28, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1, p: 0 }}
+                        >
+                          <Plus size={12} />
+                        </IconButton>
+                      </Box>
+                      <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.25 }}>wastage</Typography>
+                    </Box>
+
                     {/* Conflict Toggle */}
                     {(hasMismatch || current.hasConflict) && (
                       <Button

@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChefHat, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ChefHat, ShoppingCart, Save } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
-import { createOrder } from '../api/ordersApi';
+import { getOrders, updateOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
-import { trackPageView, trackOrderSubmit, trackNavigation } from '../utils/tracking';
+import { trackPageView, trackNavigation } from '../utils/tracking';
 import { calculateLineTotal, calculateOrderTotal, getMenuItem } from '../utils/pricing';
 import MenuGrid from '../components/MenuGrid';
 import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
@@ -16,6 +16,7 @@ import TotalBar from '../components/TotalBar';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
 import type { MenuItem, Order, OrderItem } from '../types';
+
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Steam': '🍲',
@@ -44,14 +45,13 @@ const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: s
   'Pan Fried Gravy': { bg: '#1A2E4A', border: '#2563EB', text: '#8CB4E8' },
 };
 
-function NewOrderContent() {
-  const { date } = useParams<{ date: string }>();
+function EditOrderContent() {
+  const { date, orderId } = useParams<{ date: string; orderId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { draft, clearDraft, getItemList, setValidationErrors } = useOrderDraft();
+  const { draft, clearDraft, getItemList, setValidationErrors, loadFromOrder } = useOrderDraft();
   const configPanelRef = useRef<OrderConfigPanelHandle>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const submitContextRef = useRef<{ itemCount: number }>({ itemCount: 0 });
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
@@ -61,6 +61,32 @@ function NewOrderContent() {
     queryKey: ['menu'],
     queryFn: getMenu,
   });
+
+  const { data: ordersData } = useQuery({
+    queryKey: ['orders', date],
+    queryFn: () => getOrders(date!),
+  });
+
+  const existingOrder = useMemo(() => {
+    if (!ordersData?.orders || !orderId) return null;
+    return ordersData.orders.find((o: Order) => o.id === Number(orderId)) || null;
+  }, [ordersData, orderId]);
+
+  useEffect(() => {
+    if (existingOrder && draft.items.size === 0 && !draft.orderType) {
+      loadFromOrder({
+        orderType: existingOrder.orderType,
+        paymentMethod: existingOrder.paymentMethod,
+        cashAmount: existingOrder.cashAmount,
+        upiAmount: existingOrder.upiAmount,
+        items: existingOrder.items.map((i: OrderItem) => ({
+          menuItemId: i.menuItemId,
+          quantity: i.quantity,
+          isHalf: i.isHalf,
+        })),
+      });
+    }
+  }, [existingOrder, draft.items.size, draft.orderType, loadFromOrder]);
 
   const groupedItems = useMemo(() => {
     if (!menuData?.items) return [];
@@ -82,20 +108,18 @@ function NewOrderContent() {
   }, [draft.items]);
 
   useEffect(() => {
-    trackPageView('new_order', `Opened new order page for ${date}`);
-  }, [date]);
+    trackPageView('edit_order', `Opened edit order page for order ${orderId} on ${date}`);
+  }, [date, orderId]);
 
-  const createMutation = useMutation({
-    mutationFn: createOrder,
-    onSuccess: (res) => {
-      trackOrderSubmit(res.id, { orderDate: date, itemCount: submitContextRef.current.itemCount });
-      trackNavigation('new_order', `day/${date}`, { reason: 'order_created', orderId: res.id });
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: number; data: any }) => updateOrder(vars.id, vars.data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       vibrate(haptics.error);
-      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Failed to place order' } }));
+      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Failed to update order' } }));
     },
   });
 
@@ -132,9 +156,9 @@ function NewOrderContent() {
     });
 
     const optimisticOrder: Order = {
-      id: -Date.now(),
+      id: Number(orderId),
       orderDate: date!,
-      timeLabel: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }),
+      timeLabel: existingOrder?.timeLabel || '',
       orderType: draft.orderType!,
       paymentMethod: draft.paymentMethod!,
       isCompleted: false,
@@ -145,7 +169,6 @@ function NewOrderContent() {
     };
 
     const payload: any = {
-      orderDate: date!,
       orderType: draft.orderType,
       paymentMethod: draft.paymentMethod,
       items: items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })),
@@ -157,17 +180,38 @@ function NewOrderContent() {
     }
 
     queryClient.setQueryData(['orders', date], (old: any) => {
-      if (!old) return { orders: [optimisticOrder] };
-      return { ...old, orders: [...old.orders, optimisticOrder] };
+      if (!old?.orders) return old;
+      return {
+        ...old,
+        orders: old.orders.map((o: Order) => (o.id === Number(orderId) ? optimisticOrder : o)),
+      };
     });
 
-    submitContextRef.current = { itemCount: items.length };
     clearDraft();
     vibrate(haptics.success);
+    trackNavigation('edit_order', `day/${date}`, { reason: 'order_updated', orderId });
     navigate(`/day/${date}`);
 
-    createMutation.mutate(payload);
+    updateMutation.mutate({ id: Number(orderId), data: payload });
   };
+
+  if (!existingOrder && ordersData) {
+    return (
+      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'text.primary', mb: 1 }}>
+            Order not found
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
+            This order may have been deleted or completed.
+          </Typography>
+          <IconButton onClick={() => navigate(`/day/${date}`)} sx={{ color: 'text.secondary' }}>
+            <ArrowLeft size={18} />
+          </IconButton>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 14, md: 12 }, pt: 0.25 }}>
@@ -175,7 +219,10 @@ function NewOrderContent() {
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, md: 2 }, gap: { xs: 0.5, md: 1 } }}>
           <IconButton
-            onClick={() => navigate(`/day/${date}`)}
+            onClick={() => {
+              clearDraft();
+              navigate(`/day/${date}`);
+            }}
             sx={{ color: 'text.secondary', p: { xs: 0.5, md: 0.75 }, mr: { xs: 0.25, md: 0.5 } }}
             aria-label="Go back"
           >
@@ -194,7 +241,7 @@ function NewOrderContent() {
               }}
             >
               <ChefHat size={18} color={theme.palette.primary.main} />
-              New Order
+              Edit Order
             </Typography>
             <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.8rem' }, color: 'text.secondary', mt: 0.125 }}>
               {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : ''}
@@ -264,17 +311,17 @@ function NewOrderContent() {
         <SelectedItemsList />
       </Box>
 
-      <TotalBar onSubmit={handleSubmit} />
+      <TotalBar onSubmit={handleSubmit} submitLabel="Update Order" submitIcon={<Save size={18} />} />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>
   );
 }
 
-export default function NewOrderPage() {
+export default function EditOrderPage() {
   return (
     <OrderDraftProvider>
-      <NewOrderContent />
+      <EditOrderContent />
     </OrderDraftProvider>
   );
 }

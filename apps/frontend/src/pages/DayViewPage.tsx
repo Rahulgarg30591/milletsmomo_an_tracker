@@ -107,19 +107,64 @@ export default function DayViewPage() {
     setLastRefresh(new Date());
   }, [data]);
 
+  useEffect(() => {
+    const handleOrderError = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setToast({ message: detail?.message || 'Failed to place order', type: 'error' });
+      vibrate(haptics.error);
+    };
+    window.addEventListener('order-error', handleOrderError);
+    return () => window.removeEventListener('order-error', handleOrderError);
+  }, []);
+
   const completeMutation = useMutation({
     mutationFn: ({ id, paymentMethod, cashAmount, upiAmount }: { id: number; paymentMethod?: 'cash' | 'upi' | 'split'; cashAmount?: number; upiAmount?: number }) =>
       completeOrder(id, paymentMethod, cashAmount, upiAmount),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['orders', date] });
-      trackOrderComplete(variables.id, { paymentMethod: variables.paymentMethod });
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['orders', date] });
+      const previousData = queryClient.getQueryData(['orders', date]);
+
+      queryClient.setQueryData(['orders', date], (old: any) => {
+        if (!old?.orders) return old;
+        return {
+          ...old,
+          orders: old.orders.map((o: Order) => {
+            if (o.id !== variables.id) return o;
+            let cashAmount = o.cashAmount;
+            let upiAmount = o.upiAmount;
+            const paymentMethod = variables.paymentMethod || o.paymentMethod;
+            if (variables.paymentMethod === 'cash') {
+              cashAmount = o.totalAmount;
+              upiAmount = 0;
+            } else if (variables.paymentMethod === 'upi') {
+              cashAmount = 0;
+              upiAmount = o.totalAmount;
+            } else if (variables.paymentMethod === 'split') {
+              cashAmount = variables.cashAmount ?? 0;
+              upiAmount = variables.upiAmount ?? 0;
+            }
+            return { ...o, isCompleted: true, paymentMethod, cashAmount, upiAmount };
+          }),
+        };
+      });
+
       setPaymentModalOrder(null);
       setShowSuccess(true);
       vibrate(haptics.success);
+
+      return { previousData };
     },
-    onError: () => {
+    onSuccess: (_data, variables) => {
+      trackOrderComplete(variables.id, { paymentMethod: variables.paymentMethod });
+    },
+    onError: (_err, _variables, context) => {
+      queryClient.setQueryData(['orders', date], context?.previousData);
+      setShowSuccess(false);
       setToast({ message: 'Failed to complete order', type: 'error' });
       vibrate(haptics.error);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', date] });
     },
   });
 
@@ -129,6 +174,10 @@ export default function DayViewPage() {
     } else {
       completeMutation.mutate({ id: order.id });
     }
+  };
+
+  const handleEdit = (order: Order) => {
+    navigate(`/day/${date}/edit/${order.id}`);
   };
 
   const handlePaymentResolve = (method: 'cash' | 'upi' | 'split', cashAmount?: number, upiAmount?: number) => {
@@ -462,6 +511,7 @@ export default function DayViewPage() {
                 <OrderCard
                   order={order}
                   onComplete={handleComplete}
+                  onEdit={handleEdit}
                 />
               </motion.div>
             ))}

@@ -1,6 +1,6 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
-import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split } from 'lucide-react';
+import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split, Pencil } from 'lucide-react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
 import { formatQuantity } from '../utils/formatQuantity';
@@ -8,6 +8,7 @@ import { formatQuantity } from '../utils/formatQuantity';
 interface OrderCardProps {
   order: Order;
   onComplete: (order: Order) => void;
+  onEdit?: (order: Order) => void;
 }
 
 const typeIcons = {
@@ -22,7 +23,7 @@ const paymentIcons = {
   pending: <Clock size={10} />,
 };
 
-export default function OrderCard({ order, onComplete }: OrderCardProps) {
+export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const colors = isDark ? darkStatusColors : statusColors;
@@ -133,6 +134,34 @@ export default function OrderCard({ order, onComplete }: OrderCardProps) {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {onEdit && (
+                <Button
+                  size="small"
+                  onClick={() => {
+                    vibrate(haptics.light);
+                    onEdit(order);
+                  }}
+                  aria-label="Edit order"
+                  sx={{
+                    minWidth: { xs: 28, md: 32 },
+                    height: { xs: 28, md: 32 },
+                    p: 0,
+                    borderRadius: 1,
+                    backgroundColor: 'transparent',
+                    color: 'text.secondary',
+                    border: 1,
+                    borderColor: 'divider',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                      color: 'primary.main',
+                      borderColor: 'primary.main',
+                    },
+                    '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+                  }}
+                >
+                  <Pencil size={14} />
+                </Button>
+              )}
               <Button
                 size="small"
                 onClick={() => {

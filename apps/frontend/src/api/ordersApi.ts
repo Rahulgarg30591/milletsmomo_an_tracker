@@ -26,3 +26,14 @@ export async function deleteOrder(id: number) {
   const res = await client.delete(`/orders/${id}`);
   return res.data;
 }
+
+export async function updateOrder(id: number, data: {
+  orderType: 'dine' | 'pack';
+  paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+  cashAmount?: number;
+  upiAmount?: number;
+  items: { menuItemId: number; quantity: number; isHalf: boolean }[];
+}) {
+  const res = await client.put(`/orders/${id}`, data);
+  return res.data;
+}

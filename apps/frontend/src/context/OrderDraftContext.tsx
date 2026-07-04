@@ -37,6 +37,13 @@ interface OrderDraftContextType {
   setPaymentMethod: (method: 'cash' | 'upi' | 'split' | 'pending') => void;
   setSplitAmounts: (cash: number, upi: number) => void;
   clearDraft: () => void;
+  loadFromOrder: (order: {
+    orderType: 'dine' | 'pack';
+    paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+    cashAmount: number;
+    upiAmount: number;
+    items: { menuItemId: number; quantity: number; isHalf: boolean }[];
+  }) => void;
   getItemList: () => { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[];
   getTotalItems: () => number;
 }
@@ -199,6 +206,33 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setValidationErrors(defaultValidationErrors);
   }, []);
 
+  const loadFromOrder = useCallback((order: {
+    orderType: 'dine' | 'pack';
+    paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
+    cashAmount: number;
+    upiAmount: number;
+    items: { menuItemId: number; quantity: number; isHalf: boolean }[];
+  }) => {
+    const items = new Map<number, DraftItem>();
+    for (const item of order.items) {
+      const isHalfPreset = item.isHalf && item.quantity === 3;
+      const isFullPreset = !item.isHalf && item.quantity === 6;
+      items.set(item.menuItemId, {
+        quantity: item.quantity,
+        isHalf: item.isHalf,
+        isCustom: !isHalfPreset && !isFullPreset,
+      });
+    }
+    setDraft({
+      items,
+      orderType: order.orderType,
+      paymentMethod: order.paymentMethod,
+      cashAmount: order.cashAmount,
+      upiAmount: order.upiAmount,
+    });
+    setValidationErrors(defaultValidationErrors);
+  }, []);
+
   const getItemList = useCallback(() => {
     const list: { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[] = [];
     draft.items.forEach((item, menuItemId) => {
@@ -235,6 +269,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setPaymentMethod,
         setSplitAmounts,
         clearDraft,
+        loadFromOrder,
         getItemList,
         getTotalItems,
       }}

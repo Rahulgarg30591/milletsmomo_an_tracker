@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { dateQuerySchema, createOrderSchema, completeOrderSchema } from '../validators/orderValidators.js';
+import { dateQuerySchema, createOrderSchema, completeOrderSchema, updateOrderSchema } from '../validators/orderValidators.js';
 import * as ordersService from '../services/ordersService.js';
 import * as staffLogService from '../services/staffLogService.js';
 
@@ -89,6 +89,43 @@ export async function deleteOrder(
     const result = await ordersService.deleteOrder(id);
     res.json(result);
   } catch (err: any) {
+    next(err);
+  }
+}
+
+export async function updateOrder(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: 'Invalid order ID' });
+      return;
+    }
+    const data = updateOrderSchema.parse(req.body);
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const result = await ordersService.updateOrder(id, data);
+
+    const totalItems = data.items.reduce((sum, i) => sum + i.quantity, 0);
+    let paymentDetails: string = data.paymentMethod;
+    if (data.paymentMethod === 'split') {
+      paymentDetails = `split (₹${data.cashAmount} cash + ₹${data.upiAmount} upi)`;
+    }
+    const details = `Order #${id} updated: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${paymentDetails}`;
+    await staffLogService.createLog(result.orderDate, 'order_update', userId, details);
+
+    res.json(result);
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid order data' });
+      return;
+    }
     next(err);
   }
 }

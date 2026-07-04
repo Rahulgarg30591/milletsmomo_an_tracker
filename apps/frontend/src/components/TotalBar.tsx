@@ -7,9 +7,11 @@ import { vibrate, haptics } from '../theme/tokens';
 
 interface TotalBarProps {
   onSubmit: () => void;
+  submitLabel?: string;
+  submitIcon?: React.ReactNode;
 }
 
-export default function TotalBar({ onSubmit }: TotalBarProps) {
+export default function TotalBar({ onSubmit, submitLabel = 'Place', submitIcon }: TotalBarProps) {
   const { draft, getItemList } = useOrderDraft();
   const items = getItemList();
   const total = calculateOrderTotal(items);
@@ -90,8 +92,8 @@ export default function TotalBar({ onSubmit }: TotalBarProps) {
             lineHeight: 1.2,
           }}
         >
-          <ShoppingBag size={16} style={{ marginRight: 6 }} />
-          Place
+          {submitIcon || <ShoppingBag size={16} style={{ marginRight: 6 }} />}
+          {submitLabel}
         </Button>
       </motion.div>
     </Box>

@@ -16,6 +16,7 @@ import PageLoader from './components/PageLoader';
 
 const DayViewPage = lazy(() => import('./pages/DayViewPage'));
 const NewOrderPage = lazy(() => import('./pages/NewOrderPage'));
+const EditOrderPage = lazy(() => import('./pages/EditOrderPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const SupplyOrderPage = lazy(() => import('./pages/SupplyOrderPage'));
 const SupplyVerificationPage = lazy(() => import('./pages/SupplyVerificationPage'));
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to={`/day/${getToday()}`} replace />} />
                 <Route path="/day/:date" element={<ProtectedRoute requiredRole="staff"><DayViewPage /></ProtectedRoute>} />
                 <Route path="/day/:date/new" element={<ProtectedRoute requiredRole="staff"><NewOrderPage /></ProtectedRoute>} />
+                <Route path="/day/:date/edit/:orderId" element={<ProtectedRoute requiredRole="staff"><EditOrderPage /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
                 <Route path="/admin/supply" element={<ProtectedRoute requiredRole="admin"><SupplyOrderPage /></ProtectedRoute>} />
                 <Route path="/admin/staff-logs" element={<ProtectedRoute requiredRole="admin"><StaffLogsPage /></ProtectedRoute>} />
