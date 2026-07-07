@@ -125,6 +125,28 @@ export default function StockPage() {
 
     const orders = ordersData?.orders || [];
 
+    // Precompute consumed pieces per filling once (O(orders * orderItems))
+    const consumedPerFilling = new Map<string, number>();
+    let platterPerTypeTotal = 0;
+    for (const order of orders) {
+      for (const orderItem of order.items) {
+        const menuItem = menuMap.get(orderItem.menuItemId);
+        if (!menuItem) continue;
+        const itemFilling = menuItem.filling;
+        if (itemFilling === 'Platter') {
+          platterPerTypeTotal += Math.round(orderItem.quantity / 3);
+        } else {
+          consumedPerFilling.set(itemFilling, (consumedPerFilling.get(itemFilling) || 0) + orderItem.quantity);
+        }
+      }
+    }
+    // Platter contributes perType to each of Veg/Paneer/Cheese Corn
+    if (platterPerTypeTotal > 0) {
+      for (const f of ['Veg', 'Paneer', 'Cheese Corn']) {
+        consumedPerFilling.set(f, (consumedPerFilling.get(f) || 0) + platterPerTypeTotal);
+      }
+    }
+
     return [...itemMap.values()].map((si) => {
       const piecesPer = si.piecesPer;
       const fullFilling =
@@ -136,24 +158,7 @@ export default function StockPage() {
       const openingPackets = Math.floor(openingTotalPieces / piecesPer);
       const openingPieces = openingTotalPieces % piecesPer;
 
-      let consumedPieces = 0;
-      for (const order of orders) {
-        for (const orderItem of order.items) {
-          const menuItem = menuMap.get(orderItem.menuItemId);
-          if (!menuItem) continue;
-          const itemFilling = menuItem.filling;
-          const quantity = orderItem.quantity;
-
-          if (itemFilling === fullFilling) {
-            consumedPieces += quantity;
-          } else if (itemFilling === 'Platter') {
-            const perType = Math.round(quantity / 3);
-            if (fullFilling === 'Veg' || fullFilling === 'Paneer' || fullFilling === 'Cheese Corn') {
-              consumedPieces += perType;
-            }
-          }
-        }
-      }
+      const consumedPieces = fullFilling === 'Unknown' ? 0 : (consumedPerFilling.get(fullFilling) || 0);
 
       const remainingTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
       const remainingPackets = Math.floor(remainingTotalPieces / piecesPer);
@@ -176,9 +181,15 @@ export default function StockPage() {
     });
   }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
 
-  const totalRemainingPackets = stockItems.reduce((sum, s) => sum + s.remainingPackets, 0);
-  const totalRemainingPieces = stockItems.reduce((sum, s) => sum + s.remainingPieces, 0);
-  const totalRemainingMomos = stockItems.reduce((sum, s) => sum + s.remainingTotalPieces, 0);
+  const { totalRemainingPackets, totalRemainingPieces, totalRemainingMomos } = useMemo(() => {
+    let p = 0, pcs = 0, m = 0;
+    for (const s of stockItems) {
+      p += s.remainingPackets;
+      pcs += s.remainingPieces;
+      m += s.remainingTotalPieces;
+    }
+    return { totalRemainingPackets: p, totalRemainingPieces: pcs, totalRemainingMomos: m };
+  }, [stockItems]);
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 6 } }}>

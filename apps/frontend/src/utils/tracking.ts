@@ -27,6 +27,25 @@ function getDeviceInfo(): string {
   return `Platform: ${platform}, Screen: ${screen}@${dpr}, UA: ${ua.slice(0, 100)}`;
 }
 
+// Cached for the session — device never changes mid-session.
+let cachedDeviceInfo: string | null = null;
+function getDeviceInfoCached(): string {
+  if (!cachedDeviceInfo) cachedDeviceInfo = getDeviceInfo();
+  return cachedDeviceInfo;
+}
+
+// User info recomputed only when the token changes (login/logout).
+let cachedUserInfo: { userId?: number; userRole?: string } | null = null;
+let cachedUserInfoToken: string | null | undefined;
+function getUserInfoCached(): { userId?: number; userRole?: string } {
+  const token = localStorage.getItem('token');
+  if (token !== cachedUserInfoToken) {
+    cachedUserInfoToken = token;
+    cachedUserInfo = getUserInfo();
+  }
+  return cachedUserInfo || {};
+}
+
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -77,16 +96,17 @@ function shouldFlush(): boolean {
 }
 
 export function addLog(entry: Omit<ClientLogEntry, 'id' | 'timestamp' | 'deviceInfo' | 'userId' | 'userRole'>) {
-  if (shouldFlush()) {
+  const logs = getStoredLogs();
+  if (logs.length >= BATCH_SIZE || Date.now() - getLastFlushTime() >= FLUSH_INTERVAL_MS || getLastFlushTime() === 0) {
     flushLogs();
+    logs.length = 0;
   }
 
-  const logs = getStoredLogs();
-  const userInfo = getUserInfo();
+  const userInfo = getUserInfoCached();
   const newEntry: ClientLogEntry = {
     id: generateId(),
     timestamp: formatDateTimeIST(),
-    deviceInfo: getDeviceInfo(),
+    deviceInfo: getDeviceInfoCached(),
     userId: userInfo.userId,
     userRole: userInfo.userRole,
     ...entry,

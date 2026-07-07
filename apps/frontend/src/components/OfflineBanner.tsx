@@ -40,8 +40,11 @@ export default function OfflineBanner() {
       updateQueueCount();
     };
 
-    // Poll queue count periodically
-    const interval = setInterval(updateQueueCount, 5000);
+    // Poll queue count only when offline (queue only grows while offline).
+    // When online, online/offline events + initial read keep the count fresh.
+    const interval = setInterval(() => {
+      if (!isOnline()) updateQueueCount();
+    }, 5000);
     updateQueueCount();
 
     window.addEventListener('online', handleOnline);

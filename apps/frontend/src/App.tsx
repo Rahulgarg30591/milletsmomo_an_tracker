@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
@@ -27,7 +27,7 @@ const PaymentSettlementPage = lazy(() => import('./pages/PaymentSettlementPage')
 
 export default function App() {
   const { mode } = useThemeMode();
-  const theme = getTheme(mode);
+  const theme = useMemo(() => getTheme(mode), [mode]);
 
   return (
     <ThemeProvider theme={theme}>

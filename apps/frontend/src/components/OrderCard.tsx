@@ -1,5 +1,6 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
 import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split, Pencil } from 'lucide-react';
+import { memo } from 'react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
 import { formatQuantity } from '../utils/formatQuantity';
@@ -22,7 +23,7 @@ const paymentIcons = {
   pending: <Clock size={10} />,
 };
 
-export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps) {
+function OrderCardBase({ order, onComplete, onEdit }: OrderCardProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const colors = isDark ? darkStatusColors : statusColors;
@@ -203,3 +204,6 @@ export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps)
       </Box>
   );
 }
+
+const OrderCard = memo(OrderCardBase);
+export default OrderCard;

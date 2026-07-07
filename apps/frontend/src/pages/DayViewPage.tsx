@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Fab, Typography, Divider, TextField,
@@ -21,6 +21,8 @@ import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDec
 import Toast from '../components/Toast';
 import type { Order, SupplyVerification, ClosingStock } from '../types';
 import { vibrate, haptics } from '../theme/tokens';
+
+const noop = () => {};
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -202,28 +204,28 @@ export default function DayViewPage() {
     },
   });
 
-  const handleComplete = (order: Order) => {
+  const handleComplete = useCallback((order: Order) => {
     if (order.paymentMethod === 'pending') {
       setPaymentModalOrder(order);
     } else {
       completeMutation.mutate({ id: order.id });
     }
-  };
+  }, [completeMutation.mutate]);
 
-  const handleEdit = (order: Order) => {
+  const handleEdit = useCallback((order: Order) => {
     navigate(`/day/${date}/edit/${order.id}`);
-  };
+  }, [navigate, date]);
 
-  const handlePaymentResolve = (method: 'cash' | 'upi' | 'split', cashAmount?: number, upiAmount?: number) => {
+  const handlePaymentResolve = useCallback((method: 'cash' | 'upi' | 'split', cashAmount?: number, upiAmount?: number) => {
     if (paymentModalOrder) {
       completeMutation.mutate({ id: paymentModalOrder.id, paymentMethod: method, cashAmount, upiAmount });
     }
-  };
+  }, [paymentModalOrder, completeMutation.mutate]);
 
-  const activeOrders = data?.orders?.filter((o: Order) => !o.isCompleted) || [];
-  const completedOrders = data?.orders?.filter((o: Order) => o.isCompleted) || [];
+  const activeOrders = useMemo(() => data?.orders?.filter((o: Order) => !o.isCompleted) || [], [data]);
+  const completedOrders = useMemo(() => data?.orders?.filter((o: Order) => o.isCompleted) || [], [data]);
 
-  const pendingAmount = data?.orders?.reduce((sum: number, o: Order) => sum + (o.paymentMethod === 'pending' ? o.totalAmount : 0), 0) || 0;
+  const pendingAmount = useMemo(() => data?.orders?.reduce((sum: number, o: Order) => sum + (o.paymentMethod === 'pending' ? o.totalAmount : 0), 0) || 0, [data]);
 
   const handleManualRefresh = () => {
     vibrate(haptics.light);
@@ -545,7 +547,7 @@ export default function DayViewPage() {
                 <OrderCard
                   key={order.id}
                   order={order}
-                  onComplete={() => {}}
+                  onComplete={noop}
                 />
               ))}
             </Box>

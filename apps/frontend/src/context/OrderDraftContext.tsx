@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface DraftItem {
   quantity: number;
@@ -249,31 +249,52 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     return total;
   }, [draft.items]);
 
+  const value = useMemo<OrderDraftContextType>(() => ({
+    draft,
+    validationErrors,
+    setValidationErrors,
+    clearValidationError,
+    addItem,
+    removeItem,
+    incrementItem,
+    decrementItem,
+    incrementByPlate,
+    decrementByPlate,
+    setFull,
+    setHalf,
+    setCustom,
+    setOrderType,
+    setPaymentMethod,
+    setSplitAmounts,
+    clearDraft,
+    loadFromOrder,
+    getItemList,
+    getTotalItems,
+  }), [
+    draft,
+    validationErrors,
+    setValidationErrors,
+    clearValidationError,
+    addItem,
+    removeItem,
+    incrementItem,
+    decrementItem,
+    incrementByPlate,
+    decrementByPlate,
+    setFull,
+    setHalf,
+    setCustom,
+    setOrderType,
+    setPaymentMethod,
+    setSplitAmounts,
+    clearDraft,
+    loadFromOrder,
+    getItemList,
+    getTotalItems,
+  ]);
+
   return (
-    <OrderDraftContext.Provider
-      value={{
-        draft,
-        validationErrors,
-        setValidationErrors,
-        clearValidationError,
-        addItem,
-        removeItem,
-        incrementItem,
-        decrementItem,
-        incrementByPlate,
-        decrementByPlate,
-        setFull,
-        setHalf,
-        setCustom,
-        setOrderType,
-        setPaymentMethod,
-        setSplitAmounts,
-        clearDraft,
-        loadFromOrder,
-        getItemList,
-        getTotalItems,
-      }}
-    >
+    <OrderDraftContext.Provider value={value}>
       {children}
     </OrderDraftContext.Provider>
   );

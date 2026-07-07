@@ -130,6 +130,27 @@ export default function ClosingStockPage() {
     const orders = ordersData?.orders || [];
     const items: ExpectedStockItem[] = [];
 
+    // Precompute consumed pieces per filling once (O(orders * orderItems))
+    const consumedPerFilling = new Map<string, number>();
+    let platterPerTypeTotal = 0;
+    for (const order of orders) {
+      for (const orderItem of order.items) {
+        const menuItem = menuMap.get(orderItem.menuItemId);
+        if (!menuItem) continue;
+        const itemFilling = menuItem.filling;
+        if (itemFilling === 'Platter') {
+          platterPerTypeTotal += Math.round(orderItem.quantity / 3);
+        } else {
+          consumedPerFilling.set(itemFilling, (consumedPerFilling.get(itemFilling) || 0) + orderItem.quantity);
+        }
+      }
+    }
+    if (platterPerTypeTotal > 0) {
+      for (const f of ['Veg', 'Paneer', 'Cheese Corn']) {
+        consumedPerFilling.set(f, (consumedPerFilling.get(f) || 0) + platterPerTypeTotal);
+      }
+    }
+
     for (const si of itemMap.values()) {
       const piecesPer = si.piecesPer;
       const fullFilling =
@@ -138,23 +159,7 @@ export default function ClosingStockPage() {
         /veg/i.test(si.displayName) ? 'Veg' : 'Unknown';
 
       const openingTotalPieces = si.closingTotalPieces + si.supplyTotalPieces;
-      let consumedPieces = 0;
-      for (const order of orders) {
-        for (const orderItem of order.items) {
-          const menuItem = menuMap.get(orderItem.menuItemId);
-          if (!menuItem) continue;
-          const itemFilling = menuItem.filling;
-          const quantity = orderItem.quantity;
-          if (itemFilling === fullFilling) {
-            consumedPieces += quantity;
-          } else if (itemFilling === 'Platter') {
-            const perType = Math.round(quantity / 3);
-            if (fullFilling === 'Veg' || fullFilling === 'Paneer' || fullFilling === 'Cheese Corn') {
-              consumedPieces += perType;
-            }
-          }
-        }
-      }
+      const consumedPieces = fullFilling === 'Unknown' ? 0 : (consumedPerFilling.get(fullFilling) || 0);
 
       const remainingTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
       items.push({
@@ -169,14 +174,34 @@ export default function ClosingStockPage() {
     return items;
   }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
 
+  const expectedByItemId = useMemo(() => {
+    const m = new Map<number, ExpectedStockItem>();
+    for (const e of expectedStock) m.set(e.supplyItemId, e);
+    return m;
+  }, [expectedStock]);
+
+  const momoPacketItems = useMemo(
+    () => closingStock?.items.filter((item) => item.category === 'momo_packet') || [],
+    [closingStock],
+  );
+
   const getExpected = (supplyItemId: number): ExpectedStockItem | undefined => {
-    return expectedStock.find((e) => e.supplyItemId === supplyItemId);
+    return expectedByItemId.get(supplyItemId);
   };
+
+  const expectedTotals = useMemo(() => {
+    let packets = 0, momos = 0;
+    for (const i of expectedStock) {
+      packets += i.expectedPackets;
+      momos += i.expectedTotalPieces;
+    }
+    return { packets, momos };
+  }, [expectedStock]);
 
   const closingStockMutation = useMutation({
     mutationFn: () => {
       if (!closingStock) return Promise.reject(new Error('No supply items to record'));
-      const items = closingStock.items.filter((item) => item.category === 'momo_packet').map((item) => {
+      const items = momoPacketItems.map((item) => {
         const current = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
         return {
           supplyItemId: item.supplyItemId,
@@ -192,7 +217,7 @@ export default function ClosingStockPage() {
     onSuccess: () => {
       const conflictCount = Object.values(closingItems).filter((c) => c.hasConflict).length;
       const totalPackets = Object.values(closingItems).reduce((s, c) => s + c.packets, 0);
-      trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: closingStock!.items.filter((i) => i.category === 'momo_packet').length });
+      trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: momoPacketItems.length });
       qc.invalidateQueries({ queryKey: ['closingStock', targetDate] });
       setToast({ message: 'Closing stock saved!', type: 'success' });
       vibrate(haptics.success);
@@ -353,12 +378,12 @@ export default function ClosingStockPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Package size={14} color={isDark ? '#4ADE80' : '#1B6B3A'} />
                   <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
-                    {expectedStock.reduce((s, i) => s + i.expectedPackets, 0)} pkt
+                    {expectedTotals.packets} pkt
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: isDark ? '#9CA3AF' : 'text.secondary' }}>
-                    {expectedStock.reduce((s, i) => s + i.expectedTotalPieces, 0)} momos
+                    {expectedTotals.momos} momos
                   </Typography>
                 </Box>
                 {liveStockExpanded ? <ChevronUp size={16} color={isDark ? '#4ADE80' : '#1B6B3A'} /> : <ChevronDown size={16} color={isDark ? '#4ADE80' : '#1B6B3A'} />}
@@ -425,7 +450,7 @@ export default function ClosingStockPage() {
           </Box>
 
           <Box sx={{ p: { xs: 1.25, md: 1.5 } }}>
-            {closingStock.items.filter((item) => item.category === 'momo_packet').map((item) => {
+            {momoPacketItems.map((item) => {
               const current = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0, hasConflict: false, conflictReason: '' };
               const expected = getExpected(item.supplyItemId);
               const hasMismatch = expected && (current.packets !== expected.expectedPackets || current.pieces !== expected.expectedPieces);

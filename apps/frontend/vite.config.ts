@@ -42,7 +42,7 @@ export default defineConfig({
           {
             urlPattern: /^\/api\/(orders|supply|admin|closing-stock)/,
             handler: 'NetworkFirst',
-            options: { cacheName: 'api-data', expiration: { maxAgeSeconds: 300 }, networkTimeoutSeconds: 5 },
+            options: { cacheName: 'api-data', expiration: { maxAgeSeconds: 300, maxEntries: 60 }, networkTimeoutSeconds: 5 },
           },
         ],
       },
