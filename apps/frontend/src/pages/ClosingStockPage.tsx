@@ -339,7 +339,6 @@ export default function ClosingStockPage() {
                 cursor: 'pointer',
                 background: isDark ? 'rgba(27,107,58,0.08)' : '#F0FDF4',
                 '&:hover': { background: isDark ? 'rgba(27,107,58,0.14)' : '#DCFCE7' },
-                transition: 'background 0.15s',
               }}
             >
               <Box>

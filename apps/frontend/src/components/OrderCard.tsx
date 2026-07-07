@@ -1,5 +1,4 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
 import { Check, Utensils, Package, Banknote, Smartphone, Clock, CircleCheck, Split, Pencil } from 'lucide-react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
@@ -38,26 +37,21 @@ export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps)
   const isCompleted = order.isCompleted;
 
   return (
-    <motion.div
-      whileHover={{ y: -1 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      style={{ marginBottom: 8 }}
+    <Box
+      sx={{
+        mb: 1,
+        p: { xs: 1.25, md: 1.5 },
+        borderRadius: { xs: 1, md: 1.25 },
+        backgroundColor: 'background.paper',
+        boxShadow: (theme) => theme.shadows[1],
+        borderLeft: 2,
+        borderLeftColor: isCompleted ? 'grey.400' : 'primary.main',
+        opacity: isCompleted ? 0.75 : 1,
+        '&:hover': {
+          boxShadow: (theme) => theme.shadows[2],
+        },
+      }}
     >
-      <Box
-        sx={{
-          p: { xs: 1.25, md: 1.5 },
-          borderRadius: { xs: 1, md: 1.25 },
-          backgroundColor: 'background.paper',
-          boxShadow: (theme) => theme.shadows[1],
-          borderLeft: 2,
-          borderLeftColor: isCompleted ? 'grey.400' : 'primary.main',
-          opacity: isCompleted ? 0.75 : 1,
-          transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
-          '&:hover': {
-            boxShadow: (theme) => theme.shadows[2],
-          },
-        }}
-      >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.75, md: 1 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 }, flexWrap: 'wrap' }}>
             <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '0.95rem' }, color: 'text.primary' }}>
@@ -206,6 +200,5 @@ export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps)
           </Typography>
         </Box>
       </Box>
-    </motion.div>
   );
 }

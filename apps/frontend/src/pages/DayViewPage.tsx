@@ -5,7 +5,7 @@ import {
   useTheme, useMediaQuery, Paper, Chip, IconButton
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import {
   Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock,
   Truck, Package, Layers
@@ -370,12 +370,6 @@ export default function DayViewPage() {
                       backgroundColor: 'warning.main',
                       border: '2px solid',
                       borderColor: 'background.paper',
-                      animation: 'pulse 2s infinite',
-                      '@keyframes pulse': {
-                        '0%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(245,158,11,0.7)' },
-                        '70%': { transform: 'scale(1)', boxShadow: '0 0 0 6px rgba(245,158,11,0)' },
-                        '100%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(245,158,11,0)' },
-                      },
                     }}
                   />
                 )}
@@ -487,24 +481,14 @@ export default function DayViewPage() {
             </Paper>
           )}
 
-          <AnimatePresence>
             {activeOrders.map((order: Order) => (
-              <motion.div
+              <OrderCard
                 key={order.id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -16, transition: { duration: 0.2 } }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              >
-                <OrderCard
-                  order={order}
-                  onComplete={handleComplete}
-                  onEdit={handleEdit}
-                />
-              </motion.div>
+                order={order}
+                onComplete={handleComplete}
+                onEdit={handleEdit}
+              />
             ))}
-          </AnimatePresence>
         </Box>
 
         {/* Completed Orders */}
@@ -523,22 +507,13 @@ export default function DayViewPage() {
                   sx={{ fontWeight: 700, height: { xs: 20, md: 22 }, fontSize: { xs: '0.65rem', md: '0.75rem' }, backgroundColor: 'grey.100', color: 'grey.600' }}
                 />
               </Box>
-              <AnimatePresence>
-                {completedOrders.map((order: Order) => (
-                  <motion.div
-                    key={order.id}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  >
-                    <OrderCard
-                      order={order}
-                      onComplete={() => {}}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              {completedOrders.map((order: Order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onComplete={() => {}}
+                />
+              ))}
             </Box>
           </>
         )}

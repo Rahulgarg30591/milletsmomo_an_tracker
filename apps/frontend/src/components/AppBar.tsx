@@ -1,7 +1,7 @@
 import { AppBar, Toolbar, Typography, IconButton, Box, Chip, Tooltip } from '@mui/material';
 import { LogOut, Sun, Moon, Leaf } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
 import { haptics, vibrate } from '../theme/tokens';
@@ -53,13 +53,6 @@ export default function AppBarComponent() {
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
           onClick={handleLogoClick}
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
             <Box
               sx={{
                 width: 32,
@@ -70,11 +63,11 @@ export default function AppBarComponent() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#FFFFFF',
+                '&:active': { transform: 'scale(0.95)' },
               }}
             >
               <Leaf size={18} color="currentColor" />
             </Box>
-          </motion.div>
           <Typography
             variant="h6"
             sx={{

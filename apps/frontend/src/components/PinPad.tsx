@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Button, CircularProgress } from '@mui/material';
-import { motion } from 'framer-motion';
+import { keyframes } from '@emotion/react';
 import { Delete, ArrowLeft } from 'lucide-react';
 import { vibrate, haptics } from '../theme/tokens';
+
+const shakeAnim = keyframes`
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+`;
 
 interface PinPadProps {
   onComplete: (pin: string) => void;
@@ -84,56 +92,48 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
   return (
     <Box sx={{ width: '100%', maxWidth: 320, mx: 'auto' }}>
       {/* PIN dots */}
-      <motion.div
-        animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : {}}
-        transition={{ duration: 0.4, ease: 'easeInOut' }}
-        style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 24 }}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 2,
+          mb: 3,
+          animation: shake ? `${shakeAnim} 0.4s ease-in-out` : 'none',
+        }}
       >
         {[0, 1, 2, 3].map((i) => (
-          <motion.div
+          <Box
             key={i}
-            animate={i < pin.length ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-          >
-            <Box
-              sx={{
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                backgroundColor: i < pin.length
-                  ? error ? 'error.main' : 'primary.main'
-                  : 'action.disabledBackground',
-                transition: 'background-color 0.2s ease',
-                boxShadow: i < pin.length && !error ? '0 0 8px rgba(27,107,58,0.3)' : 'none',
-              }}
-            />
-          </motion.div>
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              backgroundColor: i < pin.length
+                ? error ? 'error.main' : 'primary.main'
+                : 'action.disabledBackground',
+              boxShadow: i < pin.length && !error ? '0 0 8px rgba(27,107,58,0.3)' : 'none',
+            }}
+          />
         ))}
-      </motion.div>
+      </Box>
 
       {/* Error message */}
       {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        <Box
+          sx={{
+            textAlign: 'center',
+            mb: 2,
+            py: 1,
+            px: 2,
+            borderRadius: 2,
+            backgroundColor: 'error.light',
+            color: 'error.main',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+          }}
         >
-          <Box
-            sx={{
-              textAlign: 'center',
-              mb: 2,
-              py: 1,
-              px: 2,
-              borderRadius: 2,
-              backgroundColor: 'error.light',
-              color: 'error.main',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-            }}
-          >
-            Invalid PIN. Please try again.
-          </Box>
-        </motion.div>
+          Invalid PIN. Please try again.
+        </Box>
       )}
 
       {/* Loading state */}
@@ -151,54 +151,54 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
           }
           if (digit === 'back') {
             return (
-              <motion.div key={i} whileTap={{ scale: 0.92 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleDelete}
-                  disabled={loading}
-                  aria-label="Delete last digit"
-                  sx={{
-                    borderRadius: 2.5,
-                    height: 64,
-                    fontSize: '1.2rem',
-                    fontWeight: 600,
-                    borderColor: 'divider',
-                    color: 'text.primary',
-                    '&:hover': { backgroundColor: 'action.hover', borderColor: 'primary.light' },
-                  }}
-                >
-                  <ArrowLeft size={22} />
-                </Button>
-              </motion.div>
-            );
-          }
-          return (
-            <motion.div key={i} whileTap={{ scale: 0.92 }}>
               <Button
+                key={i}
                 fullWidth
                 variant="outlined"
-                onClick={() => handleDigit(digit)}
+                onClick={handleDelete}
                 disabled={loading}
-                aria-label={`PIN digit ${digit}`}
+                aria-label="Delete last digit"
                 sx={{
                   borderRadius: 2.5,
                   height: 64,
-                  fontSize: '1.5rem',
+                  fontSize: '1.2rem',
                   fontWeight: 600,
                   borderColor: 'divider',
                   color: 'text.primary',
                   '&:hover': { backgroundColor: 'action.hover', borderColor: 'primary.light' },
-                  '&:focus-visible': {
-                    outline: '2px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: 2,
-                  },
+                  '&:active': { transform: 'scale(0.92)' },
                 }}
               >
-                {digit}
+                <ArrowLeft size={22} />
               </Button>
-            </motion.div>
+            );
+          }
+          return (
+            <Button
+              key={i}
+              fullWidth
+              variant="outlined"
+              onClick={() => handleDigit(digit)}
+              disabled={loading}
+              aria-label={`PIN digit ${digit}`}
+              sx={{
+                borderRadius: 2.5,
+                height: 64,
+                fontSize: '1.5rem',
+                fontWeight: 600,
+                borderColor: 'divider',
+                color: 'text.primary',
+                '&:hover': { backgroundColor: 'action.hover', borderColor: 'primary.light' },
+                '&:focus-visible': {
+                  outline: '2px solid',
+                  outlineColor: 'primary.main',
+                  outlineOffset: 2,
+                },
+                '&:active': { transform: 'scale(0.92)' },
+              }}
+            >
+              {digit}
+            </Button>
           );
         })}
       </Box>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, Paper, Typography, useTheme, useMediaQuery } from '@mui/material';
-import { motion } from 'framer-motion';
 import { Banknote, Smartphone, X, Split } from 'lucide-react';
 import { vibrate, haptics } from '../theme/tokens';
 
@@ -61,12 +60,9 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
   if (!open) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      style={{
+    <Box
+      onClick={onCancel}
+      sx={{
         position: 'fixed',
         inset: 0,
         zIndex: 1300,
@@ -76,26 +72,19 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
         backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)',
         backdropFilter: 'blur(4px)',
       }}
-      onClick={onCancel}
     >
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-          <Paper
-            sx={{
-              borderRadius: '24px 24px 0 0',
-              p: { xs: 2, sm: 3 },
-              maxHeight: '85vh',
-              overflow: 'auto',
-              background: isDark
-                ? 'linear-gradient(180deg, #25252D 0%, #1C1C22 100%)'
-                : 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
-            }}
-          >
+      <Box onClick={(e) => e.stopPropagation()}>
+        <Paper
+          sx={{
+            borderRadius: '24px 24px 0 0',
+            p: { xs: 2, sm: 3 },
+            maxHeight: '85vh',
+            overflow: 'auto',
+            background: isDark
+              ? 'linear-gradient(180deg, #25252D 0%, #1C1C22 100%)'
+              : 'linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)',
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: 'text.primary' }}>
               Collect Payment
@@ -114,75 +103,75 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
 
           {!showSplit ? (
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 }, mb: 2 }}>
-              <motion.div whileTap={{ scale: 0.97 }} style={{ flex: 1 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size={isMobile ? 'medium' : 'large'}
-                  onClick={() => {
-                    vibrate(haptics.medium);
-                    onResolve('cash');
-                  }}
-                  startIcon={<Banknote size={isMobile ? 18 : 20} />}
-                  sx={{
-                    borderRadius: 3,
-                    py: { xs: 1, sm: 1.5 },
-                    fontWeight: 700,
-                    fontSize: { xs: '0.9rem', sm: '1rem' },
-                    textTransform: 'none',
-                    background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
-                    boxShadow: '0 4px 14px rgba(27,107,58,0.25)',
-                  }}
-                >
-                  Cash
-                </Button>
-              </motion.div>
-              <motion.div whileTap={{ scale: 0.97 }} style={{ flex: 1 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size={isMobile ? 'medium' : 'large'}
-                  onClick={() => {
-                    vibrate(haptics.medium);
-                    onResolve('upi');
-                  }}
-                  startIcon={<Smartphone size={isMobile ? 18 : 20} />}
-                  sx={{
-                    borderRadius: 3,
-                    py: { xs: 1, sm: 1.5 },
-                    fontWeight: 700,
-                    fontSize: { xs: '0.9rem', sm: '1rem' },
-                    textTransform: 'none',
-                    background: 'linear-gradient(135deg, #1D4ED8, #3B82F6)',
-                    boxShadow: '0 4px 14px rgba(29,78,216,0.25)',
-                  }}
-                >
-                  UPI
-                </Button>
-              </motion.div>
-              <motion.div whileTap={{ scale: 0.97 }} style={{ flex: 1 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size={isMobile ? 'medium' : 'large'}
-                  onClick={() => {
-                    vibrate(haptics.light);
-                    setShowSplit(true);
-                  }}
-                  startIcon={<Split size={isMobile ? 18 : 20} />}
-                  sx={{
-                    borderRadius: 3,
-                    py: { xs: 1, sm: 1.5 },
-                    fontWeight: 700,
-                    fontSize: { xs: '0.9rem', sm: '1rem' },
-                    textTransform: 'none',
-                    borderColor: isDark ? '#7C3AED' : '#7C3AED',
-                    color: isDark ? '#C4A8E8' : '#7C3AED',
-                  }}
-                >
-                  Split
-                </Button>
-              </motion.div>
+              <Button
+                fullWidth
+                variant="contained"
+                size={isMobile ? 'medium' : 'large'}
+                onClick={() => {
+                  vibrate(haptics.medium);
+                  onResolve('cash');
+                }}
+                startIcon={<Banknote size={isMobile ? 18 : 20} />}
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                  py: { xs: 1, sm: 1.5 },
+                  fontWeight: 700,
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
+                  boxShadow: '0 4px 14px rgba(27,107,58,0.25)',
+                  '&:active': { transform: 'scale(0.97)' },
+                }}
+              >
+                Cash
+              </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                size={isMobile ? 'medium' : 'large'}
+                onClick={() => {
+                  vibrate(haptics.medium);
+                  onResolve('upi');
+                }}
+                startIcon={<Smartphone size={isMobile ? 18 : 20} />}
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                  py: { xs: 1, sm: 1.5 },
+                  fontWeight: 700,
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #1D4ED8, #3B82F6)',
+                  boxShadow: '0 4px 14px rgba(29,78,216,0.25)',
+                  '&:active': { transform: 'scale(0.97)' },
+                }}
+              >
+                UPI
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                size={isMobile ? 'medium' : 'large'}
+                onClick={() => {
+                  vibrate(haptics.light);
+                  setShowSplit(true);
+                }}
+                startIcon={<Split size={isMobile ? 18 : 20} />}
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                  py: { xs: 1, sm: 1.5 },
+                  fontWeight: 700,
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  textTransform: 'none',
+                  borderColor: isDark ? '#7C3AED' : '#7C3AED',
+                  color: isDark ? '#C4A8E8' : '#7C3AED',
+                  '&:active': { transform: 'scale(0.97)' },
+                }}
+              >
+                Split
+              </Button>
             </Box>
           ) : (
             <Box>
@@ -306,7 +295,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
             </Box>
           )}
         </Paper>
-      </motion.div>
-    </motion.div>
+      </Box>
+    </Box>
   );
 }

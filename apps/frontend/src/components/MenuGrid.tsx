@@ -1,5 +1,4 @@
 import { Box, Typography, Button, useTheme } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useRef } from 'react';
 import { useOrderDraft } from '../context/OrderDraftContext';
@@ -35,7 +34,7 @@ interface MenuGridProps {
   categoryIndex?: number;
 }
 
-export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
+export default function MenuGrid({ items }: MenuGridProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { addItem, incrementItem, decrementItem, removeItem, setFull, setHalf, setCustom, draft } = useOrderDraft();
@@ -52,7 +51,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
         gap: { xs: 0.5, md: 0.75 },
       }}
     >
-      {items.map((item, idx) => {
+      {items.map((item) => {
         const draftItem = draft.items.get(item.id);
         const quantity = draftItem?.quantity || 0;
         const isHalf = draftItem?.isHalf || false;
@@ -62,19 +61,7 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
 
 
         return (
-          <motion.div
-            key={item.id}
-            layout
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              delay: (categoryIndex * 0.05) + (idx * 0.02),
-              type: 'spring',
-              stiffness: 400,
-              damping: 30
-            }}
-            style={{ display: 'flex' }}
-          >
+          <div key={item.id} style={{ display: 'flex' }}>
             <Box
               sx={{
                 position: 'relative',
@@ -84,7 +71,6 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
                 backgroundColor: isActive ? colors.activeBg : colors.bg,
                 border: { xs: 1, md: 1.5 },
                 borderColor: isActive ? colors.activeBorder : colors.border,
-                transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: { xs: 0.125, md: 0.25 },
@@ -134,257 +120,241 @@ export default function MenuGrid({ items, categoryIndex = 0 }: MenuGridProps) {
               </Box>
 
               {/* Body */}
-              <AnimatePresence mode="wait">
-                {!isActive ? (
-                  <motion.div
-                    key="add"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                    style={{ marginTop: 'auto' }}
-                  >
-                    <Box sx={{ height: { xs: 20, md: 24 } }} />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="controls"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                    style={{
+              {!isActive ? (
+                <Box sx={{ height: { xs: 20, md: 24 }, marginTop: 'auto' }} />
+              ) : (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    marginTop: 'auto',
+                  }}
+                >
+                  {/* Full / Half / Custom toggle + line total + remove */}
+                  <Box
+                    sx={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      marginTop: 'auto',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: { xs: 0.25, md: 0.5 },
                     }}
                   >
-                    {/* Full / Half / Custom toggle + line total + remove */}
+                    <Box sx={{ display: 'flex', flex: 1, gap: { xs: 0.25, md: 0.5 } }}>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setFull(item.id);
+                          trackButtonClick('new_order', `set_full_${item.displayName}`, { itemId: item.id });
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          px: { xs: 0.25, md: 0.5 },
+                          py: { xs: 0.05, md: 0.1 },
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          fontSize: { xs: '0.5rem', md: '0.6rem' },
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          backgroundColor: !isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
+                          color: !isHalf && !isCustom ? '#FFFFFF' : inactiveBtnColor,
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.btnBg,
+                          '&:hover': {
+                            backgroundColor: !isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
+                          },
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                          <span>Full</span>
+                          {!isHalf && !isCustom && (
+                            <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                          )}
+                        </Box>
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setHalf(item.id);
+                          trackButtonClick('new_order', `set_half_${item.displayName}`, { itemId: item.id });
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          px: { xs: 0.25, md: 0.5 },
+                          py: { xs: 0.05, md: 0.1 },
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          fontSize: { xs: '0.5rem', md: '0.6rem' },
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          backgroundColor: isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
+                          color: isHalf && !isCustom ? '#FFFFFF' : inactiveBtnColor,
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.btnBg,
+                          '&:hover': {
+                            backgroundColor: isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
+                          },
+                          lineHeight: 1.2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.25,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                          <span><Slice size={7} />½</span>
+                          {isHalf && !isCustom && (
+                            <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                          )}
+                        </Box>
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setCustom(item.id);
+                          trackButtonClick('new_order', `set_custom_${item.displayName}`, { itemId: item.id });
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          px: { xs: 0.25, md: 0.5 },
+                          py: { xs: 0.05, md: 0.1 },
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          fontSize: { xs: '0.5rem', md: '0.6rem' },
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          backgroundColor: isCustom ? colors.btnBg : inactiveBtnBg,
+                          color: isCustom ? '#FFFFFF' : inactiveBtnColor,
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.btnBg,
+                          '&:hover': {
+                            backgroundColor: isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
+                          },
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+                          <span>Cst</span>
+                          {isCustom && (
+                            <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
+                          )}
+                        </Box>
+                      </Button>
+                    </Box>
+
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        removeItem(item.id);
+                        trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
+                        vibrate(haptics.light);
+                      }}
+                      sx={{
+                        minWidth: { xs: 16, md: 20 },
+                        width: { xs: 16, md: 20 },
+                        height: { xs: 16, md: 20 },
+                        p: 0,
+                        borderRadius: '50%',
+                        color: 'error.main',
+                        border: '1px solid',
+                        borderColor: 'error.main',
+                        '&:hover': { backgroundColor: 'error.light' },
+                      }}
+                    >
+                      <X size={9} />
+                    </Button>
+                  </Box>
+
+                  {/* Quantity row - only when custom */}
+                  {isCustom && (
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
                         gap: { xs: 0.25, md: 0.5 },
                       }}
                     >
-                      <Box sx={{ display: 'flex', flex: 1, gap: { xs: 0.25, md: 0.5 } }}>
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            setFull(item.id);
-                            trackButtonClick('new_order', `set_full_${item.displayName}`, { itemId: item.id });
-                            vibrate(haptics.light);
-                          }}
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          decrementItem(item.id);
+                          trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
+                          vibrate(haptics.light);
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          height: { xs: 22, md: 26 },
+                          p: 0,
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.activeBorder,
+                          color: colors.text,
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+                          '&:hover': { backgroundColor: colors.activeBg },
+                          '&:active': { transform: 'scale(0.92)' },
+                        }}
+                      >
+                        <Minus size={10} />
+                      </Button>
+
+                      <Box
+                        sx={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: { xs: 22, md: 26 },
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          backgroundColor: colors.activeBg,
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.activeBorder,
+                        }}
+                      >
+                        <Typography
                           sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            px: { xs: 0.25, md: 0.5 },
-                            py: { xs: 0.05, md: 0.1 },
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            fontSize: { xs: '0.5rem', md: '0.6rem' },
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            backgroundColor: !isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
-                            color: !isHalf && !isCustom ? '#FFFFFF' : inactiveBtnColor,
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.btnBg,
-                            '&:hover': {
-                              backgroundColor: !isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
-                            },
-                            lineHeight: 1.2,
+                            fontWeight: 800,
+                            fontSize: { xs: '0.7rem', md: '0.8rem' },
+                            color: colors.text,
+                            lineHeight: 1,
                           }}
                         >
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
-                            <span>Full</span>
-                            {!isHalf && !isCustom && (
-                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
-                            )}
-                          </Box>
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            setHalf(item.id);
-                            trackButtonClick('new_order', `set_half_${item.displayName}`, { itemId: item.id });
-                            vibrate(haptics.light);
-                          }}
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            px: { xs: 0.25, md: 0.5 },
-                            py: { xs: 0.05, md: 0.1 },
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            fontSize: { xs: '0.5rem', md: '0.6rem' },
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            backgroundColor: isHalf && !isCustom ? colors.btnBg : inactiveBtnBg,
-                            color: isHalf && !isCustom ? '#FFFFFF' : inactiveBtnColor,
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.btnBg,
-                            '&:hover': {
-                              backgroundColor: isHalf && !isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
-                            },
-                            lineHeight: 1.2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.25,
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
-                            <span><Slice size={7} />½</span>
-                            {isHalf && !isCustom && (
-                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
-                            )}
-                          </Box>
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            setCustom(item.id);
-                            trackButtonClick('new_order', `set_custom_${item.displayName}`, { itemId: item.id });
-                            vibrate(haptics.light);
-                          }}
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            px: { xs: 0.25, md: 0.5 },
-                            py: { xs: 0.05, md: 0.1 },
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            fontSize: { xs: '0.5rem', md: '0.6rem' },
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            backgroundColor: isCustom ? colors.btnBg : inactiveBtnBg,
-                            color: isCustom ? '#FFFFFF' : inactiveBtnColor,
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.btnBg,
-                            '&:hover': {
-                              backgroundColor: isCustom ? colors.btnHover : isDark ? 'rgba(255,255,255,0.1)' : colors.activeBg,
-                            },
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
-                            <span>Cst</span>
-                            {isCustom && (
-                              <span style={{ fontSize: '0.45rem', opacity: 0.8 }}>{quantity}</span>
-                            )}
-                          </Box>
-                        </Button>
+                          {quantity}
+                        </Typography>
                       </Box>
 
                       <Button
                         size="small"
                         onClick={() => {
-                          removeItem(item.id);
-                          trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
+                          incrementItem(item.id);
+                          trackButtonClick('new_order', `increment_${item.displayName}`, { itemId: item.id, type: 'custom' });
                           vibrate(haptics.light);
                         }}
                         sx={{
-                          minWidth: { xs: 16, md: 20 },
-                          width: { xs: 16, md: 20 },
-                          height: { xs: 16, md: 20 },
+                          flex: 1,
+                          minWidth: 0,
+                          height: { xs: 22, md: 26 },
                           p: 0,
-                          borderRadius: '50%',
-                          color: 'error.main',
-                          border: '1px solid',
-                          borderColor: 'error.main',
-                          '&:hover': { backgroundColor: 'error.light' },
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          border: { xs: 1, md: 1.5 },
+                          borderColor: colors.activeBorder,
+                          color: colors.text,
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+                          '&:hover': { backgroundColor: colors.activeBg },
+                          '&:active': { transform: 'scale(0.92)' },
                         }}
                       >
-                        <X size={9} />
+                        <Plus size={10} />
                       </Button>
                     </Box>
-
-                    {/* Quantity row - only when custom */}
-                    {isCustom && (
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: { xs: 0.25, md: 0.5 },
-                        }}
-                      >
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            decrementItem(item.id);
-                            trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
-                            vibrate(haptics.light);
-                          }}
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            height: { xs: 22, md: 26 },
-                            p: 0,
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.activeBorder,
-                            color: colors.text,
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
-                            '&:hover': { backgroundColor: colors.activeBg },
-                            '&:active': { transform: 'scale(0.92)' },
-                          }}
-                        >
-                          <Minus size={10} />
-                        </Button>
-
-                        <Box
-                          sx={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: { xs: 22, md: 26 },
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            backgroundColor: colors.activeBg,
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.activeBorder,
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontWeight: 800,
-                              fontSize: { xs: '0.7rem', md: '0.8rem' },
-                              color: colors.text,
-                              lineHeight: 1,
-                            }}
-                          >
-                            {quantity}
-                          </Typography>
-                        </Box>
-
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            incrementItem(item.id);
-                            trackButtonClick('new_order', `increment_${item.displayName}`, { itemId: item.id, type: 'custom' });
-                            vibrate(haptics.light);
-                          }}
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            height: { xs: 22, md: 26 },
-                            p: 0,
-                            borderRadius: { xs: 0.5, md: 0.75 },
-                            border: { xs: 1, md: 1.5 },
-                            borderColor: colors.activeBorder,
-                            color: colors.text,
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
-                            '&:hover': { backgroundColor: colors.activeBg },
-                            '&:active': { transform: 'scale(0.92)' },
-                          }}
-                        >
-                          <Plus size={10} />
-                        </Button>
-                      </Box>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )}
+                </Box>
+              )}
             </Box>
-          </motion.div>
+          </div>
         );
       })}
     </Box>

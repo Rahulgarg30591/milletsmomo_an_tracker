@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+
 import { ArrowLeft, ChefHat, ShoppingCart, Save } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { getOrders, updateOrder } from '../api/ordersApi';
@@ -266,12 +266,7 @@ function EditOrderContent() {
           {groupedItems.map(([preparation, items], categoryIndex) => {
             const colors = CATEGORY_COLORS[preparation] || { bg: isDark ? '#2A2A32' : '#F3F4F6', border: isDark ? '#9CA3AF' : '#9CA3AF', text: isDark ? '#9CA3AF' : '#4B5563' };
             return (
-              <motion.div
-                key={preparation}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: categoryIndex * 0.05, type: 'spring', stiffness: 400, damping: 30 }}
-              >
+              <Box key={preparation}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -300,7 +295,7 @@ function EditOrderContent() {
                   </Box>
                   <MenuGrid items={items} categoryIndex={categoryIndex} />
                 </Paper>
-              </motion.div>
+              </Box>
             );
           })}
         </Box>

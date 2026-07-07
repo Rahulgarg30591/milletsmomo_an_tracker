@@ -304,7 +304,6 @@ export default function StockPage() {
                     backgroundColor: item.remainingTotalPieces > item.openingTotalPieces * 0.3
                       ? (isDark ? '#4ADE80' : '#1B6B3A')
                       : (isDark ? '#F87171' : '#DC2626'),
-                    transition: 'width 0.5s ease',
                   }}
                 />
               </Box>

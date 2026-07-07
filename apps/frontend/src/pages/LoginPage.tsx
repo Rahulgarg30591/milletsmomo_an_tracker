@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
+
 import { Leaf, Shield, User } from 'lucide-react';
 import PinPad from '../components/PinPad';
 import { useAuth } from '../context/AuthContext';
@@ -112,10 +112,7 @@ export default function LoginPage() {
         }}
       />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      <Box
         style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}
       >
         <Paper
@@ -135,27 +132,21 @@ export default function LoginPage() {
         >
           {/* Logo */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <motion.div
-              initial={{ scale: 0.8, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.1 }}
+            <Box
+              sx={{
+                width: 72,
+                height: 72,
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 24px rgba(27,107,58,0.25)',
+                color: '#FFFFFF',
+              }}
             >
-              <Box
-                sx={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '20px',
-                  background: 'linear-gradient(135deg, #1B6B3A, #2D8A4E)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 8px 24px rgba(27,107,58,0.25)',
-                  color: '#FFFFFF',
-                }}
-              >
-                <Leaf size={36} color="currentColor" strokeWidth={2} />
-              </Box>
-            </motion.div>
+              <Leaf size={36} color="currentColor" strokeWidth={2} />
+            </Box>
           </Box>
 
           <Typography
@@ -238,7 +229,7 @@ export default function LoginPage() {
             loading={loading}
           />
         </Paper>
-      </motion.div>
+      </Box>
     </Box>
   );
 }

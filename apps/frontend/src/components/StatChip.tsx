@@ -1,5 +1,4 @@
 import { Box, Typography, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
 import { ShoppingBag, IndianRupee, Clock, CreditCard, TrendingUp, Package } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -79,68 +78,65 @@ export default function StatChip({ label, value, icon, color = 'primary' }: Stat
   const iconEl = icon ? iconMap[icon] || iconMap[color] : iconMap[color];
 
   return (
-    <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 30 }}>
+    <Box
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        background: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
+        boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.06)' : (theme) => theme.shadows[1],
+        border: 1,
+        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'divider',
+        '&:hover': {
+          boxShadow: isDark ? colors.glow : (theme) => theme.shadows[3],
+          borderColor: isDark ? colors.bg : 'divider',
+        },
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        minWidth: 0,
+      }}
+    >
       <Box
         sx={{
-          p: 1.5,
+          width: 36,
+          height: 36,
           borderRadius: 2,
-          background: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
-          boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.06)' : (theme) => theme.shadows[1],
-          border: 1,
-          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'divider',
-          transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-          '&:hover': {
-            boxShadow: isDark ? colors.glow : (theme) => theme.shadows[3],
-            borderColor: isDark ? colors.bg : 'divider',
-          },
+          background: colors.gradient,
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
-          minWidth: 0,
+          justifyContent: 'center',
+          color: colors.fg,
+          flexShrink: 0,
+          boxShadow: isDark ? colors.glow : 'none',
         }}
       >
-        <Box
+        {iconEl}
+      </Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
           sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 2,
-            background: colors.gradient,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: colors.fg,
-            flexShrink: 0,
-            boxShadow: isDark ? colors.glow : 'none',
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            color: 'text.secondary',
+            mb: 0.25,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
           }}
         >
-          {iconEl}
-        </Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            sx={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              color: 'text.secondary',
-              mb: 0.25,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {label}
-          </Typography>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: '1.15rem',
-              color: 'text.primary',
-              letterSpacing: '-0.2px',
-              lineHeight: 1.2,
-            }}
-          >
-            {value}
-          </Typography>
-        </Box>
+          {label}
+        </Typography>
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontSize: '1.15rem',
+            color: 'text.primary',
+            letterSpacing: '-0.2px',
+            lineHeight: 1.2,
+          }}
+        >
+          {value}
+        </Typography>
       </Box>
-    </motion.div>
+    </Box>
   );
 }
