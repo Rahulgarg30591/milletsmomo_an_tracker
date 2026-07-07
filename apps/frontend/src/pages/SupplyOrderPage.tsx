@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download, ClipboardCopy } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder } from '../api/supplyApi';
@@ -23,6 +23,7 @@ export default function SupplyOrderPage() {
 
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
 
   const { data: items = [] } = useQuery({
     queryKey: ['supplyItems'],
@@ -139,12 +140,37 @@ export default function SupplyOrderPage() {
 
   const handleCopyOrderText = async () => {
     const text = createOrderText();
-    try {
-      await navigator.clipboard.writeText(text);
+    const copied = await copyToClipboard(text);
+    if (copied) {
       vibrate(haptics.success);
       setToast({ message: 'Order text copied to clipboard!', type: 'success' });
+    } else {
+      setClipboardFallback(text);
+    }
+  };
+
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
     } catch {
-      setToast({ message: 'Failed to copy text', type: 'error' });
+      // fall through to legacy fallback
+    }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
     }
   };
 
@@ -623,6 +649,46 @@ export default function SupplyOrderPage() {
           </Paper>
         )}
       </Box>
+
+      {clipboardFallback && (
+        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
+          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Order Text</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
+              Clipboard copy failed. Select the text below and copy manually.
+            </Typography>
+            <TextField
+              multiline
+              fullWidth
+              rows={6}
+              value={clipboardFallback}
+              variant="outlined"
+              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={async () => {
+                const ok = await copyToClipboard(clipboardFallback);
+                if (ok) {
+                  vibrate(haptics.success);
+                  setToast({ message: 'Order text copied to clipboard!', type: 'success' });
+                  setClipboardFallback(null);
+                } else {
+                  setToast({ message: 'Copy failed — select text manually', type: 'error' });
+                }
+              }}
+              sx={{ textTransform: 'none', fontWeight: 700 }}
+            >
+              Retry Copy
+            </Button>
+            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

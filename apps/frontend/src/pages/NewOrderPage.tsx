@@ -60,6 +60,8 @@ function NewOrderContent() {
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const groupedItems = useMemo(() => {
@@ -83,6 +85,7 @@ function NewOrderContent() {
 
   useEffect(() => {
     trackPageView('new_order', `Opened new order page for ${date}`);
+    window.scrollTo(0, 0);
   }, [date]);
 
   const createMutation = useMutation({

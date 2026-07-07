@@ -45,7 +45,7 @@ export function buildMenu(): MenuItem[] {
         id: id++,
         filling: fill,
         preparation: prep,
-        displayName: fill,
+        displayName: `${fill} ${prep}`,
         fullPrice: FULL_PRICES[pi][fi],
         halfPrice: HALF_PRICES[pi][fi],
       });

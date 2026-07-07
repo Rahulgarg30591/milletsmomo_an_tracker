@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
@@ -156,6 +156,8 @@ export default function AdminDashboardPage() {
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const allItemsBreakdown = useMemo<{ itemName: string; totalQuantity: number; totalRevenue: number; preparation: string; filling: string }[]>(() => {
@@ -735,10 +737,7 @@ export default function AdminDashboardPage() {
         </Box>
 
         {isLoading && !data && (
-          <>
-            <SkeletonLoader count={4} height={64} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1 }} />
-            <SkeletonLoader count={1} height={300} />
-          </>
+          <SkeletonLoader count={4} height={64} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1 }} />
         )}
 
         {data && (
@@ -1177,6 +1176,7 @@ export default function AdminDashboardPage() {
                   </IconButton>
                 </Box>
               </Box>
+              <TableContainer sx={{ overflowX: 'auto' }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB' }}>
@@ -1217,6 +1217,7 @@ export default function AdminDashboardPage() {
                   )}
                 </TableBody>
               </Table>
+              </TableContainer>
             </Paper>
 
             {/* Orders list */}
@@ -1230,7 +1231,7 @@ export default function AdminDashboardPage() {
                 <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
                   Orders
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {(['all', 'cash', 'upi', 'pending'] as const).map((f) => (
                     <Chip
                       key={f}

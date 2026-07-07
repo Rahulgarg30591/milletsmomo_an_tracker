@@ -103,12 +103,12 @@ export function flushLogs(): Promise<ClientLogEntry[]> {
   const logs = getStoredLogs();
   if (logs.length === 0) return Promise.resolve([]);
 
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['X-Auth-Token'] = token;
 
-  const promise = fetch(`${apiUrl}/api/client-logs`, {
+  const promise = fetch(`${apiUrl}/client-logs`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ logs }),
@@ -211,11 +211,11 @@ export function trackLogout(metadata?: Record<string, any>) {
 window.addEventListener('beforeunload', () => {
   const logs = getStoredLogs();
   if (logs.length > 0) {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
     const token = localStorage.getItem('token');
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['X-Auth-Token'] = token;
-    fetch(`${apiUrl}/api/client-logs`, {
+    fetch(`${apiUrl}/client-logs`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ logs }),

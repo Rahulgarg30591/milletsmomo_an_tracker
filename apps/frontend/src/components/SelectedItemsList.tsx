@@ -97,9 +97,24 @@ export default function SelectedItemsList() {
                           lineHeight: 1.3,
                         }}
                       >
-                        {item.isCustom && item.menuItem?.preparation || 'Steam'}
+                        {item.menuItem?.preparation || '—'}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.375 }}>
+                        <Box
+                          component="span"
+                          sx={{
+                            fontSize: { xs: '0.55rem', md: '0.65rem' },
+                            fontWeight: 700,
+                            color: isDark ? '#8CB4E8' : '#2563EB',
+                            backgroundColor: isDark ? '#1A2E4A' : '#EFF6FF',
+                            px: { xs: 0.375, md: 0.5 },
+                            py: 0.05,
+                            borderRadius: { xs: 0.5, md: 0.75 },
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {item.menuItem?.filling || 'Unknown'}
+                        </Box>
                         {item.isHalf && !item.isCustom && (
                           <Box
                             component="span"
@@ -117,39 +132,22 @@ export default function SelectedItemsList() {
                             ½
                           </Box>
                         )}
-                         {item.isCustom && (
-                          <>
-                            <Box
-                              component="span"
-                              sx={{
-                                fontSize: { xs: '0.55rem', md: '0.65rem' },
-                                fontWeight: 700,
-                                color: isDark ? '#8CB4E8' : '#2563EB',
-                                backgroundColor: isDark ? '#1A2E4A' : '#EFF6FF',
-                                px: { xs: 0.375, md: 0.5 },
-                                py: 0.05,
-                                borderRadius: { xs: 0.5, md: 0.75 },
-                                lineHeight: 1.4,
-                              }}
-                            >
-                              {item.menuItem?.displayName || 'Unknown'}
-                            </Box>
-                            <Box
-                              component="span"
-                              sx={{
-                                fontSize: { xs: '0.55rem', md: '0.65rem' },
-                                fontWeight: 700,
-                                color: isDark ? '#C4A8E8' : '#7C3AED',
-                                backgroundColor: isDark ? '#2E1A4A' : '#EDE9FE',
-                                px: { xs: 0.375, md: 0.5 },
-                                py: 0.05,
-                                borderRadius: { xs: 0.5, md: 0.75 },
-                                lineHeight: 1.4,
-                              }}
-                            >
-                              Cst
-                            </Box>
-                          </>
+                        {item.isCustom && (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontSize: { xs: '0.55rem', md: '0.65rem' },
+                              fontWeight: 700,
+                              color: isDark ? '#C4A8E8' : '#7C3AED',
+                              backgroundColor: isDark ? '#2E1A4A' : '#EDE9FE',
+                              px: { xs: 0.375, md: 0.5 },
+                              py: 0.05,
+                              borderRadius: { xs: 0.5, md: 0.75 },
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            Cst
+                          </Box>
                         )}
                         <Typography
                           sx={{

@@ -11,6 +11,7 @@ import { getPaymentSettlement, submitPaymentSettlement } from '../api/paymentSet
 import { getToday } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
 import Toast from '../components/Toast';
+import SkeletonLoader from '../components/animations/SkeletonLoader';
 import { vibrate, haptics } from '../theme/tokens';
 
 export default function PaymentSettlementPage() {
@@ -73,14 +74,6 @@ export default function PaymentSettlementPage() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography sx={{ color: 'text.secondary' }}>Loading...</Typography>
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 4 } }}>
       <Box sx={{ maxWidth: 600, mx: 'auto' }}>
@@ -105,6 +98,13 @@ export default function PaymentSettlementPage() {
           </Box>
         </Box>
 
+        {isLoading && !settlement ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <SkeletonLoader count={1} height={120} />
+            <SkeletonLoader count={1} height={200} />
+          </Box>
+        ) : (
+        <>
         {/* Status */}
         {settlement?.isSettled && (
           <Paper sx={{
@@ -373,6 +373,8 @@ export default function PaymentSettlementPage() {
         >
           {submitMutation.isPending ? 'Saving...' : settlement?.isSettled ? 'Update Settlement' : 'Save Settlement'}
         </Button>
+        </>
+        )}
       </Box>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

@@ -55,6 +55,8 @@ export default function StockPage() {
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   useEffect(() => {
@@ -125,7 +127,10 @@ export default function StockPage() {
 
     return [...itemMap.values()].map((si) => {
       const piecesPer = si.piecesPer;
-      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : si.displayName.split(' ')[0];
+      const fullFilling =
+        /cheese\s*corn/i.test(si.displayName) ? 'Cheese Corn' :
+        /paneer/i.test(si.displayName) ? 'Paneer' :
+        /veg/i.test(si.displayName) ? 'Veg' : 'Unknown';
 
       const openingTotalPieces = si.closingTotalPieces + si.supplyTotalPieces;
       const openingPackets = Math.floor(openingTotalPieces / piecesPer);

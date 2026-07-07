@@ -112,6 +112,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
         ref={typeRef}
         sx={{
           mb: { xs: 1, md: 1.5 },
+          scrollMarginTop: 72,
           animation: validationErrors.type ? `${shake} 0.4s ease-in-out` : 'none',
           borderRadius: { xs: 0.75, md: 1 },
           ...(validationErrors.type ? {
@@ -142,7 +143,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
             </Typography>
           )}
         </Typography>
-        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 0.75 } }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.5, md: 0.75 } }}>
           {typeConfig.map((type) => {
             const isActive = draft.orderType === type.key;
             return (
@@ -157,6 +158,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                 }}
                 startIcon={type.icon}
                 sx={{
+                  flex: { xs: '1 1 40%', md: 1 },
                   borderRadius: { xs: 0.75, md: 1 },
                   py: { xs: 0.5, md: 0.75 },
                   fontWeight: 600,
@@ -185,6 +187,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
       <Box
         ref={paymentRef}
         sx={{
+          scrollMarginTop: 72,
           animation: validationErrors.payment ? `${shake} 0.4s ease-in-out` : 'none',
           borderRadius: { xs: 0.75, md: 1 },
           ...(validationErrors.payment ? {
@@ -215,7 +218,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
             </Typography>
           )}
         </Typography>
-        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 0.75 } }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.5, md: 0.75 } }}>
           {paymentConfig.map((method) => {
             const isActive = draft.paymentMethod === method.key;
             const isPending = method.key === 'pending';
@@ -242,6 +245,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                 }}
                 startIcon={method.icon}
                 sx={{
+                  flex: { xs: '1 1 40%', md: 1 },
                   borderRadius: { xs: 0.75, md: 1 },
                   py: { xs: 0.5, md: 0.75 },
                   fontWeight: 600,

@@ -196,19 +196,6 @@ export default function DayViewPage() {
     refetch();
   };
 
-  if (isLoading && !data) {
-    return (
-      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 }, pb: { xs: 8, md: 6 } }}>
-        <Box sx={{ maxWidth: { xs: '100%', md: 900 }, mx: 'auto' }}>
-          <SkeletonLoader count={3} height={48} />
-          <Box sx={{ mt: { xs: 1.5, md: 2 } }}>
-            <SkeletonLoader count={4} height={80} />
-          </Box>
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 8, md: 4 }, pt: { xs: 0.5, md: 1 } }}>
       <Box sx={{ maxWidth: { xs: '100%', md: 900 }, mx: 'auto', p: { xs: 1, md: 2 } }}>
@@ -477,7 +464,9 @@ export default function DayViewPage() {
             />
           </Box>
 
-          {activeOrders.length === 0 && (
+          {isLoading && !data ? (
+            <SkeletonLoader count={3} height={80} />
+          ) : activeOrders.length === 0 && (
             <Paper
               sx={{
                 textAlign: 'center',

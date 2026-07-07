@@ -60,6 +60,8 @@ function EditOrderContent() {
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const { data: ordersData } = useQuery({
@@ -109,6 +111,7 @@ function EditOrderContent() {
 
   useEffect(() => {
     trackPageView('edit_order', `Opened edit order page for order ${orderId} on ${date}`);
+    window.scrollTo(0, 0);
   }, [date, orderId]);
 
   const updateMutation = useMutation({

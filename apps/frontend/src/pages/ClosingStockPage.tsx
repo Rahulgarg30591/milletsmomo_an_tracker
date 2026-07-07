@@ -14,6 +14,7 @@ import { getMenu } from '../api/menuApi';
 import { addDays } from '../utils/dateUtils';
 import { trackPageView, trackClosingStockSubmit } from '../utils/tracking';
 import Toast from '../components/Toast';
+import SkeletonLoader from '../components/animations/SkeletonLoader';
 import { vibrate, haptics } from '../theme/tokens';
 import type { ClosingStock, SupplyVerification } from '../types';
 
@@ -38,7 +39,7 @@ export default function ClosingStockPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [liveStockExpanded, setLiveStockExpanded] = useState(true);
 
-  const { data: closingStock } = useQuery<ClosingStock>({
+  const { data: closingStock, isLoading: closingStockLoading } = useQuery<ClosingStock>({
     queryKey: ['closingStock', targetDate],
     queryFn: () => getClosingStock(targetDate),
     enabled: !!targetDate,
@@ -65,6 +66,8 @@ export default function ClosingStockPage() {
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   useEffect(() => {
@@ -129,7 +132,10 @@ export default function ClosingStockPage() {
 
     for (const si of itemMap.values()) {
       const piecesPer = si.piecesPer;
-      const fullFilling = si.displayName.includes('Cheese Corn') ? 'Cheese Corn' : si.displayName.split(' ')[0];
+      const fullFilling =
+        /cheese\s*corn/i.test(si.displayName) ? 'Cheese Corn' :
+        /paneer/i.test(si.displayName) ? 'Paneer' :
+        /veg/i.test(si.displayName) ? 'Veg' : 'Unknown';
 
       const openingTotalPieces = si.closingTotalPieces + si.supplyTotalPieces;
       let consumedPieces = 0;
@@ -265,6 +271,19 @@ export default function ClosingStockPage() {
     });
   };
 
+  if (closingStockLoading) {
+    return (
+      <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 } }}>
+        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+          <SkeletonLoader count={1} height={48} />
+          <Box sx={{ mt: 2 }}>
+            <SkeletonLoader count={2} height={100} />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
   if (!closingStock || closingStock.items.length === 0) {
     return (
       <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 } }}>
@@ -350,7 +369,10 @@ export default function ClosingStockPage() {
               <Box sx={{ p: 1.5, pt: 1 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
                   {expectedStock.map((item) => {
-                    const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn' : item.displayName.split(' ')[0];
+                    const filling =
+                      /cheese\s*corn/i.test(item.displayName) ? 'Cheese Corn' :
+                      /paneer/i.test(item.displayName) ? 'Paneer' :
+                      /veg/i.test(item.displayName) ? 'Veg' : 'Unknown';
                     return (
                       <Box key={item.supplyItemId} sx={{ textAlign: 'center', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', backgroundColor: isDark ? 'rgba(27,107,58,0.06)' : 'transparent' }}>
                         <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
