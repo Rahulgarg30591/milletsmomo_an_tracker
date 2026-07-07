@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Fab, Typography, Divider, TextField,
@@ -116,6 +116,40 @@ export default function DayViewPage() {
     window.addEventListener('order-error', handleOrderError);
     return () => window.removeEventListener('order-error', handleOrderError);
   }, []);
+
+  const landingHandledRef = useRef<string | null | undefined>(null);
+
+  useEffect(() => {
+    if (landingHandledRef.current === date) return;
+    landingHandledRef.current = date;
+
+    const marker = sessionStorage.getItem('scrollToOrderId');
+    if (marker) sessionStorage.removeItem('scrollToOrderId');
+
+    if (!marker) {
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const tryScroll = () => {
+      const el = document.querySelector(`[data-order-id="${marker}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+      }
+      const cards = document.querySelectorAll('[data-order-id]');
+      if (cards.length > 0) {
+        (cards[cards.length - 1] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+      }
+      return false;
+    };
+
+    if (!tryScroll()) {
+      const timer = setTimeout(tryScroll, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [date]);
 
   const completeMutation = useMutation({
     mutationFn: ({ id, paymentMethod, cashAmount, upiAmount }: { id: number; paymentMethod?: 'cash' | 'upi' | 'split'; cashAmount?: number; upiAmount?: number }) =>

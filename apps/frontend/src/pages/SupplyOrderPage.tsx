@@ -124,7 +124,7 @@ export default function SupplyOrderPage() {
     let idx = 1;
     const allItems = [
       ...momoPackets.map((i) => ({ ...i, minQty: 0 })),
-      ...sauces.map((i) => ({ ...i, minQty: 1 })),
+      ...sauces.map((i) => ({ ...i, minQty: 0 })),
     ];
     allItems.forEach((item) => {
       const qty = quantities[item.id] || 0;

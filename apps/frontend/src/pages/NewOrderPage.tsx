@@ -165,6 +165,7 @@ function NewOrderContent() {
     });
 
     submitContextRef.current = { itemCount: items.length };
+    sessionStorage.setItem('scrollToOrderId', String(optimisticOrder.id));
     clearDraft();
     vibrate(haptics.success);
     navigate(`/day/${date}`);

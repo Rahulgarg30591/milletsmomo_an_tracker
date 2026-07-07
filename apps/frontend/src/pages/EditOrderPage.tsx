@@ -193,6 +193,7 @@ function EditOrderContent() {
     clearDraft();
     vibrate(haptics.success);
     trackNavigation('edit_order', `day/${date}`, { reason: 'order_updated', orderId });
+    sessionStorage.setItem('scrollToOrderId', String(orderId));
     navigate(`/day/${date}`);
 
     updateMutation.mutate({ id: Number(orderId), data: payload });

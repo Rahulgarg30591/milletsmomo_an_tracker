@@ -38,6 +38,7 @@ export default function OrderCard({ order, onComplete, onEdit }: OrderCardProps)
 
   return (
     <Box
+      data-order-id={order.id}
       sx={{
         mb: 1,
         p: { xs: 1.25, md: 1.5 },
