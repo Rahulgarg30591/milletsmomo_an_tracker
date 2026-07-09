@@ -141,7 +141,7 @@ export default function DayViewPage() {
       }
       const cards = document.querySelectorAll('[data-order-id]');
       if (cards.length > 0) {
-        (cards[cards.length - 1] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (cards[0] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
         return true;
       }
       return false;
@@ -222,8 +222,14 @@ export default function DayViewPage() {
     }
   }, [paymentModalOrder, completeMutation.mutate]);
 
-  const activeOrders = useMemo(() => data?.orders?.filter((o: Order) => !o.isCompleted) || [], [data]);
-  const completedOrders = useMemo(() => data?.orders?.filter((o: Order) => o.isCompleted) || [], [data]);
+  const activeOrders = useMemo(
+    () => (data?.orders?.filter((o: Order) => !o.isCompleted) || []).sort((a: Order, b: Order) => b.id - a.id),
+    [data],
+  );
+  const completedOrders = useMemo(
+    () => (data?.orders?.filter((o: Order) => o.isCompleted) || []).sort((a: Order, b: Order) => b.id - a.id),
+    [data],
+  );
 
   const pendingAmount = useMemo(() => data?.orders?.reduce((sum: number, o: Order) => sum + (o.paymentMethod === 'pending' ? o.totalAmount : 0), 0) || 0, [data]);
 

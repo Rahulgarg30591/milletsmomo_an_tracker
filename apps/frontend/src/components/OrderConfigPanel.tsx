@@ -93,15 +93,15 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
     scrollToError: (field: 'type' | 'payment') => {
       const target = field === 'type' ? typeRef.current : paymentRef.current;
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.scrollIntoView({ behavior: 'auto', block: 'center' });
       }
     },
   }), []);
 
-  // Active / inactive colors that work on both light and dark
-  const activeBg = isDark ? '#1A3D2A' : '#E8F5EE';
+  // Active = solid filled green (clearly highlighted); inactive = subtle
+  const activeBg = isDark ? '#2D8A4E' : '#1B6B3A';
   const activeBorder = isDark ? '#4ADE80' : '#1B6B3A';
-  const activeColor = isDark ? '#4ADE80' : '#1B6B3A';
+  const activeColor = '#FFFFFF';
   const inactiveBg = isDark ? '#2A2A32' : '#F9FAFB';
   const inactiveBorder = isDark ? '#3D3D44' : '#E5E7EB';
   const inactiveColor = isDark ? '#9CA3AF' : '#6B7280';
@@ -161,17 +161,18 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   flex: { xs: '1 1 40%', md: 1 },
                   borderRadius: { xs: 0.75, md: 1 },
                   py: { xs: 0.5, md: 0.75 },
-                  fontWeight: 600,
+                  fontWeight: isActive ? 800 : 600,
                   fontSize: { xs: '0.75rem', md: '0.85rem' },
                   textTransform: 'none',
                   backgroundColor: isActive ? activeBg : inactiveBg,
                   color: isActive ? activeColor : inactiveColor,
                   border: { xs: 1, md: 1.5 },
                   borderColor: isActive ? activeBorder : inactiveBorder,
+                  boxShadow: isActive ? `0 2px 8px ${isDark ? 'rgba(74,222,128,0.3)' : 'rgba(27,107,58,0.25)'}` : 'none',
+                  transition: 'all 0.15s ease',
                   '&:hover': {
-                    backgroundColor: activeBg,
-                    borderColor: activeBorder,
-                    color: activeColor,
+                    backgroundColor: isActive ? activeBg : (isDark ? '#333338' : '#F0F1F3'),
+                    borderColor: isActive ? activeBorder : (isDark ? '#5A5A64' : '#D1D5DB'),
                   },
                   minHeight: 0,
                   lineHeight: 1.2,
@@ -223,11 +224,9 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
             const isActive = draft.paymentMethod === method.key;
             const isPending = method.key === 'pending';
 
-            const activeColor2 = isPending
-              ? (isDark ? '#F87171' : '#DC2626')
-              : activeColor;
+            const activeColor2 = '#FFFFFF';
             const activeBg2 = isPending
-              ? (isDark ? '#3D1A1A' : '#FEE2E2')
+              ? (isDark ? '#DC2626' : '#DC2626')
               : activeBg;
             const activeBorder2 = isPending
               ? (isDark ? '#F87171' : '#DC2626')
@@ -248,17 +247,20 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   flex: { xs: '1 1 40%', md: 1 },
                   borderRadius: { xs: 0.75, md: 1 },
                   py: { xs: 0.5, md: 0.75 },
-                  fontWeight: 600,
+                  fontWeight: isActive ? 800 : 600,
                   fontSize: { xs: '0.75rem', md: '0.85rem' },
                   textTransform: 'none',
                   backgroundColor: isActive ? activeBg2 : inactiveBg,
                   color: isActive ? activeColor2 : inactiveColor,
                   border: { xs: 1, md: 1.5 },
                   borderColor: isActive ? activeBorder2 : inactiveBorder,
+                  boxShadow: isActive
+                    ? `0 2px 8px ${isPending ? (isDark ? 'rgba(248,113,113,0.3)' : 'rgba(220,38,38,0.25)') : (isDark ? 'rgba(74,222,128,0.3)' : 'rgba(27,107,58,0.25)')}`
+                    : 'none',
+                  transition: 'all 0.15s ease',
                   '&:hover': {
-                    backgroundColor: activeBg2,
-                    borderColor: activeBorder2,
-                    color: activeColor2,
+                    backgroundColor: isActive ? activeBg2 : (isDark ? '#333338' : '#F0F1F3'),
+                    borderColor: isActive ? activeBorder2 : (isDark ? '#5A5A64' : '#D1D5DB'),
                   },
                   minHeight: 0,
                   lineHeight: 1.2,

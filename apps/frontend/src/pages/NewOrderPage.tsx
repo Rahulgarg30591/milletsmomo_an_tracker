@@ -135,7 +135,7 @@ function NewOrderContent() {
     });
 
     const optimisticOrder: Order = {
-      id: -Date.now(),
+      id: Date.now(),
       orderDate: date!,
       timeLabel: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }),
       orderType: draft.orderType!,
