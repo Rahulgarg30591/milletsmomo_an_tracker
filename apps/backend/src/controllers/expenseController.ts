@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getExpensesSchema, saveExpensesSchema } from '../validators/expenseValidators.js';
 import * as expenseService from '../services/expenseService.js';
+import { createLog } from '../services/staffLogService.js';
 
 export async function getDayExpenses(
   req: Request,
@@ -37,6 +38,11 @@ export async function saveDayExpenses(
       data.items,
       userId,
     );
+
+    const totalAmount = data.items.reduce((sum, item) => sum + item.amount, 0);
+    const details = `Saved ${data.items.length} expense(s), total ₹${totalAmount.toFixed(2)}`;
+    createLog(data.orderDate, 'expense_save', userId, details).catch(() => {});
+
     res.status(201).json(result);
   } catch (err: any) {
     if (err.name === 'ZodError') {

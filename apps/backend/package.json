@@ -11,6 +11,7 @@
     "db:create": "tsx scripts/create-db.ts",
     "db:wait": "tsx scripts/wait-for-sql.ts",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate:add-expenses": "tsx scripts/migrateAdditive.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
   },

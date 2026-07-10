@@ -87,6 +87,7 @@ export default function DayViewPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [actionsExpanded, setActionsExpanded] = useState(true);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', date],
@@ -428,14 +429,56 @@ export default function DayViewPage() {
         {((supplyVerification && supplyVerification.items.length > 0) ||
           (supplyVerification?.isFullyVerified) ||
           (closingStock && closingStock.items.length > 0)) && (
-        <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-              gap: { xs: 0.75, md: 1 },
-              mb: { xs: 1.5, md: 2 },
-            }}
-          >
+          <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+            <Box
+              onClick={() => {
+                vibrate(haptics.light);
+                setActionsExpanded((v) => !v);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                py: { xs: 0.5, md: 0.75 },
+                px: { xs: 0.5, md: 1 },
+                mb: actionsExpanded ? { xs: 1, md: 1.25 } : 0,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 } }}>
+                {actionsExpanded ? <ChevronDown size={16} color={theme.palette.text.secondary} /> : <ChevronRight size={16} color={theme.palette.text.secondary} />}
+                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.primary' }}>
+                  Quick Actions
+                </Typography>
+              </Box>
+              {!actionsExpanded && (
+                <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 } }}>
+                  {supplyVerification && supplyVerification.items.length > 0 && (
+                    <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: supplyVerification.isFullyVerified ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main') : 'warning.main', fontWeight: 600 }}>
+                      {supplyVerification.isFullyVerified
+                        ? (supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} conflict` : 'Supply verified')
+                        : 'Supply pending'}
+                    </Typography>
+                  )}
+                  {closingStock && closingStock.items.length > 0 && (
+                    <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: closingStock.isSubmitted ? 'success.main' : 'text.secondary', fontWeight: 600 }}>
+                      {closingStock.isSubmitted ? 'Closing recorded' : 'Closing pending'}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Box>
+
+            <Collapse in={actionsExpanded}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                  gap: { xs: 0.75, md: 1 },
+                }}
+              >
             {supplyVerification && supplyVerification.items.length > 0 && (
                   <Button
                 variant="outlined"
@@ -568,7 +611,9 @@ export default function DayViewPage() {
                 </Box>
               </Button>
             )}
-           </Box>
+              </Box>
+            </Collapse>
+          </Box>
         )}
 
         {/* Active Orders */}

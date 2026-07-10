@@ -1,6 +1,5 @@
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-import { createLog } from './staffLogService.js';
 
 export interface ExpenseItem {
   id: number;
@@ -63,10 +62,6 @@ export async function saveDayExpenses(
     await transaction.rollback();
     throw err;
   }
-
-  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
-  const details = `Saved ${items.length} expense(s), total ₹${totalAmount.toFixed(2)}`;
-  await createLog(orderDate, 'expense_save', userId, details);
 
   return getDayExpenses(orderDate);
 }
