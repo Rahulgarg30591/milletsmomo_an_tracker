@@ -11,6 +11,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import supplyRoutes from './routes/supplyRoutes.js';
 import clientLogRoutes from './routes/clientLogRoutes.js';
 import paymentSettlementRoutes from './routes/paymentSettlementRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 import { globalLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
@@ -83,6 +84,7 @@ app.use('/api/supply', supplyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/client-logs', clientLogRoutes);
 app.use('/api/admin', paymentSettlementRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 app.use(errorHandler);
 

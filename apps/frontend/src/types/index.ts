@@ -147,7 +147,7 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'expense_save';
   createdBy: number;
   createdAt: string;
   details: string;
@@ -156,4 +156,21 @@ export interface StaffOperationLog {
 
 export interface StaffLogsResponse {
   logs: StaffOperationLog[];
+}
+
+export interface ExpenseItem {
+  id?: number;
+  description: string;
+  amount: number;
+}
+
+export interface DayExpenses {
+  orderDate: string;
+  items: ExpenseItem[];
+  totalAmount: number;
+}
+
+export interface SaveExpensesRequest {
+  orderDate: string;
+  items: { description: string; amount: number }[];
 }

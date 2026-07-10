@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Fab, Typography, Divider, TextField,
-  useTheme, useMediaQuery, Paper, Chip, IconButton
+  useTheme, useMediaQuery, Paper, Chip, IconButton, Collapse
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
   Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock,
-  Truck, Package, Layers
+  Truck, Package, Layers, Wallet, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { getOrders, completeOrder } from '../api/ordersApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
@@ -86,6 +86,7 @@ export default function DayViewPage() {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [statsExpanded, setStatsExpanded] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', date],
@@ -283,6 +284,48 @@ export default function DayViewPage() {
             >
               <RefreshCw size={14} />
             </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => {
+                vibrate(haptics.light);
+                trackButtonClick('day_view', 'expenses_top_mobile');
+                trackNavigation('day_view', `day/${date}/expenses`, { reason: 'view_expenses' });
+                navigate(`/day/${date}/expenses`);
+              }}
+              sx={{
+                color: 'text.secondary',
+                p: { xs: 0.4, md: 0.5 },
+                display: { xs: 'inline-flex', md: 'none' },
+              }}
+            >
+              <Wallet size={16} />
+            </IconButton>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Wallet size={14} />}
+              onClick={() => {
+                vibrate(haptics.light);
+                trackButtonClick('day_view', 'expenses_top_desktop');
+                trackNavigation('day_view', `day/${date}/expenses`, { reason: 'view_expenses' });
+                navigate(`/day/${date}/expenses`);
+              }}
+              sx={{
+                borderRadius: 1,
+                textTransform: 'none',
+                fontWeight: 700,
+                px: { xs: 1.5, md: 2 },
+                py: { xs: 0.5, md: 0.6 },
+                fontSize: { xs: '0.75rem', md: '0.85rem' },
+                display: { xs: 'none', md: 'inline-flex' },
+                minHeight: 0,
+                lineHeight: 1.2,
+                borderColor: 'divider',
+                color: 'text.secondary',
+              }}
+            >
+              Expenses
+            </Button>
             <Button
               variant="contained"
               size="small"
@@ -311,38 +354,81 @@ export default function DayViewPage() {
         </Box>
 
         {/* Stats */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
-            gap: { xs: 0.75, md: 1 },
-            mb: { xs: 1.5, md: 2 },
-          }}
-        >
-          <StatCard
-            icon={<Receipt size={14} />}
-            label="Orders"
-            value={data?.orders?.length || 0}
-            color="#4ADE80"
-          />
+        <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+          <Box
+            onClick={() => {
+              vibrate(haptics.light);
+              setStatsExpanded((v) => !v);
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              py: { xs: 0.5, md: 0.75 },
+              px: { xs: 0.5, md: 1 },
+              mb: statsExpanded ? { xs: 1, md: 1.25 } : 0,
+              borderRadius: 1,
+              '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 0.75 } }}>
+              {statsExpanded ? <ChevronDown size={16} color={theme.palette.text.secondary} /> : <ChevronRight size={16} color={theme.palette.text.secondary} />}
+              <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.primary' }}>
+                Day Summary
+              </Typography>
+            </Box>
+            {!statsExpanded && (
+              <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 } }}>
+                <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: 'text.secondary', fontWeight: 600 }}>
+                  {data?.orders?.length || 0} orders
+                </Typography>
+                <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: pendingAmount > 0 ? 'error.main' : 'text.secondary', fontWeight: 600 }}>
+                  ₹{pendingAmount} pending
+                </Typography>
+                <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: 'text.secondary', fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>
+                  {activeOrders.length} active
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
-          <StatCard
-            icon={<Clock size={14} />}
-            label="Pending"
-            value={`₹${pendingAmount}`}
-            color={pendingAmount > 0 ? '#F87171' : '#9CA3AF'}
-          />
-          <StatCard
-            icon={<ChefHat size={14} />}
-            label="Active"
-            value={activeOrders.length}
-            color="#60A5FA"
-          />
+          <Collapse in={statsExpanded}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
+                gap: { xs: 0.75, md: 1 },
+              }}
+            >
+              <StatCard
+                icon={<Receipt size={14} />}
+                label="Orders"
+                value={data?.orders?.length || 0}
+                color="#4ADE80"
+              />
+
+              <StatCard
+                icon={<Clock size={14} />}
+                label="Pending"
+                value={`₹${pendingAmount}`}
+                color={pendingAmount > 0 ? '#F87171' : '#9CA3AF'}
+              />
+              <StatCard
+                icon={<ChefHat size={14} />}
+                label="Active"
+                value={activeOrders.length}
+                color="#60A5FA"
+              />
+            </Box>
+          </Collapse>
         </Box>
 
         {/* Quick Actions */}
-        {(supplyVerification || closingStock) && (
-          <Box
+        {((supplyVerification && supplyVerification.items.length > 0) ||
+          (supplyVerification?.isFullyVerified) ||
+          (closingStock && closingStock.items.length > 0)) && (
+        <Box
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
@@ -482,7 +568,7 @@ export default function DayViewPage() {
                 </Box>
               </Button>
             )}
-          </Box>
+           </Box>
         )}
 
         {/* Active Orders */}

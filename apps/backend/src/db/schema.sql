@@ -1,6 +1,7 @@
 SET NOCOUNT ON;
 
 -- Drop all existing tables in correct dependency order (child tables first)
+IF OBJECT_ID('DayExpenses', 'U') IS NOT NULL DROP TABLE DayExpenses;
 IF OBJECT_ID('ClientActivityLogs', 'U') IS NOT NULL DROP TABLE ClientActivityLogs;
 IF OBJECT_ID('StaffOperationLogs', 'U') IS NOT NULL DROP TABLE StaffOperationLogs;
 IF OBJECT_ID('DailyClosingStock', 'U') IS NOT NULL DROP TABLE DailyClosingStock;
@@ -142,7 +143,7 @@ CREATE INDEX IX_DailyClosingStock_Date ON DailyClosingStock(order_date DESC);
 CREATE TABLE StaffOperationLogs (
   id              INT IDENTITY(1,1) PRIMARY KEY,
   order_date      DATE          NOT NULL,
-  operation_type  NVARCHAR(20)  NOT NULL CHECK (operation_type IN ('verification','closing_stock','order_create','order_update')),
+  operation_type  NVARCHAR(20)  NOT NULL CHECK (operation_type IN ('verification','closing_stock','order_create','order_update','expense_save')),
   created_by      INT           NOT NULL REFERENCES Users(id),
   created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
   details         NVARCHAR(500) NOT NULL
@@ -184,3 +185,14 @@ CREATE TABLE DailyPaymentSettlements (
 );
 
 CREATE INDEX IX_DailyPaymentSettlements_Date ON DailyPaymentSettlements(order_date DESC);
+
+CREATE TABLE DayExpenses (
+  id           INT IDENTITY(1,1) PRIMARY KEY,
+  order_date   DATE          NOT NULL,
+  description  NVARCHAR(200) NOT NULL,
+  amount       DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+  created_by   INT           NOT NULL REFERENCES Users(id),
+  created_at   DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+CREATE INDEX IX_DayExpenses_Date ON DayExpenses(order_date DESC);

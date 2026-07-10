@@ -4,7 +4,7 @@ import * as staffLogService from '../services/staffLogService.js';
 
 const getStaffLogsSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  type: z.enum(['verification', 'closing_stock', 'order_create', 'order_update']).optional(),
+  type: z.enum(['verification', 'closing_stock', 'order_create', 'order_update', 'expense_save']).optional(),
 });
 
 export async function getStaffLogs(

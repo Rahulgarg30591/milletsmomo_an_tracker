@@ -1,5 +1,5 @@
 import { BottomNavigation, BottomNavigationAction, Paper, useMediaQuery, useTheme } from '@mui/material';
-import { Home, PlusCircle, BarChart3 } from 'lucide-react';
+import { Home, PlusCircle, BarChart3, Wallet } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getToday } from '../utils/dateUtils';
@@ -24,8 +24,9 @@ export default function BottomNav() {
   const currentDate = getDateFromPath(location.pathname);
 
   let value = 0;
-  if (location.pathname.startsWith('/day') && !location.pathname.endsWith('/new')) value = 0;
+  if (location.pathname.startsWith('/day') && !location.pathname.endsWith('/new') && !location.pathname.endsWith('/expenses')) value = 0;
   if (location.pathname.endsWith('/new')) value = 1;
+  if (location.pathname.endsWith('/expenses')) value = 2;
   if (location.pathname === '/admin') value = 0;
 
   if (isAdmin) {
@@ -53,10 +54,12 @@ export default function BottomNav() {
           onChange={(_e, newValue) => {
             if (newValue === 0) navigate(`/day/${currentDate}`);
             if (newValue === 1) navigate(`/day/${currentDate}/new`);
+            if (newValue === 2) navigate(`/day/${currentDate}/expenses`);
           }}
         >
           <BottomNavigationAction label="Orders" icon={<Home size={20} />} />
           <BottomNavigationAction label="New Order" icon={<PlusCircle size={20} />} />
+          <BottomNavigationAction label="Expenses" icon={<Wallet size={20} />} />
         </BottomNavigation>
       </Paper>
     );
