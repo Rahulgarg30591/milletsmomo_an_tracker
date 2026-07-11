@@ -348,7 +348,7 @@ export default function ExpensesPage() {
               disabled={expenses.length === 0}
               sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
             >
-              Copy 112233
+              Copy Summary 
             </Button>
             <Button
               size="small"
