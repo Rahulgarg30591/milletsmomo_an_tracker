@@ -59,7 +59,11 @@ export async function saveDayExpenses(
 
     await transaction.commit();
   } catch (err) {
-    await transaction.rollback();
+    try {
+      await transaction.rollback();
+    } catch {
+      // Transaction may already be aborted server-side; the original err below is what matters.
+    }
     throw err;
   }
 
