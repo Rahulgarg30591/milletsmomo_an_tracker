@@ -32,7 +32,7 @@ export function authMiddleware(
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = {
-      id: decoded.sub,
+      id: Number(decoded.sub),
       role: decoded.role,
       displayName: decoded.displayName,
     };
