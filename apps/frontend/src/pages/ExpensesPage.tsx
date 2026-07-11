@@ -14,6 +14,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { ArrowLeft, Plus, Trash2, Save, ClipboardCopy, FlaskConical, Droplets } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDayExpenses, saveDayExpenses } from '../api/expenseApi';
 import { formatDateLabel } from '../utils/dateUtils';
@@ -127,9 +128,15 @@ export default function ExpensesPage() {
       qc.invalidateQueries({ queryKey: ['dayExpenses', targetDate] });
       navigate(`/day/${targetDate}`);
     },
-    onError: () => {
+    onError: (error: unknown) => {
       vibrate(haptics.error);
-      setToast({ message: 'Failed to save expenses', type: 'error' });
+      const detail = isAxiosError(error) && typeof error.response?.data?.error === 'string'
+        ? error.response.data.error
+        : undefined;
+      setToast({
+        message: detail ? `Failed to save expenses: ${detail}` : 'Failed to save expenses',
+        type: 'error',
+      });
     },
   });
 
