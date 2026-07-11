@@ -16,6 +16,15 @@ on:
         required: false
         default: false
         type: boolean
+      migration_type:
+        description: 'Which migration to run'
+        required: true
+        default: 'expenses-fix'
+        type: choice
+        options:
+          - expenses-fix
+          - add-expenses
+          - schema
 
 jobs:
   migrate:
@@ -34,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run schema migration
+      - name: Run migration
         env:
           SQL_SERVER: ${{ secrets.SQL_SERVER }}
           SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
@@ -43,7 +52,12 @@ jobs:
           SQL_PORT: '1433'
           SQL_ENCRYPT: 'true'
           SQL_TRUST_CERT: 'false'
-        run: npm run db:migrate
+        run: |
+          case "${{ github.event.inputs.migration_type }}" in
+            expenses-fix) npm run db:migrate:expenses-fix ;;
+            add-expenses) npm run db:migrate:add-expenses ;;
+            schema) npm run db:migrate ;;
+          esac
 
       - name: Run seed data
         if: ${{ github.event.inputs.run_seed == 'true' }}
