@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Button, Typography, Paper, useTheme, IconButton, TextField, Chip, Collapse,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, CheckCircle2, Package, Minus, Plus, AlertTriangle, ChevronDown, ChevronUp,
+  ClipboardCopy,
 } from 'lucide-react';
 import { getClosingStock, submitClosingStock } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
@@ -26,6 +28,46 @@ interface ExpectedStockItem {
   expectedTotalPieces: number;
 }
 
+function toDDMMYYYY(dateStr: string): string {
+  return dateStr.split('-').reverse().join('-');
+}
+
+function copyToClipboard(text: string): Promise<boolean> {
+  return (async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // fall through
+    }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  })();
+}
+
+const SUMMARY_FILLINGS = ['Veg', 'Paneer', 'Cheese Corn'] as const;
+
+function fillingFromDisplayName(displayName: string): string {
+  if (/cheese\s*corn/i.test(displayName)) return 'Cheese Corn';
+  if (/paneer/i.test(displayName)) return 'Paneer';
+  if (/veg/i.test(displayName)) return 'Veg';
+  return 'Unknown';
+}
+
 export default function ClosingStockPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -38,6 +80,7 @@ export default function ClosingStockPage() {
   const [closingItems, setClosingItems] = useState<Record<number, { packets: number; pieces: number; wastage: number; hasConflict: boolean; conflictReason: string }>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [liveStockExpanded, setLiveStockExpanded] = useState(true);
+  const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
 
   const { data: closingStock, isLoading: closingStockLoading } = useQuery<ClosingStock>({
     queryKey: ['closingStock', targetDate],
@@ -295,6 +338,60 @@ export default function ClosingStockPage() {
       return { ...prev, [id]: { ...current, conflictReason: reason } };
     });
   };
+
+  const createSummaryText = useCallback((): string => {
+    const data: Record<string, { packets: number; pieces: number; wastage: number }> = {};
+    for (const item of momoPacketItems) {
+      const filling = fillingFromDisplayName(item.displayName);
+      const c = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0 };
+      data[filling] = { packets: c.packets, pieces: c.pieces, wastage: c.wastage };
+    }
+
+    const lines: string[] = [];
+    lines.push(`Data: ${toDDMMYYYY(targetDate)}`);
+    lines.push('');
+    lines.push('Left Over:');
+    for (const f of SUMMARY_FILLINGS) {
+      const d = data[f] ?? { packets: 0, pieces: 0, wastage: 0 };
+      let s: string;
+      if (d.packets > 0 && d.pieces > 0) {
+        s = `${d.packets} ${d.packets === 1 ? 'Packet' : 'Packets'} and ${d.pieces} ${d.pieces === 1 ? 'piece' : 'pieces'}`;
+      } else if (d.packets > 0) {
+        s = `${d.packets} ${d.packets === 1 ? 'Packet' : 'Packets'}`;
+      } else if (d.pieces > 0) {
+        s = `${d.pieces} ${d.pieces === 1 ? 'Piece' : 'Pieces'}`;
+      } else {
+        s = '0';
+      }
+      lines.push(`${f}: ${s}`);
+    }
+    lines.push('');
+    lines.push('Wastage:');
+    let hasWastage = false;
+    for (const f of SUMMARY_FILLINGS) {
+      const d = data[f] ?? { packets: 0, pieces: 0, wastage: 0 };
+      if (d.wastage > 0) {
+        lines.push(`${f}: ${d.wastage} ${d.wastage === 1 ? 'piece' : 'pieces'}`);
+        hasWastage = true;
+      }
+    }
+    if (!hasWastage) {
+      lines.push('None');
+    }
+    return lines.join('\n');
+  }, [momoPacketItems, closingItems, targetDate]);
+
+  const handleCopySummary = useCallback(async () => {
+    vibrate(haptics.light);
+    const text = createSummaryText();
+    const copied = await copyToClipboard(text);
+    if (copied) {
+      vibrate(haptics.success);
+      setToast({ message: 'Summary copied to clipboard!', type: 'success' });
+    } else {
+      setClipboardFallback(text);
+    }
+  }, [createSummaryText]);
 
   if (closingStockLoading) {
     return (
@@ -658,16 +755,68 @@ export default function ClosingStockPage() {
 
         <Button
           fullWidth
+          variant="outlined"
+          size="large"
+          startIcon={<ClipboardCopy size={18} />}
+          onClick={handleCopySummary}
+          sx={{ mt: 2, textTransform: 'none', fontWeight: 700, borderRadius: 2, py: 1.5, fontSize: '0.95rem' }}
+        >
+          Copy Summary
+        </Button>
+
+        <Button
+          fullWidth
           variant="contained"
           size="large"
           disabled={closingStockMutation.isPending}
           onClick={() => closingStockMutation.mutate()}
           startIcon={<CheckCircle2 size={18} />}
-          sx={{ mt: 2, textTransform: 'none', fontWeight: 700, borderRadius: 2, py: 1.5, fontSize: '0.95rem' }}
+          sx={{ mt: 1, textTransform: 'none', fontWeight: 700, borderRadius: 2, py: 1.5, fontSize: '0.95rem' }}
         >
           {closingStockMutation.isPending ? 'Saving...' : 'Save Closing Stock'}
         </Button>
       </Box>
+
+      {/* Clipboard fallback dialog */}
+      {clipboardFallback && (
+        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
+          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Summary</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
+              Clipboard copy failed. Select the text below and copy manually.
+            </Typography>
+            <TextField
+              multiline
+              fullWidth
+              rows={8}
+              value={clipboardFallback}
+              variant="outlined"
+              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={async () => {
+                const ok = await copyToClipboard(clipboardFallback);
+                if (ok) {
+                  vibrate(haptics.success);
+                  setToast({ message: 'Summary copied to clipboard!', type: 'success' });
+                  setClipboardFallback(null);
+                } else {
+                  setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' });
+                }
+              }}
+              sx={{ textTransform: 'none', fontWeight: 700 }}
+            >
+              Retry Copy
+            </Button>
+            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>
