@@ -3,7 +3,7 @@ import { formatDateTimeIST } from './dateUtils';
 export interface ClientLogEntry {
   id: string;
   timestamp: string;
-  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout';
+  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout' | 'revenue_check';
   page: string;
   details: string;
   metadata?: Record<string, any>;
@@ -220,6 +220,11 @@ export function trackClosingStockSubmit(orderDate: string, metadata?: Record<str
 
 export function trackFormSubmit(page: string, formName: string, metadata?: Record<string, any>) {
   addLog({ type: 'form_submit', page, details: `Form submitted: ${formName}`, metadata });
+}
+
+export function trackRevenueCheck(orderDate: string, metadata?: Record<string, any>) {
+  addLog({ type: 'revenue_check', page: 'day_view', details: `Checked revenue for ${orderDate}`, metadata });
+  flushLogs();
 }
 
 export function trackLogout(metadata?: Record<string, any>) {

@@ -8,12 +8,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
   Plus, CalendarDays, RefreshCw, ChefHat, Receipt, Clock,
-  Truck, Package, Layers, Wallet, ChevronDown, ChevronRight
+  Truck, Package, Layers, Wallet, ChevronDown, ChevronRight,
+  Eye, EyeOff, Smartphone
 } from 'lucide-react';
 import { getOrders, completeOrder } from '../api/ordersApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
-import { trackNavigation, trackOrderComplete, trackButtonClick } from '../utils/tracking';
+import { trackNavigation, trackOrderComplete, trackButtonClick, trackRevenueCheck } from '../utils/tracking';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
@@ -88,6 +89,8 @@ export default function DayViewPage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [statsExpanded, setStatsExpanded] = useState(false);
   const [actionsExpanded, setActionsExpanded] = useState(true);
+  const [showRevenue, setShowRevenue] = useState(false);
+  const revenueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', date],
@@ -153,6 +156,15 @@ export default function DayViewPage() {
       const timer = setTimeout(tryScroll, 300);
       return () => clearTimeout(timer);
     }
+  }, [date]);
+
+  useEffect(() => {
+    return () => {
+      if (revenueTimerRef.current) {
+        clearTimeout(revenueTimerRef.current);
+        revenueTimerRef.current = null;
+      }
+    };
   }, [date]);
 
   const completeMutation = useMutation({
@@ -235,10 +247,43 @@ export default function DayViewPage() {
 
   const pendingAmount = useMemo(() => data?.orders?.reduce((sum: number, o: Order) => sum + (o.paymentMethod === 'pending' ? o.totalAmount : 0), 0) || 0, [data]);
 
+  const revenueStats = useMemo(() => {
+    const completed = data?.orders?.filter((o: Order) => o.isCompleted) || [];
+    const cashTotal = completed.reduce((sum: number, o: Order) => sum + (o.cashAmount || 0), 0);
+    const upiTotal = completed.reduce((sum: number, o: Order) => sum + (o.upiAmount || 0), 0);
+    const totalRevenue = completed.reduce((sum: number, o: Order) => sum + (o.totalAmount || 0), 0);
+    return { cashTotal, upiTotal, totalRevenue, orderCount: completed.length };
+  }, [data]);
+
   const handleManualRefresh = () => {
     vibrate(haptics.light);
     refetch();
   };
+
+  const handleRevenueToggle = useCallback(() => {
+    vibrate(haptics.light);
+    setShowRevenue((prev) => {
+      if (revenueTimerRef.current) {
+        clearTimeout(revenueTimerRef.current);
+        revenueTimerRef.current = null;
+      }
+      if (!prev) {
+        setStatsExpanded(true);
+        trackRevenueCheck(date!, {
+          cashTotal: revenueStats.cashTotal,
+          upiTotal: revenueStats.upiTotal,
+          totalRevenue: revenueStats.totalRevenue,
+          orderCount: revenueStats.orderCount,
+          date,
+        });
+        revenueTimerRef.current = setTimeout(() => {
+          setShowRevenue(false);
+          revenueTimerRef.current = null;
+        }, 10000);
+      }
+      return !prev;
+    });
+  }, [date, revenueStats]);
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', pb: { xs: 8, md: 4 }, pt: { xs: 0.5, md: 1 } }}>
@@ -392,6 +437,21 @@ export default function DayViewPage() {
                 </Typography>
               </Box>
             )}
+            {statsExpanded && (
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRevenueToggle();
+                }}
+                sx={{
+                  color: showRevenue ? 'primary.main' : 'text.secondary',
+                  p: { xs: 0.4, md: 0.5 },
+                }}
+              >
+                {showRevenue ? <EyeOff size={16} /> : <Eye size={16} />}
+              </IconButton>
+            )}
           </Box>
 
           <Collapse in={statsExpanded}>
@@ -422,6 +482,36 @@ export default function DayViewPage() {
                 color="#60A5FA"
               />
             </Box>
+
+            <Collapse in={showRevenue}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
+                  gap: { xs: 0.75, md: 1 },
+                  mt: { xs: 0.75, md: 1 },
+                }}
+              >
+                <StatCard
+                  icon={<Wallet size={14} />}
+                  label="Cash"
+                  value={`₹${revenueStats.cashTotal}`}
+                  color="#22C55E"
+                />
+                <StatCard
+                  icon={<Smartphone size={14} />}
+                  label="UPI"
+                  value={`₹${revenueStats.upiTotal}`}
+                  color="#3B82F6"
+                />
+                <StatCard
+                  icon={<Receipt size={14} />}
+                  label="Total"
+                  value={`₹${revenueStats.totalRevenue}`}
+                  color="#F59E0B"
+                />
+              </Box>
+            </Collapse>
           </Collapse>
         </Box>
 

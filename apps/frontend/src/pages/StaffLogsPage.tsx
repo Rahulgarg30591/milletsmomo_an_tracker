@@ -28,6 +28,7 @@ const clientTypeConfig: Record<string, { label: string; color: string }> = {
   action_start: { label: 'Start', color: '#6366F1' },
   action_end: { label: 'End', color: '#6366F1' },
   form_submit: { label: 'Form', color: '#EC4899' },
+  revenue_check: { label: 'Revenue Check', color: '#F59E0B' },
 };
 
 type UnifiedLog = {
@@ -71,6 +72,10 @@ function formatMetadataShort(m: Record<string, any> | null): string {
   if (m.reason) parts.push(m.reason);
   if (m.conflictCount !== undefined) parts.push(`${m.conflictCount} conflicts`);
   if (m.actionId) parts.push(`action:${m.actionId.slice(-6)}`);
+  if (m.cashTotal !== undefined) parts.push(`₹${m.cashTotal} cash`);
+  if (m.upiTotal !== undefined) parts.push(`₹${m.upiTotal} UPI`);
+  if (m.totalRevenue !== undefined) parts.push(`₹${m.totalRevenue} total`);
+  if (m.orderCount !== undefined) parts.push(`${m.orderCount} orders`);
   return parts.join(' · ');
 }
 
