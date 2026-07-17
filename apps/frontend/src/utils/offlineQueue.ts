@@ -1,8 +1,27 @@
 import { client } from '../api/client';
+import { queryClient } from '../api/queryClient';
 
 const DB_NAME = 'mm_offline_queue';
 const DB_VERSION = 1;
 const STORE_NAME = 'mutations';
+
+const URL_QUERY_PREFIXES: { pattern: RegExp; keys: string[][] }[] = [
+  { pattern: /^\/orders/, keys: [['orders']] },
+  { pattern: /^\/admin\/staff-logs/, keys: [['staffLogs']] },
+  { pattern: /^\/admin\/summary/, keys: [['adminSummary']] },
+  { pattern: /^\/admin\/orders/, keys: [['adminOrders']] },
+  { pattern: /^\/admin\/supply/, keys: [['supplyOrders'], ['supplyVerification'], ['supplyLogs']] },
+  { pattern: /^\/supply/, keys: [['supplyOrders'], ['supplyVerification'], ['supplyLogs']] },
+  { pattern: /^\/closing-stock/, keys: [['closingStock']] },
+];
+
+function invalidateForUrl(url: string) {
+  for (const entry of URL_QUERY_PREFIXES) {
+    if (entry.pattern.test(url)) {
+      for (const key of entry.keys) queryClient.invalidateQueries({ queryKey: key });
+    }
+  }
+}
 
 export interface QueuedMutation {
   id: string;
@@ -117,6 +136,7 @@ export async function flushOfflineQueue(): Promise<number> {
         headers: mutation.headers,
       });
       await removeMutation(mutation.id);
+      invalidateForUrl(mutation.url);
       flushed++;
     } catch {
       await updateMutationRetry(mutation.id);
@@ -129,10 +149,23 @@ export function isOnline(): boolean {
   return navigator.onLine;
 }
 
+let flushInFlight = false;
+
 export function setupOfflineSync(): () => void {
   const handleOnline = () => {
     flushOfflineQueue();
   };
   window.addEventListener('online', handleOnline);
-  return () => window.removeEventListener('online', handleOnline);
+  const interval = setInterval(() => {
+    if (isOnline() && !flushInFlight) {
+      flushInFlight = true;
+      flushOfflineQueue().finally(() => {
+        flushInFlight = false;
+      });
+    }
+  }, 60_000);
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    clearInterval(interval);
+  };
 }

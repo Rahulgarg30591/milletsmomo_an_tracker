@@ -13,6 +13,12 @@ const staffTypeConfig: Record<string, { label: string; color: string; icon: stri
   closing_stock: { label: 'Closing Stock', color: '#10B981', icon: '📦' },
   order_create: { label: 'Order', color: '#F59E0B', icon: '📋' },
   order_update: { label: 'Order Edit', color: '#8B5CF6', icon: '✏️' },
+  order_complete: { label: 'Order Done', color: '#10B981', icon: '✅' },
+  order_delete: { label: 'Order Delete', color: '#EF4444', icon: '🗑️' },
+  supply_order: { label: 'Supply Order', color: '#06B6D4', icon: '🛒' },
+  payment_settlement: { label: 'Settlement', color: '#EC4899', icon: '💰' },
+  expense_save: { label: 'Expenses', color: '#EC4899', icon: '💵' },
+  login: { label: 'Login', color: '#22C55E', icon: '🔑' },
 };
 
 const clientTypeConfig: Record<string, { label: string; color: string }> = {
@@ -29,6 +35,8 @@ const clientTypeConfig: Record<string, { label: string; color: string }> = {
   action_end: { label: 'End', color: '#6366F1' },
   form_submit: { label: 'Form', color: '#EC4899' },
   revenue_check: { label: 'Revenue Check', color: '#F59E0B' },
+  selection: { label: 'Selection', color: '#0EA5E9' },
+  quantity_change: { label: 'Quantity', color: '#F97316' },
 };
 
 type UnifiedLog = {
@@ -152,6 +160,142 @@ export default function StaffLogsPage() {
   const filteredLogs = selectedFilters.size > 0
     ? rawLogs.filter(l => selectedFilters.has(l.type))
     : rawLogs;
+
+  interface LogGroup {
+    key: string;
+    label: string;
+    logs: UnifiedLog[];
+    startTime: string;
+    endTime: string;
+    user: string;
+  }
+
+  function extractOrderId(log: UnifiedLog): string | null {
+    if (log.metadata?.orderId) return String(log.metadata.orderId);
+    const m = log.details.match(/Order #(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  function extractSessionId(log: UnifiedLog): string | null {
+    return log.metadata?.sessionId ? String(log.metadata.sessionId) : null;
+  }
+
+  // Sort ascending (oldest first) for timeline rendering
+  const sortedFiltered = useMemo(() =>
+    [...filteredLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+  [filteredLogs]);
+
+  const logGroups: LogGroup[] = useMemo(() => {
+    if (tab === 'staff') {
+      // Group staff ops by order ID. Non-order ops grouped by type + 10-min window.
+      const orderGroups = new Map<string, UnifiedLog[]>();
+      const otherGroups: { key: string; label: string; logs: UnifiedLog[] }[] = [];
+
+      for (const log of sortedFiltered) {
+        const orderId = extractOrderId(log);
+        if (orderId) {
+          if (!orderGroups.has(orderId)) orderGroups.set(orderId, []);
+          orderGroups.get(orderId)!.push(log);
+        } else {
+          // Group non-order logs by type within 10-min windows
+          const t = new Date(log.timestamp).getTime();
+          let bucket = otherGroups.find(g =>
+            g.label.startsWith(log.label) &&
+            g.logs.length > 0 &&
+            t - new Date(g.logs[g.logs.length - 1].timestamp).getTime() <= 10 * 60 * 1000
+          );
+          if (!bucket) {
+            bucket = { key: `other-${otherGroups.length}`, label: `${log.label}`, logs: [] };
+            otherGroups.push(bucket);
+          }
+          bucket.logs.push(log);
+        }
+      }
+
+      const groups: LogGroup[] = [];
+      for (const [orderId, logs] of orderGroups) {
+        groups.push({
+          key: `order-${orderId}`,
+          label: `Order #${orderId}`,
+          logs,
+          startTime: logs[0].timestamp,
+          endTime: logs[logs.length - 1].timestamp,
+          user: logs[0].user,
+        });
+      }
+      for (const g of otherGroups) {
+        groups.push({
+          key: g.key,
+          label: g.label,
+          logs: g.logs,
+          startTime: g.logs[0].timestamp,
+          endTime: g.logs[g.logs.length - 1].timestamp,
+          user: g.logs[0].user,
+        });
+      }
+      // Sort groups by start time descending (most recent first)
+      groups.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      return groups;
+    } else {
+      // Client logs: group by sessionId. Fallback: user + 5-min window.
+      const sessionGroups = new Map<string, UnifiedLog[]>();
+      const fallbackGroups: { key: string; label: string; logs: UnifiedLog[] }[] = [];
+
+      for (const log of sortedFiltered) {
+        const sid = extractSessionId(log);
+        if (sid) {
+          if (!sessionGroups.has(sid)) sessionGroups.set(sid, []);
+          sessionGroups.get(sid)!.push(log);
+        } else {
+          const t = new Date(log.timestamp).getTime();
+          let bucket = fallbackGroups.find(g =>
+            g.logs.length > 0 &&
+            g.logs[0].user === log.user &&
+            t - new Date(g.logs[g.logs.length - 1].timestamp).getTime() <= 5 * 60 * 1000
+          );
+          if (!bucket) {
+            bucket = { key: `fb-${fallbackGroups.length}`, label: log.user, logs: [] };
+            fallbackGroups.push(bucket);
+          }
+          bucket.logs.push(log);
+        }
+      }
+
+      const groups: LogGroup[] = [];
+      for (const [sid, logs] of sessionGroups) {
+        groups.push({
+          key: `session-${sid}`,
+          label: `${logs[0].user} session`,
+          logs,
+          startTime: logs[0].timestamp,
+          endTime: logs[logs.length - 1].timestamp,
+          user: logs[0].user,
+        });
+      }
+      for (const g of fallbackGroups) {
+        groups.push({
+          key: g.key,
+          label: g.label,
+          logs: g.logs,
+          startTime: g.logs[0].timestamp,
+          endTime: g.logs[g.logs.length - 1].timestamp,
+          user: g.logs[0].user,
+        });
+      }
+      groups.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      return groups;
+    }
+  }, [sortedFiltered, tab]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const staffCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -313,7 +457,7 @@ export default function StaffLogsPage() {
           </Box>
         )}
 
-        {/* Logs list */}
+        {/* Logs list — grouped */}
         {filteredLogs.length === 0 ? (
           <Paper sx={{ borderRadius: 2, p: 3, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.03)' : undefined, border: 1, borderColor: 'divider' }}>
             <Typography sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.9rem' }}>
@@ -321,65 +465,132 @@ export default function StaffLogsPage() {
             </Typography>
           </Paper>
         ) : (
-          <Paper sx={{ borderRadius: 2, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
-            {filteredLogs.map((log, index) => {
-              const logTime = new Date(log.timestamp);
-              const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {logGroups.map((group) => {
+              const isCollapsed = collapsedGroups.has(group.key);
+              const startT = new Date(group.startTime);
+              const endT = new Date(group.endTime);
+              const startStr = startT.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+              const endStr = endT.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+              const spanMs = endT.getTime() - startT.getTime();
+              const spanStr = spanMs < 60000 ? `${Math.round(spanMs / 1000)}s` : `${Math.round(spanMs / 60000)}m`;
+              const dur = spanMs > 0 ? `${startStr} → ${endStr} (${spanStr})` : startStr;
 
               return (
-                <Box
-                  key={log.id}
+                <Paper
+                  key={group.key}
                   sx={{
-                    p: { xs: 1.25, md: 1.5 },
-                    borderBottom: index < filteredLogs.length - 1 ? 1 : 0,
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    border: 1,
                     borderColor: 'divider',
+                    background: isDark ? 'rgba(255,255,255,0.02)' : undefined,
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1, minWidth: 0 }}>
+                  {/* Group header */}
+                  <Box
+                    onClick={() => toggleGroup(group.key)}
+                    sx={{
+                      p: { xs: 1, md: 1.25 },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' },
+                      borderBottom: isCollapsed ? 0 : 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, flex: 1 }}>
+                      <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', flexShrink: 0 }}>
+                        {isCollapsed ? '▶' : '▼'}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {group.label}
+                      </Typography>
                       <Box
                         sx={{
                           px: 0.5,
-                          py: 0.15,
+                          py: 0.1,
                           borderRadius: 0.75,
                           fontSize: '0.6rem',
                           fontWeight: 700,
-                          backgroundColor: isDark ? `${log.color}25` : `${log.color}14`,
-                          color: log.color,
-                          whiteSpace: 'nowrap',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.03em',
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                          color: 'text.secondary',
                           flexShrink: 0,
                         }}
                       >
-                        {log.icon ? `${log.icon} ` : ''}{log.label}
+                        {group.logs.length}
                       </Box>
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {log.user}
-                      </Typography>
                     </Box>
-                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, flexShrink: 0, ml: 1 }}>
-                      {timeStr}
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500, flexShrink: 0, ml: 1 }}>
+                      {dur}
                     </Typography>
                   </Box>
 
-                  <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.4, fontWeight: 500, mb: 0.25 }}>
-                    {log.details}
-                  </Typography>
+                  {/* Timeline entries */}
+                  {!isCollapsed && (
+                    <Box sx={{ p: { xs: 1, md: 1.25 }, pt: { xs: 0.5, md: 0.75 } }}>
+                      {group.logs.map((log, idx) => {
+                        const logTime = new Date(log.timestamp);
+                        const timeStr = logTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                        const isLast = idx === group.logs.length - 1;
 
-                  {(log.durationMs || log.metadata || log.deviceInfo) && (
-                    <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : '#6B7280', lineHeight: 1.4, fontWeight: 400 }}>
-                      {[
-                        log.durationMs ? `⏱ ${formatDuration(log.durationMs)}` : null,
-                        formatMetadataShort(log.metadata),
-                        log.deviceInfo ? `📱 ${log.deviceInfo.split(',')[0]?.replace('Platform: ', '')}` : null,
-                      ].filter(Boolean).join(' · ')}
-                    </Typography>
+                        return (
+                          <Box
+                            key={log.id}
+                            sx={{
+                              display: 'flex',
+                              gap: 1,
+                              pb: isLast ? 0 : 1,
+                              position: 'relative',
+                            }}
+                          >
+                            {/* Timeline dot + line */}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, pt: 0.25 }}>
+                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: log.color, flexShrink: 0 }} />
+                              {!isLast && (
+                                <Box sx={{ width: 2, flex: 1, backgroundColor: 'divider', mt: 0.25, minHeight: 16 }} />
+                              )}
+                            </Box>
+
+                            {/* Content */}
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25, flexWrap: 'wrap' }}>
+                                <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: log.color, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                  {log.icon ? `${log.icon} ` : ''}{log.label}
+                                </Typography>
+                                {tab === 'staff' && (
+                                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600 }}>
+                                    · {log.user}
+                                  </Typography>
+                                )}
+                                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500, ml: 'auto' }}>
+                                  {timeStr}
+                                </Typography>
+                              </Box>
+                              <Typography sx={{ fontSize: '0.8rem', color: 'text.primary', lineHeight: 1.4, fontWeight: 500, mb: 0.25 }}>
+                                {log.details}
+                              </Typography>
+                              {(log.durationMs || log.metadata || log.deviceInfo) && (
+                                <Typography sx={{ fontSize: '0.65rem', color: isDark ? '#9CA3AF' : '#6B7280', lineHeight: 1.4, fontWeight: 400 }}>
+                                  {[
+                                    log.durationMs ? `⏱ ${formatDuration(log.durationMs)}` : null,
+                                    formatMetadataShort(log.metadata),
+                                    log.deviceInfo ? `📱 ${log.deviceInfo.split(',')[0]?.replace('Platform: ', '')}` : null,
+                                  ].filter(Boolean).join(' · ')}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
                   )}
-                </Box>
+                </Paper>
               );
             })}
-          </Paper>
+          </Box>
         )}
       </Box>
     </Box>

@@ -7,7 +7,7 @@ import { ArrowLeft, ChefHat, ShoppingCart } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { createOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
-import { trackPageView, trackOrderSubmit, trackNavigation } from '../utils/tracking';
+import { trackPageView, trackOrderSubmit, trackNavigation, trackSelection } from '../utils/tracking';
 import { calculateLineTotal, calculateOrderTotal, getMenuItem } from '../utils/pricing';
 import MenuGrid from '../components/MenuGrid';
 import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
@@ -166,6 +166,7 @@ function NewOrderContent() {
 
     submitContextRef.current = { itemCount: items.length };
     sessionStorage.setItem('scrollToOrderId', String(optimisticOrder.id));
+    trackSelection('new_order', 'submit', 'confirmed', { itemCount: items.length, totalAmount, orderType: draft.orderType, paymentMethod: draft.paymentMethod });
     clearDraft();
     vibrate(haptics.success);
     navigate(`/day/${date}`);

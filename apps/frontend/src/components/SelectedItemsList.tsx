@@ -4,6 +4,7 @@ import { useOrderDraft } from '../context/OrderDraftContext';
 import { getMenuItem, calculateLineTotal, calculateOrderTotal } from '../utils/pricing';
 import { formatQuantity } from '../utils/formatQuantity';
 import { vibrate, haptics } from '../theme/tokens';
+import { trackQuantityChange } from '../utils/tracking';
 
 export default function SelectedItemsList() {
   const { draft, removeItem, incrementByPlate, decrementByPlate } = useOrderDraft();
@@ -170,9 +171,11 @@ export default function SelectedItemsList() {
                       if (item.quantity - s <= 0) {
                         vibrate(haptics.light);
                         removeItem(item.menuItemId);
+                        trackQuantityChange('new_order', item.menuItem?.displayName || '', 0, item.isHalf, { itemId: item.menuItemId, isCustom: item.isCustom });
                       } else {
                         vibrate(haptics.light);
                         decrementByPlate(item.menuItemId);
+                        trackQuantityChange('new_order', item.menuItem?.displayName || '', item.quantity - s, item.isHalf, { itemId: item.menuItemId, isCustom: item.isCustom });
                       }
                     }}
                     sx={{
@@ -211,6 +214,7 @@ export default function SelectedItemsList() {
                     onClick={() => {
                       vibrate(haptics.light);
                       incrementByPlate(item.menuItemId);
+                      trackQuantityChange('new_order', item.menuItem?.displayName || '', item.quantity + s, item.isHalf, { itemId: item.menuItemId, isCustom: item.isCustom });
                     }}
                     sx={{
                       width: { xs: 26, md: 30 },

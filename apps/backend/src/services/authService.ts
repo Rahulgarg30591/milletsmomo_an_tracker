@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || '';
 
 export interface LoginResult {
   token: string;
+  userId: number;
   role: string;
   displayName: string;
   expiresIn: number;
@@ -42,6 +43,7 @@ export async function login(
 
   return {
     token,
+    userId: user.id,
     role: user.role,
     displayName: user.display_name,
     expiresIn: 43200,

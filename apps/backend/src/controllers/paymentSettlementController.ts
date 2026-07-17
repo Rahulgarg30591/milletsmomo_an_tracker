@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getPaymentSettlementSchema, createPaymentSettlementSchema, listPaymentSettlementsSchema } from '../validators/paymentSettlementValidators.js';
 import * as paymentSettlementService from '../services/paymentSettlementService.js';
+import * as staffLogService from '../services/staffLogService.js';
 
 export async function getSettlement(
   req: Request,
@@ -35,6 +36,19 @@ export async function createSettlement(
       notes ?? null,
       userId,
     );
+
+    const details = `Settlement saved for ${orderDate}: ₹${actualCash} cash, ₹${actualUpi} UPI${settlement.cashConflict || settlement.upiConflict ? ' (conflict)' : ''}`;
+    await staffLogService.createLog(orderDate, 'payment_settlement', userId, details, {
+      orderDate,
+      actualCash,
+      actualUpi,
+      expectedCash: settlement.expectedCash,
+      expectedUpi: settlement.expectedUpi,
+      cashConflict: settlement.cashConflict,
+      upiConflict: settlement.upiConflict,
+      notes: notes ?? null,
+    });
+
     res.status(201).json(settlement);
   } catch (err: any) {
     if (err.name === 'ZodError') {

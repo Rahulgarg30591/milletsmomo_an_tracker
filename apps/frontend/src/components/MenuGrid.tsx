@@ -3,7 +3,7 @@ import { Minus, Plus, X, Slice } from 'lucide-react';
 import { useRef, useCallback, memo } from 'react';
 import { useOrderDraft } from '../context/OrderDraftContext';
 
-import { trackButtonClick } from '../utils/tracking';
+import { trackSelection, trackQuantityChange } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 
 interface MenuItem {
@@ -93,7 +93,7 @@ const MenuCellBase = ({
             onAdd(item);
           } else if (!isCustom) {
             setFull(item.id);
-            trackButtonClick('new_order', `add_full_${item.displayName}`, { itemId: item.id });
+            trackSelection('new_order', 'plate_size', 'full', { itemId: item.id, itemName: item.displayName, quantity });
             vibrate(haptics.light);
           }
         }}
@@ -139,7 +139,7 @@ const MenuCellBase = ({
                   size="small"
                   onClick={() => {
                     setFull(item.id);
-                    trackButtonClick('new_order', `set_full_${item.displayName}`, { itemId: item.id });
+                    trackSelection('new_order', 'plate_size', 'full', { itemId: item.id, itemName: item.displayName, quantity });
                     vibrate(haptics.light);
                   }}
                   sx={{
@@ -172,7 +172,7 @@ const MenuCellBase = ({
                   size="small"
                   onClick={() => {
                     setHalf(item.id);
-                    trackButtonClick('new_order', `set_half_${item.displayName}`, { itemId: item.id });
+                    trackSelection('new_order', 'plate_size', 'half', { itemId: item.id, itemName: item.displayName, quantity });
                     vibrate(haptics.light);
                   }}
                   sx={{
@@ -208,7 +208,7 @@ const MenuCellBase = ({
                   size="small"
                   onClick={() => {
                     setCustom(item.id);
-                    trackButtonClick('new_order', `set_custom_${item.displayName}`, { itemId: item.id });
+                    trackSelection('new_order', 'plate_size', 'custom', { itemId: item.id, itemName: item.displayName, quantity });
                     vibrate(haptics.light);
                   }}
                   sx={{
@@ -243,7 +243,7 @@ const MenuCellBase = ({
                 size="small"
                 onClick={() => {
                   removeItem(item.id);
-                  trackButtonClick('new_order', `remove_${item.displayName}`, { itemId: item.id });
+                  trackQuantityChange('new_order', item.displayName, 0, false, { itemId: item.id, filling: item.filling });
                   vibrate(haptics.light);
                 }}
                 sx={{
@@ -275,7 +275,7 @@ const MenuCellBase = ({
                   size="small"
                   onClick={() => {
                     decrementItem(item.id);
-                    trackButtonClick('new_order', `decrement_${item.displayName}`, { itemId: item.id, type: 'custom' });
+                    trackQuantityChange('new_order', item.displayName, Math.max(0, quantity - 1), isHalf, { itemId: item.id, isCustom: true });
                     vibrate(haptics.light);
                   }}
                   sx={{
@@ -324,7 +324,7 @@ const MenuCellBase = ({
                   size="small"
                   onClick={() => {
                     incrementItem(item.id);
-                    trackButtonClick('new_order', `increment_${item.displayName}`, { itemId: item.id, type: 'custom' });
+                    trackQuantityChange('new_order', item.displayName, quantity + 1, isHalf, { itemId: item.id, isCustom: true });
                     vibrate(haptics.light);
                   }}
                   sx={{
@@ -365,13 +365,13 @@ export default function MenuGrid({ items }: MenuGridProps) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
       addItem(item.id);
-      trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling, double: true });
+      trackQuantityChange('new_order', item.displayName, 1, false, { itemId: item.id, filling: item.filling, double: true });
       vibrate(haptics.light);
     } else {
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null;
         addItem(item.id);
-        trackButtonClick('new_order', `add_${item.displayName}`, { itemId: item.id, filling: item.filling });
+        trackQuantityChange('new_order', item.displayName, 1, false, { itemId: item.id, filling: item.filling });
         vibrate(haptics.light);
       }, 250);
     }

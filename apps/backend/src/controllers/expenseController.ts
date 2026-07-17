@@ -41,7 +41,16 @@ export async function saveDayExpenses(
 
     const totalAmount = data.items.reduce((sum, item) => sum + item.amount, 0);
     const details = `Saved ${data.items.length} expense(s), total ₹${totalAmount.toFixed(2)}`;
-    createLog(data.orderDate, 'expense_save', userId, details).catch(() => {});
+    try {
+      await createLog(data.orderDate, 'expense_save', userId, details, {
+        orderDate: data.orderDate,
+        itemCount: data.items.length,
+        totalAmount,
+        items: data.items.map((i) => ({ description: i.description, amount: i.amount })),
+      });
+    } catch {
+      // Log failure should not block expense save response
+    }
 
     res.status(201).json(result);
   } catch (err: any) {

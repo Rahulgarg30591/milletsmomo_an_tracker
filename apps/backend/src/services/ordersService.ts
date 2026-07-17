@@ -172,7 +172,7 @@ export async function completeOrder(
   request.input('id', sql.BigInt, id);
 
   const check = await request.query(
-    'SELECT id, payment_method, is_completed, total_amount FROM Orders WHERE id = @id',
+    'SELECT id, order_date, payment_method, is_completed, total_amount FROM Orders WHERE id = @id',
   );
   if (check.recordset.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
@@ -186,6 +186,16 @@ export async function completeOrder(
   if (order.payment_method === 'pending' && !paymentMethod) {
     throw Object.assign(new Error('paymentMethod is required for pending orders'), { status: 400 });
   }
+
+  const finalPaymentMethod = paymentMethod || order.payment_method;
+  const finalCash = paymentMethod === 'cash' ? Number(order.total_amount)
+    : paymentMethod === 'upi' ? 0
+    : paymentMethod === 'split' ? (cashAmount ?? 0)
+    : Number(order.cash_amount ?? 0);
+  const finalUpi = paymentMethod === 'upi' ? Number(order.total_amount)
+    : paymentMethod === 'cash' ? 0
+    : paymentMethod === 'split' ? (upiAmount ?? (Number(order.total_amount) - (cashAmount ?? 0)))
+    : Number(order.upi_amount ?? 0);
 
   const updateRequest = pool.request();
   updateRequest.input('id', sql.BigInt, id);
@@ -219,7 +229,15 @@ export async function completeOrder(
     );
   }
 
-  return { id, completed: true };
+  return {
+    id,
+    completed: true,
+    orderDate: formatDate(order.order_date),
+    paymentMethod: finalPaymentMethod,
+    cashAmount: finalCash,
+    upiAmount: finalUpi,
+    totalAmount: Number(order.total_amount),
+  };
 }
 
 export async function deleteOrder(id: number) {
@@ -227,13 +245,14 @@ export async function deleteOrder(id: number) {
   const request = pool.request();
   request.input('id', sql.BigInt, id);
 
-  const check = await request.query('SELECT id FROM Orders WHERE id = @id');
+  const check = await request.query('SELECT id, order_date FROM Orders WHERE id = @id');
   if (check.recordset.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
   }
 
+  const orderDate = formatDate(check.recordset[0].order_date);
   await request.query('DELETE FROM Orders WHERE id = @id');
-  return { deleted: true, id };
+  return { deleted: true, id, orderDate };
 }
 
 export async function updateOrder(

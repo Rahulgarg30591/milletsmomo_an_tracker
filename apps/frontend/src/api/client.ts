@@ -24,10 +24,9 @@ client.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(originalRequest?.method?.toLowerCase());
-    const isNetworkError = !error.response && error.code === 'ERR_NETWORK';
     const isOffline = !isOnline();
 
-    if (isMutation && (isOffline || isNetworkError)) {
+    if (isMutation && isOffline) {
       const url = originalRequest.url || originalRequest.baseURL;
       const method = originalRequest.method?.toUpperCase() || 'POST';
       const data = originalRequest.data ? JSON.parse(originalRequest.data) : null;

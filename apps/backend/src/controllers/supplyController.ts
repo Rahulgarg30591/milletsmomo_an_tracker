@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createSupplyOrderSchema, getSupplyOrderSchema } from '../validators/supplyValidators.js';
 import * as supplyService from '../services/supplyService.js';
+import * as staffLogService from '../services/staffLogService.js';
 
 export async function getItems(
   _req: Request,
@@ -80,6 +81,18 @@ export async function createOrder(
     const { orderDate, items } = createSupplyOrderSchema.parse(req.body);
     const userId = req.user!.id;
     const order = await supplyService.createSupplyOrder(orderDate, items, userId);
+
+    const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
+    const details = `Supply order created for ${orderDate}: ${items.length} items, ₹${order.totalCost.toFixed(2)}`;
+    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
+      supplyOrderId: order.id,
+      orderDate,
+      itemCount: items.length,
+      totalQuantity: totalItems,
+      totalCost: Number(order.totalCost),
+      action: 'create',
+    });
+
     res.status(201).json(order);
   } catch (err: any) {
     if (err.name === 'ZodError') {
@@ -99,6 +112,18 @@ export async function upsertOrder(
     const { orderDate, items } = createSupplyOrderSchema.parse(req.body);
     const userId = req.user!.id;
     const order = await supplyService.updateSupplyOrder(orderDate, items, userId);
+
+    const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
+    const details = `Supply order updated for ${orderDate}: ${items.length} items, ₹${order.totalCost.toFixed(2)}`;
+    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
+      supplyOrderId: order.id,
+      orderDate,
+      itemCount: items.length,
+      totalQuantity: totalItems,
+      totalCost: Number(order.totalCost),
+      action: 'update',
+    });
+
     res.json(order);
   } catch (err: any) {
     if (err.name === 'ZodError') {

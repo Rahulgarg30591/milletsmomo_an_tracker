@@ -63,7 +63,12 @@ export async function createVerification(
 
     const conflictCount = items.filter((i) => i.actualQty !== i.expectedQty).length;
     const details = `Verified ${items.length} items${conflictCount > 0 ? `, ${conflictCount} conflict` : ', all match'}`;
-    await staffLogService.createLog(orderDate, 'verification', userId, details);
+    await staffLogService.createLog(orderDate, 'verification', userId, details, {
+      orderDate,
+      itemCount: items.length,
+      conflictCount,
+      allMatch: conflictCount === 0,
+    });
 
     res.status(201).json(verification);
   } catch (err: any) {

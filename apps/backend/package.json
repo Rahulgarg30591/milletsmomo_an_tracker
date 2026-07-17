@@ -13,6 +13,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate:add-expenses": "tsx scripts/migrateAdditive.ts",
     "db:migrate:expenses-fix": "tsx scripts/migrateExpensesFix.ts",
+    "db:migrate:staff-logs": "tsx scripts/migrateStaffLogs.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
   },

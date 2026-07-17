@@ -14,6 +14,8 @@ import {
 import { getOrders, completeOrder } from '../api/ordersApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
+import { isOnline } from '../utils/offlineQueue';
+import { useForegroundRefetch } from '../hooks/useForegroundRefetch';
 import { trackNavigation, trackOrderComplete, trackButtonClick, trackRevenueCheck } from '../utils/tracking';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
@@ -98,6 +100,8 @@ export default function DayViewPage() {
     refetchInterval: 30000,
   });
 
+  useForegroundRefetch(refetch);
+
   const { data: supplyVerification } = useQuery<SupplyVerification>({
     queryKey: ['supplyVerification', date],
     queryFn: () => getSupplyVerification(date!),
@@ -174,6 +178,13 @@ export default function DayViewPage() {
       await queryClient.cancelQueries({ queryKey: ['orders', date] });
       const previousData = queryClient.getQueryData(['orders', date]);
 
+      if (!isOnline()) {
+        setPaymentModalOrder(null);
+        setToast({ message: 'Saved offline — will sync when reconnected', type: 'error' });
+        vibrate(haptics.medium);
+        return { previousData };
+      }
+
       queryClient.setQueryData(['orders', date], (old: any) => {
         if (!old?.orders) return old;
         return {
@@ -204,7 +215,8 @@ export default function DayViewPage() {
 
       return { previousData };
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      if (data?._queued) return;
       trackOrderComplete(variables.id, { paymentMethod: variables.paymentMethod });
     },
     onError: (_err, _variables, context) => {

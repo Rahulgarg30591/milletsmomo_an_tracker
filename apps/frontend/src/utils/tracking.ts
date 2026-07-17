@@ -3,7 +3,7 @@ import { formatDateTimeIST } from './dateUtils';
 export interface ClientLogEntry {
   id: string;
   timestamp: string;
-  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout' | 'revenue_check';
+  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout' | 'revenue_check' | 'selection' | 'quantity_change';
   page: string;
   details: string;
   metadata?: Record<string, any>;
@@ -16,8 +16,9 @@ export interface ClientLogEntry {
 const LOG_KEY = 'mm_activity_logs';
 const LAST_FLUSH_KEY = 'mm_last_flush';
 const SESSION_START_KEY = 'mm_session_start';
-const BATCH_SIZE = 100;
-const FLUSH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_ID_KEY = 'mm_session_id';
+const BATCH_SIZE = 20;
+const FLUSH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 function getDeviceInfo(): string {
   const ua = navigator.userAgent;
@@ -110,6 +111,7 @@ export function addLog(entry: Omit<ClientLogEntry, 'id' | 'timestamp' | 'deviceI
     userId: userInfo.userId,
     userRole: userInfo.userRole,
     ...entry,
+    metadata: { sessionId: getSessionId(), ...entry.metadata },
   };
   logs.push(newEntry);
   setStoredLogs(logs);
@@ -166,12 +168,26 @@ export function clearLogs() {
 
 export function markSessionStart() {
   sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
+  sessionStorage.removeItem(SESSION_ID_KEY);
 }
 
 export function getSessionDurationMs(): number | undefined {
   const start = sessionStorage.getItem(SESSION_START_KEY);
   if (!start) return undefined;
   return Date.now() - parseInt(start, 10);
+}
+
+export function getSessionId(): string {
+  let id = sessionStorage.getItem(SESSION_ID_KEY);
+  if (!id) {
+    const start = sessionStorage.getItem(SESSION_START_KEY) || String(Date.now());
+    if (!sessionStorage.getItem(SESSION_START_KEY)) {
+      sessionStorage.setItem(SESSION_START_KEY, start);
+    }
+    id = `s-${start}-${Math.random().toString(36).slice(2, 7)}`;
+    sessionStorage.setItem(SESSION_ID_KEY, id);
+  }
+  return id;
 }
 
 // Trackers
@@ -200,22 +216,27 @@ export function trackActionEnd(page: string, action: string, actionId: string, m
 
 export function trackNavigation(from: string, to: string, metadata?: Record<string, any>) {
   addLog({ type: 'navigation', page: to, details: `Navigated from ${from} to ${to}`, metadata: { from, ...metadata } });
+  flushLogs();
 }
 
 export function trackOrderSubmit(orderId: number, metadata?: Record<string, any>) {
   addLog({ type: 'order_submit', page: 'new_order', details: `Order submitted: #${orderId}`, metadata });
+  flushLogs();
 }
 
 export function trackOrderComplete(orderId: number, metadata?: Record<string, any>) {
   addLog({ type: 'order_complete', page: 'day_view', details: `Order completed: #${orderId}`, metadata });
+  flushLogs();
 }
 
 export function trackVerificationSubmit(orderDate: string, metadata?: Record<string, any>) {
   addLog({ type: 'verification_submit', page: 'supply_verification', details: `Verification submitted for ${orderDate}`, metadata });
+  flushLogs();
 }
 
 export function trackClosingStockSubmit(orderDate: string, metadata?: Record<string, any>) {
   addLog({ type: 'closing_stock_submit', page: 'closing_stock', details: `Closing stock submitted for ${orderDate}`, metadata });
+  flushLogs();
 }
 
 export function trackFormSubmit(page: string, formName: string, metadata?: Record<string, any>) {
@@ -230,6 +251,16 @@ export function trackRevenueCheck(orderDate: string, metadata?: Record<string, a
 export function trackLogout(metadata?: Record<string, any>) {
   const durationMs = getSessionDurationMs();
   addLog({ type: 'logout', page: 'logout', details: 'User logged out', metadata: { url: window.location.href, device: getDeviceInfo(), sessionDurationMs: durationMs, ...metadata } });
+  flushLogs();
+}
+
+export function trackSelection(page: string, field: string, value: string, metadata?: Record<string, any>) {
+  addLog({ type: 'selection', page, details: `Selected ${field}: ${value}`, metadata: { field, value, ...metadata } });
+}
+
+export function trackQuantityChange(page: string, itemName: string, newQty: number, isHalf: boolean, metadata?: Record<string, any>) {
+  const size = isHalf ? 'half' : 'full';
+  addLog({ type: 'quantity_change', page, details: `Set ${itemName} to ${newQty} (${size})`, metadata: { itemName, quantity: newQty, isHalf, ...metadata } });
 }
 
 // Send remaining logs on page unload

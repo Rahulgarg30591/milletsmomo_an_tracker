@@ -48,8 +48,18 @@ export async function createClosingStock(
 
     const totalPackets = items.reduce((sum, i) => sum + i.packetsLeft, 0);
     const totalPieces = items.reduce((sum, i) => sum + i.piecesLeft, 0);
+    const totalWastage = items.reduce((sum, i) => sum + i.wastagePieces, 0);
+    const conflictItems = items.filter((i) => i.hasConflict);
     const details = `Recorded closing stock: ${totalPackets} packets, ${totalPieces} pieces`;
-    await staffLogService.createLog(orderDate, 'closing_stock', userId, details);
+    await staffLogService.createLog(orderDate, 'closing_stock', userId, details, {
+      orderDate,
+      totalPackets,
+      totalPieces,
+      totalWastage,
+      itemCount: items.length,
+      conflictCount: conflictItems.length,
+      conflicts: conflictItems.map((i) => ({ supplyItemId: i.supplyItemId, reason: i.conflictReason })),
+    });
 
     res.status(201).json(stock);
   } catch (err: any) {

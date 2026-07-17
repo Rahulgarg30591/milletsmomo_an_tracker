@@ -14,6 +14,7 @@ import { getMenu } from '../api/menuApi';
 import { getToday, getYesterday, addDays, formatDateLabel } from '../utils/dateUtils';
 import { formatQuantity } from '../utils/formatQuantity';
 import { exportDashboardToExcel } from '../utils/exportDashboard';
+import { useForegroundRefetch } from '../hooks/useForegroundRefetch';
 import StatChip from '../components/StatChip';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import StaggerContainer, { StaggerItem } from '../components/animations/StaggerContainer';
@@ -160,20 +161,23 @@ export default function AdminDashboardPage() {
     }
   }, [dateRange]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch: refetchSummary } = useQuery({
     queryKey: ['adminSummary', startDate, endDate],
     queryFn: () => getAdminSummary(startDate, endDate),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
 
-  const { data: adminOrdersData, isLoading: ordersLoading } = useQuery({
+  const { data: adminOrdersData, isLoading: ordersLoading, refetch: refetchOrders } = useQuery({
     queryKey: ['adminOrders', startDate, endDate],
     queryFn: () => getAdminOrders(startDate, endDate),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
   const adminOrders = useDeferredValue(adminOrdersData?.orders || []);
+
+  useForegroundRefetch(refetchSummary);
+  useForegroundRefetch(refetchOrders);
 
   const { data: supplyOrders = [] as SupplyOrder[] } = useQuery({
     queryKey: ['supplyOrders', startDate, endDate],

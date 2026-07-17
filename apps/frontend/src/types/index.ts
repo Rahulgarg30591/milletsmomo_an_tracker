@@ -146,10 +146,11 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'expense_save';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'login';
   createdBy: number;
   createdAt: string;
   details: string;
+  metadata: Record<string, any> | null;
   displayName: string;
 }
 

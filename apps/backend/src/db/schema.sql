@@ -143,10 +143,11 @@ CREATE INDEX IX_DailyClosingStock_Date ON DailyClosingStock(order_date DESC);
 CREATE TABLE StaffOperationLogs (
   id              INT IDENTITY(1,1) PRIMARY KEY,
   order_date      DATE          NOT NULL,
-  operation_type  NVARCHAR(20)  NOT NULL CHECK (operation_type IN ('verification','closing_stock','order_create','order_update','expense_save')),
+  operation_type  NVARCHAR(20)  NOT NULL CHECK (operation_type IN ('verification','closing_stock','order_create','order_update','order_complete','order_delete','supply_order','payment_settlement','expense_save','login')),
   created_by      INT           NOT NULL REFERENCES Users(id),
   created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
-  details         NVARCHAR(500) NOT NULL
+  details         NVARCHAR(500) NOT NULL,
+  metadata        NVARCHAR(MAX) NULL
 );
 
 CREATE INDEX IX_StaffOperationLogs_Date ON StaffOperationLogs(order_date DESC);
