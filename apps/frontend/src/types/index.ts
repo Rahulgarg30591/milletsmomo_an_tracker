@@ -50,7 +50,6 @@ export interface AdminSummary {
   cashTotal: number;
   upiTotal: number;
   itemBreakdown: { itemName: string; totalQuantity: number; totalRevenue: number }[];
-  orders: Order[];
 }
 
 export interface SupplyItem {

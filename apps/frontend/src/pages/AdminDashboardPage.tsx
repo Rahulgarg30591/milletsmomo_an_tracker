@@ -1,15 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { getAdminSummary } from '../api/adminApi';
+import { getAdminSummary, getAdminOrders } from '../api/adminApi';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
 import { listSupplyVerifications, getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
-import { getOrders } from '../api/ordersApi';
 import { getStaffLogs } from '../api/staffLogApi';
 import { getMenu } from '../api/menuApi';
 import { getToday, getYesterday, addDays, formatDateLabel } from '../utils/dateUtils';
@@ -56,6 +55,64 @@ interface ChartDatum {
   color: string;
   hidden?: boolean;
 }
+
+interface ChartLegendProps {
+  data: ChartDatum[];
+  activeSlice: string | null;
+  onClick: (name: string) => void;
+  onHover: (name: string | null) => void;
+}
+
+const ChartLegend = memo(function ChartLegend({ data, activeSlice, onClick, onHover }: ChartLegendProps) {
+  return (
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, 1fr)',
+      gap: 0.5,
+      mt: 1,
+      maxHeight: 100,
+      overflowY: 'auto',
+      pr: 0.5,
+    }}>
+      {data.map((d) => {
+        const isActive = activeSlice === d.name;
+        const isHidden = d.hidden;
+        return (
+          <MuiTooltip
+            key={d.name}
+            title={`${d.name} — Qty: ${d.quantity ?? 0}, Rev: ₹${d.value}`}
+            arrow
+            TransitionComponent={Fade}
+            placement="top"
+          >
+            <Chip
+              size="small"
+              label={d.name}
+              onClick={() => onClick(d.name)}
+              onMouseEnter={() => onHover(d.name)}
+              onMouseLeave={() => onHover(null)}
+              sx={{
+                opacity: isHidden ? 0.35 : 1,
+                backgroundColor: isHidden ? 'transparent' : d.color,
+                color: isHidden ? 'text.secondary' : '#fff',
+                fontWeight: 600,
+                fontSize: '0.6rem',
+                cursor: 'pointer',
+                height: 20,
+                transition: 'all 0.2s ease',
+                transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                '&:hover': {
+                  backgroundColor: isHidden ? 'rgba(255,255,255,0.1)' : d.color,
+                },
+              }}
+            />
+          </MuiTooltip>
+        );
+      })}
+    </Box>
+  );
+});
 
 export default function AdminDashboardPage() {
   const theme = useTheme();
@@ -106,7 +163,17 @@ export default function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['adminSummary', startDate, endDate],
     queryFn: () => getAdminSummary(startDate, endDate),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
   });
+
+  const { data: adminOrdersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['adminOrders', startDate, endDate],
+    queryFn: () => getAdminOrders(startDate, endDate),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const adminOrders = useDeferredValue(adminOrdersData?.orders || []);
 
   const { data: supplyOrders = [] as SupplyOrder[] } = useQuery({
     queryKey: ['supplyOrders', startDate, endDate],
@@ -133,12 +200,6 @@ export default function AdminDashboardPage() {
   const { data: yesterdayClosingStock } = useQuery({
     queryKey: ['closingStockYesterday'],
     queryFn: () => getClosingStock(addDays(startDate, -1)),
-    enabled: startDate === endDate,
-  });
-
-  const { data: ordersData } = useQuery({
-    queryKey: ['ordersAdmin', startDate],
-    queryFn: () => getOrders(startDate),
     enabled: startDate === endDate,
   });
 
@@ -284,7 +345,7 @@ export default function AdminDashboardPage() {
         : (item.category === 'sauce' || item.category === 'dip') ? '' : item.displayName.split(' ')[0];
 
       let consumedPieces = 0;
-      for (const order of ordersData?.orders || []) {
+      for (const order of adminOrders) {
         for (const orderItem of order.items) {
           const menuItem = menuMap.get(orderItem.menuItemId);
           if (!menuItem) continue;
@@ -326,16 +387,15 @@ export default function AdminDashboardPage() {
     }
 
     return conflicts.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
-  }, [closingStock, yesterdayClosingStock, supplyVerificationDetail, ordersData, menuData]);
+  }, [closingStock, yesterdayClosingStock, supplyVerificationDetail, adminOrders, menuData]);
 
   const filteredOrders = useMemo(() => {
-    if (!data?.orders) return [];
-    if (filterPayment === 'all') return data.orders;
-    return data.orders.filter((o: Order) => o.paymentMethod === filterPayment);
-  }, [data, filterPayment]);
+    if (filterPayment === 'all') return adminOrders;
+    return adminOrders.filter((o: Order) => o.paymentMethod === filterPayment);
+  }, [adminOrders, filterPayment]);
 
   const fillingBreakdown = useMemo(() => {
-    if (!menuData?.items || !data?.orders) return [];
+    if (!menuData?.items || adminOrders.length === 0) return [];
     const menuMap = new Map<string, MenuItem>((menuData.items as MenuItem[]).map((i) => [i.displayName, i]));
     const stats: Record<string, { quantity: number; orders: Set<number>; plates: number }> = {
       Veg: { quantity: 0, orders: new Set(), plates: 0 },
@@ -343,7 +403,7 @@ export default function AdminDashboardPage() {
       'Cheese Corn': { quantity: 0, orders: new Set(), plates: 0 },
       Platter: { quantity: 0, orders: new Set(), plates: 0 },
     };
-    for (const order of data.orders) {
+    for (const order of adminOrders) {
       for (const item of order.items) {
         const menuItem = menuMap.get(item.itemName);
         if (!menuItem) continue;
@@ -358,11 +418,11 @@ export default function AdminDashboardPage() {
       filling,
       value: fillingView === 'quantities' ? stat.quantity : fillingView === 'orders' ? stat.orders.size : stat.plates,
     }));
-  }, [data, menuData, fillingView]);
+  }, [adminOrders, menuData, fillingView]);
 
-  const maxFillingValue = Math.max(...fillingBreakdown.map((i) => i.value), 1);
+  const maxFillingValue = useMemo(() => Math.max(...fillingBreakdown.map((i) => i.value), 1), [fillingBreakdown]);
 
-  const toggleItem = (itemName: string) => {
+  const toggleItem = useCallback((itemName: string) => {
     vibrate(haptics.light);
     setHiddenItems((prev) => {
       const next = new Set(prev);
@@ -370,9 +430,9 @@ export default function AdminDashboardPage() {
       else next.add(itemName);
       return next;
     });
-  };
+  }, []);
 
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = useCallback((cat: string) => {
     vibrate(haptics.light);
     setHiddenCategories((prev) => {
       const next = new Set(prev);
@@ -380,9 +440,9 @@ export default function AdminDashboardPage() {
       else next.add(cat);
       return next;
     });
-  };
+  }, []);
 
-  const toggleSort = (field: 'name' | 'quantity' | 'revenue') => {
+  const toggleSort = useCallback((field: 'name' | 'quantity' | 'revenue') => {
     vibrate(haptics.light);
     if (sortBy === field) {
       setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
@@ -390,24 +450,28 @@ export default function AdminDashboardPage() {
       setSortBy(field);
       setSortDir('desc');
     }
-  };
+  }, [sortBy]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     vibrate(haptics.light);
-    if (!data || !filteredOrders.length) {
+    if (data?.date !== startDate || adminOrdersData?.date !== startDate) {
+      setToast({ message: 'Data still loading, please wait', type: 'error' });
+      return;
+    }
+    if (!adminOrders.length) {
       setToast({ message: 'No data to export', type: 'error' });
       return;
     }
     exportDashboardToExcel({
       startDate,
       endDate,
-      totalOrders: data.totalOrders,
-      totalRevenue: data.totalRevenue,
-      pendingAmount: data.pendingAmount,
-      cashTotal: data.cashTotal,
-      upiTotal: data.upiTotal,
+      totalOrders: data?.totalOrders ?? 0,
+      totalRevenue: data?.totalRevenue ?? 0,
+      pendingAmount: data?.pendingAmount ?? 0,
+      cashTotal: data?.cashTotal ?? 0,
+      upiTotal: data?.upiTotal ?? 0,
       itemBreakdown: allItemsBreakdown,
-      orders: data.orders || [],
+      orders: adminOrders,
       supplyOrders,
       supplyVerifications,
       fillingBreakdown,
@@ -416,7 +480,7 @@ export default function AdminDashboardPage() {
       supplyLogs,
     });
     setToast({ message: 'Excel exported!', type: 'success' });
-  };
+  }, [adminOrders, adminOrdersData, data, allItemsBreakdown, supplyOrders, supplyVerifications, fillingBreakdown, fillingView, staffLogs, supplyLogs, startDate, endDate]);
 
   // Payment chart data
   const paymentChartData = useMemo<ChartDatum[]>(() => {
@@ -477,60 +541,6 @@ export default function AdminDashboardPage() {
       color: FILLING_COLORS[f.name],
     }));
   }, [fillingData]);
-
-  const ChartLegend = ({ data, activeSlice, onClick, onHover }: {
-    data: ChartDatum[];
-    activeSlice: string | null;
-    onClick: (name: string) => void;
-    onHover: (name: string | null) => void;
-  }) => (
-    <Box sx={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, 1fr)',
-      gap: 0.5,
-      mt: 1,
-      maxHeight: 100,
-      overflowY: 'auto',
-      pr: 0.5,
-    }}>
-      {data.map((d) => {
-        const isActive = activeSlice === d.name;
-        const isHidden = d.hidden;
-        return (
-          <MuiTooltip
-            key={d.name}
-            title={`${d.name} — Qty: ${d.quantity ?? 0}, Rev: ₹${d.value}`}
-            arrow
-            TransitionComponent={Fade}
-            placement="top"
-          >
-            <Chip
-              size="small"
-              label={d.name}
-              onClick={() => onClick(d.name)}
-              onMouseEnter={() => onHover(d.name)}
-              onMouseLeave={() => onHover(null)}
-              sx={{
-                opacity: isHidden ? 0.35 : 1,
-                backgroundColor: isHidden ? 'transparent' : d.color,
-                color: isHidden ? 'text.secondary' : '#fff',
-                fontWeight: 600,
-                fontSize: '0.6rem',
-                cursor: 'pointer',
-                height: 20,
-                transition: 'all 0.2s ease',
-                transform: isActive ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                '&:hover': {
-                  backgroundColor: isHidden ? 'rgba(255,255,255,0.1)' : d.color,
-                },
-              }}
-            />
-          </MuiTooltip>
-        );
-      })}
-    </Box>
-  );
 
   const toggleChartType = (chartId: string) => {
     vibrate(haptics.light);
@@ -1228,33 +1238,40 @@ export default function AdminDashboardPage() {
               </Table>
               </TableContainer>
             </Paper>
+          </>
+        )}
 
-            {/* Orders list */}
-            <Paper sx={{
-              borderRadius: 2,
-              overflow: 'hidden',
-              background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
-              border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
-            }}>
-              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
-                  Orders
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {(['all', 'cash', 'upi', 'pending'] as const).map((f) => (
-                    <Chip
-                      key={f}
-                      label={f === 'all' ? 'All' : f}
-                      size="small"
-                      onClick={() => setFilterPayment(f)}
-                      color={filterPayment === f ? 'primary' : 'default'}
-                      variant={filterPayment === f ? 'filled' : 'outlined'}
-                      sx={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.75rem' }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-              <Box sx={{ p: 1.5 }}>
+        {/* Orders list — progressive, independent of summary */}
+        <Paper sx={{
+          borderRadius: 2,
+          overflow: 'hidden',
+          mb: 2,
+          background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+          border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
+        }}>
+          <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary' }}>
+              Orders
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {(['all', 'cash', 'upi', 'pending'] as const).map((f) => (
+                <Chip
+                  key={f}
+                  label={f === 'all' ? 'All' : f}
+                  size="small"
+                  onClick={() => setFilterPayment(f)}
+                  color={filterPayment === f ? 'primary' : 'default'}
+                  variant={filterPayment === f ? 'filled' : 'outlined'}
+                  sx={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.75rem' }}
+                />
+              ))}
+            </Box>
+          </Box>
+          <Box sx={{ p: 1.5 }}>
+            {ordersLoading && adminOrders.length === 0 ? (
+              <SkeletonLoader count={4} height={48} />
+            ) : (
+              <>
                 {filteredOrders.map((order: Order) => (
                   <Box
                     key={order.id}
@@ -1329,10 +1346,10 @@ export default function AdminDashboardPage() {
                     No orders match the selected filter
                   </Typography>
                 )}
-              </Box>
-            </Paper>
-          </>
-        )}
+              </>
+            )}
+          </Box>
+        </Paper>
       </Box>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

@@ -33,42 +33,6 @@ export async function getSummary(date: string, endDate?: string) {
      ORDER BY totalQuantity DESC`,
   );
 
-  const ordersRequest = pool.request();
-  ordersRequest.input('orderDate', sql.Date, date);
-  if (isRange) ordersRequest.input('endDate', sql.Date, endDate);
-
-  const ordersResult = await ordersRequest.query(
-    `SELECT id, order_date, time_label, order_type, payment_method, is_completed, total_amount
-     FROM Orders WHERE order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'} ORDER BY id DESC`,
-  );
-
-  const orders = [];
-  for (const order of ordersResult.recordset) {
-    const itemsReq = pool.request();
-    itemsReq.input('orderId', sql.BigInt, order.id);
-    const itemsResult = await itemsReq.query(
-      `SELECT menu_item_id, item_name, quantity, is_half, unit_price, line_total
-       FROM OrderItems WHERE order_id = @orderId`,
-    );
-    orders.push({
-      id: Number(order.id),
-      orderDate: formatDate(order.order_date),
-      timeLabel: order.time_label,
-      orderType: order.order_type,
-      paymentMethod: order.payment_method,
-      isCompleted: !!order.is_completed,
-      totalAmount: order.total_amount,
-      items: itemsResult.recordset.map((item: any) => ({
-        menuItemId: item.menu_item_id,
-        itemName: item.item_name,
-        quantity: item.quantity,
-        isHalf: !!item.is_half,
-        unitPrice: item.unit_price,
-        lineTotal: item.line_total,
-      })),
-    });
-  }
-
   const stats = statsResult.recordset[0];
 
   return {
@@ -84,6 +48,55 @@ export async function getSummary(date: string, endDate?: string) {
       totalQuantity: row.totalQuantity,
       totalRevenue: row.totalRevenue,
     })),
-    orders,
   };
+}
+
+export async function getAdminOrders(date: string, endDate?: string) {
+  const pool = await getPool();
+  const isRange = endDate && endDate !== date;
+  const request = pool.request();
+  request.input('orderDate', sql.Date, date);
+  if (isRange) request.input('endDate', sql.Date, endDate);
+
+  const rows = await request.query(
+    `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
+            o.total_amount, o.cash_amount, o.upi_amount,
+            i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
+     FROM Orders o
+     LEFT JOIN OrderItems i ON i.order_id = o.id
+     WHERE o.order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'}
+     ORDER BY o.id DESC, i.id`,
+  );
+
+  const orderMap = new Map<number, any>();
+  for (const row of rows.recordset) {
+    let order = orderMap.get(row.id);
+    if (!order) {
+      order = {
+        id: Number(row.id),
+        orderDate: formatDate(row.order_date),
+        timeLabel: row.time_label,
+        orderType: row.order_type,
+        paymentMethod: row.payment_method,
+        isCompleted: !!row.is_completed,
+        totalAmount: row.total_amount,
+        cashAmount: row.cash_amount,
+        upiAmount: row.upi_amount,
+        items: [],
+      };
+      orderMap.set(row.id, order);
+    }
+    if (row.menu_item_id !== null) {
+      order.items.push({
+        menuItemId: row.menu_item_id,
+        itemName: row.item_name,
+        quantity: row.quantity,
+        isHalf: !!row.is_half,
+        unitPrice: row.unit_price,
+        lineTotal: row.line_total,
+      });
+    }
+  }
+
+  return { date, orders: [...orderMap.values()] };
 }
