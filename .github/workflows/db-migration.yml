@@ -53,8 +53,8 @@ jobs:
           SQL_TRUST_CERT: 'false'
         run: |
           case "${{ github.event.inputs.migration_type }}" in
-            schema) npm run db:migrate ;;
-            staff-logs) npm run db:migrate:staff-logs ;;
+            schema) npm run prod:db:migrate ;;
+            staff-logs) npm run prod:db:migrate:staff-logs ;;
           esac
 
       - name: Run seed data
@@ -67,4 +67,4 @@ jobs:
           SQL_PORT: '1433'
           SQL_ENCRYPT: 'true'
           SQL_TRUST_CERT: 'false'
-        run: npm run db:seed
+        run: npm run prod:db:seed
