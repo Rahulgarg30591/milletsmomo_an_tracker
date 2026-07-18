@@ -84,14 +84,18 @@ export async function createOrder(
 
     const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
     const details = `Supply order created for ${orderDate}: ${items.length} items, ₹${order.totalCost.toFixed(2)}`;
-    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
-      supplyOrderId: order.id,
-      orderDate,
-      itemCount: items.length,
-      totalQuantity: totalItems,
-      totalCost: Number(order.totalCost),
-      action: 'create',
-    });
+    try {
+      await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
+        supplyOrderId: order.id,
+        orderDate,
+        itemCount: items.length,
+        totalQuantity: totalItems,
+        totalCost: Number(order.totalCost),
+        action: 'create',
+      });
+    } catch {
+      // Log failure should not block supply order creation
+    }
 
     res.status(201).json(order);
   } catch (err: any) {
@@ -115,14 +119,18 @@ export async function upsertOrder(
 
     const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
     const details = `Supply order updated for ${orderDate}: ${items.length} items, ₹${order.totalCost.toFixed(2)}`;
-    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
-      supplyOrderId: order.id,
-      orderDate,
-      itemCount: items.length,
-      totalQuantity: totalItems,
-      totalCost: Number(order.totalCost),
-      action: 'update',
-    });
+    try {
+      await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
+        supplyOrderId: order.id,
+        orderDate,
+        itemCount: items.length,
+        totalQuantity: totalItems,
+        totalCost: Number(order.totalCost),
+        action: 'update',
+      });
+    } catch {
+      // Log failure should not block supply order update
+    }
 
     res.json(order);
   } catch (err: any) {

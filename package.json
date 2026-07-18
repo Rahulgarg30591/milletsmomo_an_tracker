@@ -22,7 +22,6 @@
     "local:build:be": "cross-env NODE_ENV=development npm run build -w apps/backend",
     "prod:setup": "bash infra/deploy.sh",
     "prod:db:migrate": "cross-env NODE_ENV=production npm run db:migrate -w apps/backend",
-    "prod:db:migrate:add-expenses": "cross-env NODE_ENV=production npm run db:migrate:add-expenses -w apps/backend",
     "prod:db:migrate:staff-logs": "cross-env NODE_ENV=production npm run db:migrate:staff-logs -w apps/backend",
     "prod:db:seed": "cross-env NODE_ENV=production npm run db:seed -w apps/backend",
     "prod:deploy": "bash infra/deploy-sql.sh",

@@ -41,15 +41,19 @@ export async function createOrder(
       paymentDetails = `split (₹${data.cashAmount} cash + ₹${data.upiAmount} upi)`;
     }
     const details = `Order #${result.id} created: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${paymentDetails}`;
-    await staffLogService.createLog(data.orderDate, 'order_create', userId, details, {
-      orderId: result.id,
-      itemCount: totalItems,
-      totalAmount: Number(result.totalAmount),
-      paymentMethod: data.paymentMethod,
-      cashAmount: data.cashAmount,
-      upiAmount: data.upiAmount,
-      orderType: data.orderType,
-    });
+    try {
+      await staffLogService.createLog(data.orderDate, 'order_create', userId, details, {
+        orderId: result.id,
+        itemCount: totalItems,
+        totalAmount: Number(result.totalAmount),
+        paymentMethod: data.paymentMethod,
+        cashAmount: data.cashAmount,
+        upiAmount: data.upiAmount,
+        orderType: data.orderType,
+      });
+    } catch {
+      // Log failure should not block order creation
+    }
 
     res.status(201).json(result);
   } catch (err: any) {
@@ -83,13 +87,17 @@ export async function completeOrder(
       const pay = result.paymentMethod;
       const payDetails = pay === 'split' ? `split (₹${result.cashAmount} cash + ₹${result.upiAmount} upi)` : pay;
       const details = `Order #${id} completed: ${payDetails}`;
-      await staffLogService.createLog(result.orderDate, 'order_complete', userId, details, {
-        orderId: id,
-        paymentMethod: result.paymentMethod,
-        cashAmount: result.cashAmount,
-        upiAmount: result.upiAmount,
-        totalAmount: result.totalAmount,
-      });
+      try {
+        await staffLogService.createLog(result.orderDate, 'order_complete', userId, details, {
+          orderId: id,
+          paymentMethod: result.paymentMethod,
+          cashAmount: result.cashAmount,
+          upiAmount: result.upiAmount,
+          totalAmount: result.totalAmount,
+        });
+      } catch {
+        // Log failure should not block order completion
+      }
     }
 
     res.json(result);
@@ -114,9 +122,13 @@ export async function deleteOrder(
     const userId = req.user?.id;
     if (userId) {
       const details = `Order #${id} deleted`;
-      await staffLogService.createLog(result.orderDate, 'order_delete', userId, details, {
-        orderId: id,
-      });
+      try {
+        await staffLogService.createLog(result.orderDate, 'order_delete', userId, details, {
+          orderId: id,
+        });
+      } catch {
+        // Log failure should not block order deletion
+      }
     }
 
     res.json(result);
@@ -150,15 +162,19 @@ export async function updateOrder(
       paymentDetails = `split (₹${data.cashAmount} cash + ₹${data.upiAmount} upi)`;
     }
     const details = `Order #${id} updated: ${totalItems} items, ₹${result.totalAmount.toFixed(2)}, ${paymentDetails}`;
-    await staffLogService.createLog(result.orderDate, 'order_update', userId, details, {
-      orderId: id,
-      itemCount: totalItems,
-      totalAmount: Number(result.totalAmount),
-      paymentMethod: data.paymentMethod,
-      cashAmount: data.cashAmount,
-      upiAmount: data.upiAmount,
-      orderType: data.orderType,
-    });
+    try {
+      await staffLogService.createLog(result.orderDate, 'order_update', userId, details, {
+        orderId: id,
+        itemCount: totalItems,
+        totalAmount: Number(result.totalAmount),
+        paymentMethod: data.paymentMethod,
+        cashAmount: data.cashAmount,
+        upiAmount: data.upiAmount,
+        orderType: data.orderType,
+      });
+    } catch {
+      // Log failure should not block order update
+    }
 
     res.json(result);
   } catch (err: any) {

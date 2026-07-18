@@ -19,12 +19,11 @@ on:
       migration_type:
         description: 'Which migration to run'
         required: true
-        default: 'expenses-fix'
+        default: 'schema'
         type: choice
         options:
-          - expenses-fix
-          - add-expenses
           - schema
+          - staff-logs
 
 jobs:
   migrate:
@@ -54,9 +53,8 @@ jobs:
           SQL_TRUST_CERT: 'false'
         run: |
           case "${{ github.event.inputs.migration_type }}" in
-            expenses-fix) npm run db:migrate:expenses-fix ;;
-            add-expenses) npm run db:migrate:add-expenses ;;
             schema) npm run db:migrate ;;
+            staff-logs) npm run db:migrate:staff-logs ;;
           esac
 
       - name: Run seed data

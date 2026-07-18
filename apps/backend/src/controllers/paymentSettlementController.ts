@@ -38,16 +38,20 @@ export async function createSettlement(
     );
 
     const details = `Settlement saved for ${orderDate}: ₹${actualCash} cash, ₹${actualUpi} UPI${settlement.cashConflict || settlement.upiConflict ? ' (conflict)' : ''}`;
-    await staffLogService.createLog(orderDate, 'payment_settlement', userId, details, {
-      orderDate,
-      actualCash,
-      actualUpi,
-      expectedCash: settlement.expectedCash,
-      expectedUpi: settlement.expectedUpi,
-      cashConflict: settlement.cashConflict,
-      upiConflict: settlement.upiConflict,
-      notes: notes ?? null,
-    });
+    try {
+      await staffLogService.createLog(orderDate, 'payment_settlement', userId, details, {
+        orderDate,
+        actualCash,
+        actualUpi,
+        expectedCash: settlement.expectedCash,
+        expectedUpi: settlement.expectedUpi,
+        cashConflict: settlement.cashConflict,
+        upiConflict: settlement.upiConflict,
+        notes: notes ?? null,
+      });
+    } catch {
+      // Log failure should not block payment settlement
+    }
 
     res.status(201).json(settlement);
   } catch (err: any) {
