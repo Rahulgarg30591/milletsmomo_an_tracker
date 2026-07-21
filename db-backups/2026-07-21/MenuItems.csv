@@ -1,0 +1,25 @@
+id,filling,preparation,display_name,full_price,half_price,is_active
+1,Veg,Steam,Veg Steam,89,50,true
+2,Paneer,Steam,Paneer Steam,109,60,true
+3,Cheese Corn,Steam,Cheese Corn Steam,129,70,true
+4,Platter,Steam,Platter Steam,109,60,true
+5,Veg,Fry,Veg Fry,109,60,true
+6,Paneer,Fry,Paneer Fry,129,70,true
+7,Cheese Corn,Fry,Cheese Corn Fry,149,80,true
+8,Platter,Fry,Platter Fry,129,70,true
+9,Veg,Creamy,Veg Creamy,129,60,true
+10,Paneer,Creamy,Paneer Creamy,129,70,true
+11,Cheese Corn,Creamy,Cheese Corn Creamy,149,80,true
+12,Platter,Creamy,Platter Creamy,129,70,true
+13,Veg,Creamy Fry,Veg Creamy Fry,129,70,true
+14,Paneer,Creamy Fry,Paneer Creamy Fry,149,80,true
+15,Cheese Corn,Creamy Fry,Cheese Corn Creamy Fry,169,90,true
+16,Platter,Creamy Fry,Platter Creamy Fry,149,80,true
+17,Veg,Nepalese Kothey,Veg Nepalese Kothey,129,70,true
+18,Paneer,Nepalese Kothey,Paneer Nepalese Kothey,139,75,true
+19,Cheese Corn,Nepalese Kothey,Cheese Corn Nepalese Kothey,149,80,true
+20,Platter,Nepalese Kothey,Platter Nepalese Kothey,139,75,true
+21,Veg,Pan Fried Gravy,Veg Pan Fried Gravy,139,75,true
+22,Paneer,Pan Fried Gravy,Paneer Pan Fried Gravy,149,80,true
+23,Cheese Corn,Pan Fried Gravy,Cheese Corn Pan Fried Gravy,159,85,true
+24,Platter,Pan Fried Gravy,Platter Pan Fried Gravy,149,80,true
