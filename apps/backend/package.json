@@ -12,6 +12,7 @@
     "db:wait": "tsx scripts/wait-for-sql.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate:staff-logs": "tsx scripts/migrateStaffLogs.ts",
+    "logs:purge": "tsx scripts/purgeOldLogs.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
   },
