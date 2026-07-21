@@ -33,3 +33,6 @@ apps/frontend/dev-dist/
 
 # Azure
 .azure/
+
+# Graphify skill output (local knowledge graph artifacts)
+graphify-out/
