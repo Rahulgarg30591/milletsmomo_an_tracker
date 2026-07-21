@@ -1,0 +1,9 @@
+id,name,category,unit_price,pieces_per,display_name,is_active
+1,veg_packet,momo_packet,138,24,Veg Momo Packet (24 Pcs),true
+2,paneer_packet,momo_packet,158,24,Paneer Momo Packet (24 Pcs),true
+3,cheese_corn_packet,momo_packet,198,24,CheeseCorn Momo Packet (24 Pcs),true
+4,red_sauce,sauce,80,1,Red Sauce,true
+5,chipotle,dip,220,1,Chipotle,true
+6,schezwan_sauce,sauce,170,1,Schezwan Sauce,true
+7,oregano,dip,370,1,Oregano,true
+8,molten_cheese,dip,160,1,Molten Cheese,true
