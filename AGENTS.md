@@ -85,3 +85,16 @@ GitHub Actions (`.github/workflows/azure-deploy.yml`) uses `Azure/static-web-app
 11. ✅ **Polish** — animations, responsive QA, validation messages, toasts.
 12. ✅ **Documentation** — README.md, docs/ARCHITECTURE.md, docs/API.md, docs/DEPLOYMENT.md.
 13. ✅ **Deployment** — provision Azure resources, configure GitHub Actions, set env vars, run migrations.
+
+## graphify
+
+This repo has a graphify knowledge graph at `graphify-out/` (gitignored; 957 nodes / 1867 edges / 75 communities as of 2026-07-21).
+
+- **Before codebase questions**, consult `graphify-out/GRAPH_REPORT.md` for the map: communities, god nodes, surprising connections, knowledge gaps.
+- **Before editing a file**, check its community in `graphify-out/graph.json` to understand related modules and cross-community bridges.
+- **After code changes**, the pre-push hook (`.git/hooks/pre-push`) auto-refreshes the graph via `graphify update .` (AST only, no LLM, ~1-3s). Outputs: `graph.json`, `graph.html`, `GRAPH_REPORT.md`. Log at `graphify-out/hook.log`.
+- **After doc/paper/image edits**, run `/graphify . --update` manually — the hook cannot refresh semantic content (no LLM in hook context). Uses host agent as LLM by default; set `GEMINI_API_KEY` for headless Gemini extraction.
+- **Query the graph**: `/graphify query "<question>"` (BFS), `--dfs` for path tracing, `--budget N` to cap tokens.
+- **Trace paths**: `/graphify path "A" "B"` for shortest path between concepts.
+- **Explain a node**: `/graphify explain "X"` for plain-language explanation of a node and its neighbors.
+- **Full rebuild**: `/graphify .` from scratch (use after major refactors or if graph feels stale).
