@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import ExcelJS from 'exceljs';
 import { getPool, closePool } from '../src/db/pool.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,38 +29,38 @@ const REDACTED_COLUMNS: Record<string, string[]> = {
   Users: ['pin_hash'],
 };
 
-function csvEscape(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  const str = value instanceof Date ? value.toISOString() : String(value);
-  return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-}
-
-function toCsv(columns: string[], rows: Record<string, unknown>[]): string {
-  const lines = [columns.map(csvEscape).join(',')];
-  for (const row of rows) {
-    lines.push(columns.map((col) => csvEscape(row[col])).join(','));
-  }
-  return lines.join('\n') + '\n';
-}
-
 async function main() {
   const today = new Date().toISOString().slice(0, 10);
-  const outDir = path.join(REPO_ROOT, 'db-backups', today);
+  const outDir = path.join(REPO_ROOT, 'db-backups');
   fs.mkdirSync(outDir, { recursive: true });
+  const outFile = path.join(outDir, `${today}.xlsx`);
 
   const pool = await getPool();
+  const workbook = new ExcelJS.Workbook();
 
   for (const table of TABLES) {
     const result = await pool.request().query(`SELECT * FROM ${table};`);
     const redacted = REDACTED_COLUMNS[table] ?? [];
     const columns = Object.keys(result.recordset.columns).filter((col) => !redacted.includes(col));
-    const csv = toCsv(columns, result.recordset as Record<string, unknown>[]);
-    fs.writeFileSync(path.join(outDir, `${table}.csv`), csv, 'utf-8');
+
+    const sheet = workbook.addWorksheet(table);
+    sheet.columns = columns.map((col) => ({ header: col, key: col }));
+
+    for (const row of result.recordset as Record<string, unknown>[]) {
+      const rowData: Record<string, unknown> = {};
+      for (const col of columns) {
+        const value = row[col];
+        rowData[col] = value instanceof Date ? value.toISOString() : value;
+      }
+      sheet.addRow(rowData);
+    }
+
     console.log(`Exported ${result.recordset.length} row(s) from ${table}`);
   }
 
+  await workbook.xlsx.writeFile(outFile);
   await closePool();
-  console.log(`Export complete: ${outDir}`);
+  console.log(`Export complete: ${outFile}`);
 }
 
 main().catch((err) => {
