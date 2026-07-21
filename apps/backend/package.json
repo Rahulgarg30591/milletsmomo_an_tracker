@@ -14,6 +14,8 @@
     "db:migrate:staff-logs": "tsx scripts/migrateStaffLogs.ts",
     "logs:purge": "tsx scripts/purgeOldLogs.ts",
     "maintain:storage": "tsx scripts/maintainStorage.ts",
+    "db:export": "tsx scripts/exportDatabase.ts",
+    "db:weekly-cleanup": "tsx scripts/weeklyCleanup.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
     "generate-pin-hash": "tsx scripts/generatePinHash.ts"
   },

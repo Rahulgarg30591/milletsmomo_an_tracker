@@ -1,0 +1,67 @@
+name: Weekly DB Export and Cleanup
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Export + commit only, skip the destructive cleanup step'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  export-and-cleanup:
+    runs-on: ubuntu-latest
+    environment: production
+    name: Export DB to CSV, then clean up transactional tables
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export database to CSV
+        env:
+          SQL_SERVER: ${{ secrets.SQL_SERVER }}
+          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+          SQL_USER: ${{ secrets.SQL_USER }}
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_PORT: '1433'
+          SQL_ENCRYPT: 'true'
+          SQL_TRUST_CERT: 'false'
+        run: npm run prod:db:export
+
+      - name: Commit and push CSV export
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add db-backups/
+          if git diff --cached --quiet; then
+            echo "No new export files to commit — aborting before cleanup for safety."
+            exit 1
+          fi
+          git commit -m "Weekly DB export $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Run weekly cleanup
+        if: github.event_name == 'schedule' || github.event.inputs.dry_run == 'false'
+        env:
+          SQL_SERVER: ${{ secrets.SQL_SERVER }}
+          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+          SQL_USER: ${{ secrets.SQL_USER }}
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_PORT: '1433'
+          SQL_ENCRYPT: 'true'
+          SQL_TRUST_CERT: 'false'
+        run: npm run prod:db:weekly-cleanup
