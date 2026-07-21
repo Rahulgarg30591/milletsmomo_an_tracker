@@ -39,14 +39,16 @@ WHEN NOT MATCHED THEN
 -- 2. User accounts
 -- ============================================
 -- PINs for login (4-digit):
---   Admin  -> 1703
---   Staff  -> 9865
+--   Admin    -> 1703
+--   Staff    -> 9865
+--   Staff 2  -> 5575
 --
 -- Generate new hashes: npm run generate-pin-hash <pin>
 --
 MERGE INTO Users AS target
 USING (VALUES
   ('staff', 'staff', '$2b$10$veSawKHMM2U3EV08JXrs/uFmhfLxsHqLvOij6JjB2.1NG6iGsttA2', 'Cart Staff'),
+  ('staff_2', 'staff', '$2b$10$/rFwh8e6p7wL.awaXNLdnuelALpgODMcHsBUlBDvyiyH/H0ggeSRS', 'Staff 2'),
   ('admin', 'admin', '$2b$10$nQTAqER/jcLsoC0nYyl2OeOXt7fZ0tqXRhwSl3MBxRGIgVLnkjtrO', 'Owner')
 ) AS source (username, role, pin_hash, display_name)
 ON target.username = source.username

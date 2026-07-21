@@ -44,7 +44,7 @@ export default function LoginPage() {
     try {
       const res = await login({ role, pin });
       flushSync(() => {
-        doLogin(res.token, res.role, res.displayName);
+        doLogin(res.token, res.role, res.displayName, pin);
       });
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });

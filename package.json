@@ -15,7 +15,7 @@
     "local:db:create": "cross-env NODE_ENV=development npm run db:create -w apps/backend",
     "local:db:migrate": "cross-env NODE_ENV=development npm run db:migrate -w apps/backend",
     "local:db:seed": "cross-env NODE_ENV=development npm run db:seed -w apps/backend",
-    "local:dev": "concurrently -n fe,be -c cyan,green \"npm run dev -w apps/frontend\" \"cross-env NODE_ENV=development npm run dev -w apps/backend\"",
+    "local:dev": "docker compose up -d && concurrently -n fe,be -c cyan,green \"npm run dev -w apps/frontend\" \"cross-env NODE_ENV=development npm run dev -w apps/backend\"",
     "local:stop": "docker compose down",
     "local:build": "cross-env NODE_ENV=development npm run build -w apps/frontend && cross-env NODE_ENV=development npm run build -w apps/backend",
     "local:build:fe": "cross-env NODE_ENV=development npm run build -w apps/frontend",

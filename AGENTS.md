@@ -17,7 +17,7 @@ Run all from root unless noted.
 | `npm run local:db:create` | Create local database if not exists |
 | `npm run local:db:migrate` | Run schema.sql + seed.sql on local DB |
 | `npm run local:db:seed` | Re-run seed.sql only on local DB |
-| `npm run local:dev` | Start FE (Vite) + BE (Azure Functions) concurrently |
+| `npm run local:dev` | Start Docker SQL, then FE (Vite) + BE (Azure Functions) concurrently |
 | `npm run local:stop` | Stop Docker SQL container |
 | `npm run local:build` | Build both FE + BE for local |
 | `npm run local:build:fe` | Build frontend only for local |

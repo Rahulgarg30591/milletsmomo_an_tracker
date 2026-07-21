@@ -5,11 +5,12 @@ interface AuthState {
   token: string | null;
   role: string | null;
   displayName: string | null;
+  pin: string | null;
 }
 
 interface AuthContextType {
   auth: AuthState;
-  login: (token: string, role: string, displayName: string) => void;
+  login: (token: string, role: string, displayName: string, pin: string) => void;
   logout: () => Promise<void>;
   isAuthenticated: () => boolean;
 }
@@ -21,14 +22,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     const displayName = localStorage.getItem('displayName');
-    return { token, role, displayName };
+    const pin = sessionStorage.getItem('mm_pin');
+    return { token, role, displayName, pin };
   });
 
-  const login = useCallback((token: string, role: string, displayName: string) => {
+  const login = useCallback((token: string, role: string, displayName: string, pin: string) => {
     localStorage.setItem('token', token);
     localStorage.setItem('role', role);
     localStorage.setItem('displayName', displayName);
-    setAuth({ token, role, displayName });
+    sessionStorage.setItem('mm_pin', pin);
+    setAuth({ token, role, displayName, pin });
   }, []);
 
   const logout = useCallback(async () => {
@@ -37,8 +40,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('displayName');
+    sessionStorage.removeItem('mm_pin');
     sessionStorage.removeItem('mm_session_start');
-    setAuth({ token: null, role: null, displayName: null });
+    setAuth({ token: null, role: null, displayName: null, pin: null });
   }, [auth.role, auth.displayName]);
 
   const isAuthenticated = useCallback(() => {

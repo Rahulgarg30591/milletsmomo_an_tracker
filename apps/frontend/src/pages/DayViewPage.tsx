@@ -17,6 +17,7 @@ import { getClosingStock } from '../api/closingStockApi';
 import { isOnline } from '../utils/offlineQueue';
 import { useForegroundRefetch } from '../hooks/useForegroundRefetch';
 import { trackNavigation, trackOrderComplete, trackButtonClick, trackRevenueCheck } from '../utils/tracking';
+import { useAuth } from '../context/AuthContext';
 import OrderCard from '../components/OrderCard';
 import PaymentModal from '../components/PaymentModal';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
@@ -93,6 +94,9 @@ export default function DayViewPage() {
   const [actionsExpanded, setActionsExpanded] = useState(true);
   const [showRevenue, setShowRevenue] = useState(false);
   const revenueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { auth } = useAuth();
+  const hideRevenue = auth.pin === '5575';
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', date],
@@ -449,7 +453,7 @@ export default function DayViewPage() {
                 </Typography>
               </Box>
             )}
-            {statsExpanded && (
+            {statsExpanded && !hideRevenue && (
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -495,7 +499,7 @@ export default function DayViewPage() {
               />
             </Box>
 
-            <Collapse in={showRevenue}>
+            <Collapse in={showRevenue && !hideRevenue}>
               <Box
                 sx={{
                   display: 'grid',

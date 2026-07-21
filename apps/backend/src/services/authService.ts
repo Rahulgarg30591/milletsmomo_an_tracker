@@ -29,9 +29,14 @@ export async function login(
     throw Object.assign(new Error('Invalid PIN'), { status: 401 });
   }
 
-  const user = result.recordset[0];
-  const valid = await bcrypt.compare(pin, user.pin_hash);
-  if (!valid) {
+  let user: { id: number; username: string; role: string; pin_hash: string; display_name: string } | null = null;
+  for (const row of result.recordset) {
+    if (await bcrypt.compare(pin, row.pin_hash)) {
+      user = row;
+      break;
+    }
+  }
+  if (!user) {
     throw Object.assign(new Error('Invalid PIN'), { status: 401 });
   }
 

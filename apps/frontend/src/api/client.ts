@@ -51,6 +51,7 @@ client.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('role');
       localStorage.removeItem('displayName');
+      sessionStorage.removeItem('mm_pin');
       window.location.href = '/login';
     }
     return Promise.reject(error);
