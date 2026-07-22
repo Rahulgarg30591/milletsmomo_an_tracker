@@ -7,6 +7,7 @@ export const PREPARATIONS = [
   'Creamy Fry',
   'Nepalese Kothey',
   'Pan Fried Gravy',
+  'Fried Peri Peri',
 ] as const;
 
 export const FULL_PRICES: number[][] = [
@@ -16,6 +17,7 @@ export const FULL_PRICES: number[][] = [
   [129, 149, 169, 149],
   [129, 139, 149, 139],
   [139, 149, 159, 149],
+  [129, 149, 169, 149],
 ];
 
 export const HALF_PRICES: number[][] = [
@@ -25,6 +27,7 @@ export const HALF_PRICES: number[][] = [
   [70, 80, 90, 80],
   [70, 75, 80, 75],
   [75, 80, 85, 80],
+  [70, 80, 90, 80],
 ];
 
 export interface MenuItem {

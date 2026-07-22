@@ -24,6 +24,7 @@ on:
         options:
           - schema
           - staff-logs
+          - order-comment
 
 jobs:
   migrate:
@@ -55,6 +56,7 @@ jobs:
           case "${{ github.event.inputs.migration_type }}" in
             schema) npm run prod:db:migrate ;;
             staff-logs) npm run prod:db:migrate:staff-logs ;;
+            order-comment) npm run prod:db:migrate:order-comment ;;
           esac
 
       - name: Run seed data

@@ -11,6 +11,7 @@ export async function createOrder(data: {
   paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
   cashAmount?: number;
   upiAmount?: number;
+  comment?: string | null;
   items: { menuItemId: number; quantity: number; isHalf: boolean }[];
 }) {
   const res = await client.post('/orders', data);
@@ -32,6 +33,7 @@ export async function updateOrder(id: number, data: {
   paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
   cashAmount?: number;
   upiAmount?: number;
+  comment?: string | null;
   items: { menuItemId: number; quantity: number; isHalf: boolean }[];
 }) {
   const res = await client.put(`/orders/${id}`, data);

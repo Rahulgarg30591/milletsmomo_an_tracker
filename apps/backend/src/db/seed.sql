@@ -28,7 +28,11 @@ USING (VALUES
   ('Veg', 'Pan Fried Gravy', 'Veg Pan Fried Gravy', 139.00, 75.00),
   ('Paneer', 'Pan Fried Gravy', 'Paneer Pan Fried Gravy', 149.00, 80.00),
   ('Cheese Corn', 'Pan Fried Gravy', 'Cheese Corn Pan Fried Gravy', 159.00, 85.00),
-  ('Platter', 'Pan Fried Gravy', 'Platter Pan Fried Gravy', 149.00, 80.00)
+  ('Platter', 'Pan Fried Gravy', 'Platter Pan Fried Gravy', 149.00, 80.00),
+  ('Veg', 'Fried Peri Peri', 'Veg Fried Peri Peri', 129.00, 70.00),
+  ('Paneer', 'Fried Peri Peri', 'Paneer Fried Peri Peri', 149.00, 80.00),
+  ('Cheese Corn', 'Fried Peri Peri', 'Cheese Corn Fried Peri Peri', 169.00, 90.00),
+  ('Platter', 'Fried Peri Peri', 'Platter Fried Peri Peri', 149.00, 80.00)
 ) AS source (filling, preparation, display_name, full_price, half_price)
 ON target.filling = source.filling AND target.preparation = source.preparation
 WHEN NOT MATCHED THEN

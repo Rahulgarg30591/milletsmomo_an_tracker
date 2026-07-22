@@ -24,7 +24,7 @@ export async function getOrders(date: string) {
 
   const rows = await request.query(
     `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
-            o.total_amount, o.cash_amount, o.upi_amount,
+            o.total_amount, o.cash_amount, o.upi_amount, o.comment,
             i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
      FROM Orders o
      LEFT JOIN OrderItems i ON i.order_id = o.id
@@ -46,6 +46,7 @@ export async function getOrders(date: string) {
         totalAmount: row.total_amount,
         cashAmount: row.cash_amount,
         upiAmount: row.upi_amount,
+        comment: row.comment ?? null,
         items: [],
       };
       orderMap.set(row.id, order);
@@ -73,6 +74,7 @@ export async function createOrder(
     paymentMethod: string;
     cashAmount?: number;
     upiAmount?: number;
+    comment?: string | null;
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   },
 ) {
@@ -107,10 +109,11 @@ export async function createOrder(
     orderRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
     orderRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
     orderRequest.input('createdBy', sql.Int, userId);
+    orderRequest.input('comment', sql.NVarChar(500), data.comment ?? null);
 
     await orderRequest.query(
-      `INSERT INTO Orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by)
-       VALUES (@id, @orderDate, @timeLabel, @orderType, @paymentMethod, 0, @totalAmount, @cashAmount, @upiAmount, @createdBy)`,
+      `INSERT INTO Orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by, comment)
+       VALUES (@id, @orderDate, @timeLabel, @orderType, @paymentMethod, 0, @totalAmount, @cashAmount, @upiAmount, @createdBy, @comment)`,
     );
 
     for (const item of data.items) {
@@ -146,6 +149,7 @@ export async function createOrder(
     paymentMethod: data.paymentMethod,
     isCompleted: false,
     totalAmount,
+    comment: data.comment ?? null,
     items: data.items.map((item) => {
       const menuItem = findMenuItem(item.menuItemId);
       const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
@@ -262,6 +266,7 @@ export async function updateOrder(
     paymentMethod: string;
     cashAmount?: number;
     upiAmount?: number;
+    comment?: string | null;
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   },
 ) {
@@ -304,9 +309,10 @@ export async function updateOrder(
     updateRequest.input('totalAmount', sql.Decimal(8, 2), totalAmount);
     updateRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
     updateRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
+    updateRequest.input('comment', sql.NVarChar(500), data.comment ?? null);
 
     await updateRequest.query(
-      `UPDATE Orders SET order_type = @orderType, payment_method = @paymentMethod, total_amount = @totalAmount, cash_amount = @cashAmount, upi_amount = @upiAmount WHERE id = @id`,
+      `UPDATE Orders SET order_type = @orderType, payment_method = @paymentMethod, total_amount = @totalAmount, cash_amount = @cashAmount, upi_amount = @upiAmount, comment = @comment WHERE id = @id`,
     );
 
     const deleteItemsRequest = transaction.request();
@@ -345,6 +351,7 @@ export async function updateOrder(
     paymentMethod: data.paymentMethod,
     isCompleted: false,
     totalAmount,
+    comment: data.comment ?? null,
     cashAmount,
     upiAmount,
     items: data.items.map((item) => {

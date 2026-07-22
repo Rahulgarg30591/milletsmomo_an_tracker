@@ -23,6 +23,7 @@
     "prod:setup": "bash infra/deploy.sh",
     "prod:db:migrate": "cross-env NODE_ENV=production npm run db:migrate -w apps/backend",
     "prod:db:migrate:staff-logs": "cross-env NODE_ENV=production npm run db:migrate:staff-logs -w apps/backend",
+    "prod:db:migrate:order-comment": "cross-env NODE_ENV=production npm run db:migrate:order-comment -w apps/backend",
     "prod:logs:purge": "cross-env NODE_ENV=production npm run logs:purge -w apps/backend",
     "prod:maintain:storage": "cross-env NODE_ENV=production npm run maintain:storage -w apps/backend",
     "prod:db:export": "cross-env NODE_ENV=production npm run db:export -w apps/backend",

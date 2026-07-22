@@ -26,6 +26,7 @@ export interface Order {
   totalAmount: number;
   cashAmount: number;
   upiAmount: number;
+  comment?: string | null;
   items: OrderItem[];
 }
 

@@ -25,6 +25,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Creamy Fry': '🍤',
   'Nepalese Kothey': '🥟',
   'Pan Fried Gravy': '🍛',
+  'Fried Peri Peri': '🌶️',
 };
 
 const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string }> = {
@@ -34,6 +35,7 @@ const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: 
   'Creamy Fry': { bg: '#FCE7F3', border: '#DB2777', text: '#9D174D' },
   'Nepalese Kothey': { bg: '#ECFDF5', border: '#059669', text: '#047857' },
   'Pan Fried Gravy': { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
+  'Fried Peri Peri': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
 };
 
 const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: string }> = {
@@ -43,6 +45,7 @@ const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: s
   'Creamy Fry': { bg: '#3D1A2E', border: '#DB2777', text: '#E8A8C8' },
   'Nepalese Kothey': { bg: '#1A3D2A', border: '#2D8A4E', text: '#8CE8B4' },
   'Pan Fried Gravy': { bg: '#1A2E4A', border: '#2563EB', text: '#8CB4E8' },
+  'Fried Peri Peri': { bg: '#3D1A1A', border: '#DC2626', text: '#FCA5A5' },
 };
 
 function EditOrderContent() {
@@ -81,6 +84,7 @@ function EditOrderContent() {
         paymentMethod: existingOrder.paymentMethod,
         cashAmount: existingOrder.cashAmount,
         upiAmount: existingOrder.upiAmount,
+        comment: existingOrder.comment,
         items: existingOrder.items.map((i: OrderItem) => ({
           menuItemId: i.menuItemId,
           quantity: i.quantity,
@@ -168,12 +172,14 @@ function EditOrderContent() {
       totalAmount,
       cashAmount: draft.paymentMethod === 'cash' ? totalAmount : draft.paymentMethod === 'split' ? draft.cashAmount : 0,
       upiAmount: draft.paymentMethod === 'upi' ? totalAmount : draft.paymentMethod === 'split' ? draft.upiAmount : 0,
+      comment: draft.comment,
       items: optimisticItems,
     };
 
     const payload: any = {
       orderType: draft.orderType,
       paymentMethod: draft.paymentMethod,
+      comment: draft.comment,
       items: items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })),
     };
 

@@ -12,6 +12,7 @@ interface OrderDraft {
   paymentMethod: 'cash' | 'upi' | 'split' | 'pending' | null;
   cashAmount: number;
   upiAmount: number;
+  comment: string | null;
 }
 
 interface ValidationErrors {
@@ -36,12 +37,14 @@ interface OrderDraftContextType {
   setOrderType: (type: 'dine' | 'pack') => void;
   setPaymentMethod: (method: 'cash' | 'upi' | 'split' | 'pending') => void;
   setSplitAmounts: (cash: number, upi: number) => void;
+  setComment: (comment: string | null) => void;
   clearDraft: () => void;
   loadFromOrder: (order: {
     orderType: 'dine' | 'pack';
     paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
     cashAmount: number;
     upiAmount: number;
+    comment?: string | null;
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   }) => void;
   getItemList: () => { menuItemId: number; quantity: number; isHalf: boolean; isCustom: boolean }[];
@@ -56,6 +59,7 @@ const defaultDraft: OrderDraft = {
   paymentMethod: null,
   cashAmount: 0,
   upiAmount: 0,
+  comment: null,
 };
 
 const defaultValidationErrors: ValidationErrors = { type: false, payment: false };
@@ -201,6 +205,10 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setDraft((prev) => ({ ...prev, cashAmount: cash, upiAmount: upi }));
   }, []);
 
+  const setComment = useCallback((comment: string | null) => {
+    setDraft((prev) => ({ ...prev, comment }));
+  }, []);
+
   const clearDraft = useCallback(() => {
     setDraft(defaultDraft);
     setValidationErrors(defaultValidationErrors);
@@ -211,6 +219,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
     cashAmount: number;
     upiAmount: number;
+    comment?: string | null;
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   }) => {
     const items = new Map<number, DraftItem>();
@@ -229,6 +238,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
       paymentMethod: order.paymentMethod,
       cashAmount: order.cashAmount,
       upiAmount: order.upiAmount,
+      comment: order.comment ?? null,
     });
     setValidationErrors(defaultValidationErrors);
   }, []);
@@ -266,6 +276,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setOrderType,
     setPaymentMethod,
     setSplitAmounts,
+    setComment,
     clearDraft,
     loadFromOrder,
     getItemList,
@@ -287,6 +298,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setOrderType,
     setPaymentMethod,
     setSplitAmounts,
+    setComment,
     clearDraft,
     loadFromOrder,
     getItemList,

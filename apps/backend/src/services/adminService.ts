@@ -60,7 +60,7 @@ export async function getAdminOrders(date: string, endDate?: string) {
 
   const rows = await request.query(
     `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
-            o.total_amount, o.cash_amount, o.upi_amount,
+            o.total_amount, o.cash_amount, o.upi_amount, o.comment,
             i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
      FROM Orders o
      LEFT JOIN OrderItems i ON i.order_id = o.id
@@ -82,6 +82,7 @@ export async function getAdminOrders(date: string, endDate?: string) {
         totalAmount: row.total_amount,
         cashAmount: row.cash_amount,
         upiAmount: row.upi_amount,
+        comment: row.comment ?? null,
         items: [],
       };
       orderMap.set(row.id, order);

@@ -24,6 +24,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Creamy Fry': '🍤',
   'Nepalese Kothey': '🥟',
   'Pan Fried Gravy': '🍛',
+  'Fried Peri Peri': '🌶️',
 };
 
 const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string }> = {
@@ -33,6 +34,7 @@ const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: 
   'Creamy Fry': { bg: '#FCE7F3', border: '#DB2777', text: '#9D174D' },
   'Nepalese Kothey': { bg: '#ECFDF5', border: '#059669', text: '#047857' },
   'Pan Fried Gravy': { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
+  'Fried Peri Peri': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
 };
 
 const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: string }> = {
@@ -42,6 +44,7 @@ const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: s
   'Creamy Fry': { bg: '#3D1A2E', border: '#DB2777', text: '#E8A8C8' },
   'Nepalese Kothey': { bg: '#1A3D2A', border: '#2D8A4E', text: '#8CE8B4' },
   'Pan Fried Gravy': { bg: '#1A2E4A', border: '#2563EB', text: '#8CB4E8' },
+  'Fried Peri Peri': { bg: '#3D1A1A', border: '#DC2626', text: '#FCA5A5' },
 };
 
 function NewOrderContent() {
@@ -51,7 +54,7 @@ function NewOrderContent() {
   const { draft, clearDraft, getItemList, setValidationErrors } = useOrderDraft();
   const configPanelRef = useRef<OrderConfigPanelHandle>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const submitContextRef = useRef<{ itemCount: number }>({ itemCount: 0 });
+  const submitContextRef = useRef<{ itemCount: number; optimisticId?: number }>({ itemCount: 0 });
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
@@ -91,6 +94,19 @@ function NewOrderContent() {
   const createMutation = useMutation({
     mutationFn: createOrder,
     onSuccess: (res) => {
+      const optimisticId = submitContextRef.current.optimisticId;
+      if (optimisticId && optimisticId !== res.id) {
+        queryClient.setQueryData(['orders', date], (old: any) => {
+          if (!old?.orders) return old;
+          return {
+            ...old,
+            orders: old.orders.map((o: Order) =>
+              o.id === optimisticId ? { ...o, id: res.id } : o,
+            ),
+          };
+        });
+        sessionStorage.setItem('scrollToOrderId', String(res.id));
+      }
       trackOrderSubmit(res.id, { orderDate: date, itemCount: submitContextRef.current.itemCount });
       trackNavigation('new_order', `day/${date}`, { reason: 'order_created', orderId: res.id });
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
@@ -144,6 +160,7 @@ function NewOrderContent() {
       totalAmount,
       cashAmount: draft.paymentMethod === 'cash' ? totalAmount : draft.paymentMethod === 'split' ? draft.cashAmount : 0,
       upiAmount: draft.paymentMethod === 'upi' ? totalAmount : draft.paymentMethod === 'split' ? draft.upiAmount : 0,
+      comment: draft.comment,
       items: optimisticItems,
     };
 
@@ -151,6 +168,7 @@ function NewOrderContent() {
       orderDate: date!,
       orderType: draft.orderType,
       paymentMethod: draft.paymentMethod,
+      comment: draft.comment,
       items: items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf })),
     };
 
@@ -164,7 +182,7 @@ function NewOrderContent() {
       return { ...old, orders: [...old.orders, optimisticOrder] };
     });
 
-    submitContextRef.current = { itemCount: items.length };
+    submitContextRef.current = { itemCount: items.length, optimisticId: optimisticOrder.id };
     sessionStorage.setItem('scrollToOrderId', String(optimisticOrder.id));
     trackSelection('new_order', 'submit', 'confirmed', { itemCount: items.length, totalAmount, orderType: draft.orderType, paymentMethod: draft.paymentMethod });
     clearDraft();

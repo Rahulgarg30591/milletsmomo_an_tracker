@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { Box, Button, Typography, useTheme } from '@mui/material';
+import { Box, Button, Typography, TextField, useTheme } from '@mui/material';
 import { keyframes } from '@emotion/react';
 import { Utensils, Package, Banknote, Smartphone, Clock, Split } from 'lucide-react';
 import { useOrderDraft } from '../context/OrderDraftContext';
@@ -37,7 +37,7 @@ export interface OrderConfigPanelHandle {
 }
 
 const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderConfigPanelInner(_props, ref) {
-  const { draft, setOrderType, setPaymentMethod, setSplitAmounts, validationErrors } = useOrderDraft();
+  const { draft, setOrderType, setPaymentMethod, setSplitAmounts, setComment, validationErrors } = useOrderDraft();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
@@ -349,6 +349,44 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
             </Box>
           </Box>
         )}
+      </Box>
+
+      <Box sx={{ mt: { xs: 1, md: 1.5 } }}>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            color: 'text.secondary',
+            mb: { xs: 0.375, md: 0.5 },
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontSize: { xs: '0.6rem', md: '0.7rem' },
+          }}
+        >
+          Comment
+          <Typography component="span" sx={{ fontSize: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
+            (optional)
+          </Typography>
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          maxRows={2}
+          size="small"
+          value={draft.comment ?? ''}
+          onChange={(e) => setComment(e.target.value || null)}
+          placeholder="Add a note for this order…"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: { xs: 0.75, md: 1 },
+              fontSize: { xs: '0.8rem', md: '0.85rem' },
+              backgroundColor: isDark ? '#2A2A32' : '#F9FAFB',
+            },
+          }}
+        />
       </Box>
     </Box>
   );

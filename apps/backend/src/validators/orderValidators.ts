@@ -8,6 +8,7 @@ export const createOrderSchema = z.object({
   paymentMethod: z.enum(['cash', 'upi', 'split', 'pending']),
   cashAmount: z.number().min(0).optional(),
   upiAmount: z.number().min(0).optional(),
+  comment: z.string().max(500).nullable().optional(),
   items: z
     .array(
       z.object({
@@ -30,6 +31,7 @@ export const updateOrderSchema = z.object({
   paymentMethod: z.enum(['cash', 'upi', 'split', 'pending']),
   cashAmount: z.number().min(0).optional(),
   upiAmount: z.number().min(0).optional(),
+  comment: z.string().max(500).nullable().optional(),
   items: z
     .array(
       z.object({

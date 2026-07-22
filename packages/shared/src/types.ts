@@ -26,6 +26,7 @@ export interface Order {
   totalAmount: number;
   cashAmount: number;
   upiAmount: number;
+  comment?: string | null;
   items: OrderItem[];
 }
 
@@ -54,6 +55,7 @@ export interface CreateOrderRequest {
   paymentMethod: 'cash' | 'upi' | 'split' | 'pending';
   cashAmount?: number;
   upiAmount?: number;
+  comment?: string | null;
   items: { menuItemId: number; quantity: number; isHalf: boolean }[];
 }
 

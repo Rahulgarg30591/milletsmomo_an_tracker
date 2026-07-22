@@ -29,9 +29,10 @@ const ITEM_CHART_COLORS = [
   '#A87B8B', '#B88B9B', '#C89BAB', '#D8ABBB',
   '#6B9B8A', '#7AABA0', '#8BB9A8', '#9CC9B8',
   '#7B8EA8', '#8B9EB8', '#9BAEC8', '#ABBED8',
+  '#A86B5A', '#B87B6A', '#C88B7A', '#D89B8A',
 ];
 
-const PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothey', 'Pan Fried Gravy'];
+const PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothey', 'Pan Fried Gravy', 'Fried Peri Peri'];
 const FILL_ORDER = ['Veg', 'Paneer', 'Cheese Corn', 'Platter'];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -41,6 +42,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Creamy Fry': '#A87B8B',
   'Nepalese Kothey': '#6B9B8A',
   'Pan Fried Gravy': '#7B8EA8',
+  'Fried Peri Peri': '#A86B5A',
 };
 
 const FILLING_COLORS: Record<string, string> = {

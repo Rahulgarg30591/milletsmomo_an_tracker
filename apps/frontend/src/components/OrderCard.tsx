@@ -194,6 +194,11 @@ function OrderCardBase({ order, onComplete, onEdit }: OrderCardProps) {
               )}
             </Typography>
           ))}
+          {order.comment && (
+            <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: 'text.secondary', fontStyle: 'italic', mt: 0.5, lineHeight: 1.3 }}>
+              "{order.comment}"
+            </Typography>
+          )}
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>

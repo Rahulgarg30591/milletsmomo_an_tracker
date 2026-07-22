@@ -49,7 +49,8 @@ CREATE TABLE Orders (
   upi_amount      DECIMAL(8,2)  NOT NULL DEFAULT 0,
   created_by      INT           NULL REFERENCES Users(id),
   created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
-  completed_at    DATETIME2     NULL
+  completed_at    DATETIME2     NULL,
+  comment         NVARCHAR(500) NULL
 );
 
 CREATE INDEX IX_Orders_OrderDate  ON Orders(order_date);
