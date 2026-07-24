@@ -14,11 +14,11 @@ export async function login(
     const result = await authService.login(role, pin);
 
     try {
-      await staffLogService.createLog(formatDate(getNowIST()), 'login', result.userId, `Login: ${result.role} (${result.displayName})`, {
+      staffLogService.createLog(formatDate(getNowIST()), 'login', result.userId, `Login: ${result.role} (${result.displayName})`, {
         userId: result.userId,
         role: result.role,
         displayName: result.displayName,
-      });
+      }).catch(() => {});
     } catch {
       // Log failure should not block login
     }

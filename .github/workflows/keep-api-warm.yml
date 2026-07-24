@@ -1,0 +1,19 @@
+name: Keep API Warm
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    name: Ping API health endpoint
+    steps:
+      - name: Health check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.API_BASE_URL }}/health")
+          echo "Health endpoint returned: $response"
+          if [ "$response" != "200" ]; then
+            echo "::warning::API health check returned $response (non-200)"
+          fi

@@ -88,4 +88,6 @@ app.use('/api/expenses', expenseRoutes);
 
 app.use(errorHandler);
 
+getPool().catch(() => {});
+
 export default app;

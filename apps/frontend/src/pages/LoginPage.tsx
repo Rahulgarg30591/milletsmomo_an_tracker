@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { flushSync } from 'react-dom';
 import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
 
 import { Leaf, Shield, User } from 'lucide-react';
@@ -22,14 +21,13 @@ export default function LoginPage() {
   const redirectPath = searchParams.get('redirect') || null;
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      if (auth.role === 'admin') {
-        navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
-      } else {
-        navigate(redirectPath || `/day/${getToday()}`, { replace: true });
-      }
+    if (!isAuthenticated()) return;
+    if (auth.role === 'admin') {
+      navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
+    } else {
+      navigate(redirectPath || `/day/${getToday()}`, { replace: true });
     }
-  }, []); // intentionally runs once on mount to redirect already-authenticated users
+  }, [isAuthenticated, auth.role, auth.token, navigate, redirectPath]);
 
   useEffect(() => {
     if (error) {
@@ -43,17 +41,10 @@ export default function LoginPage() {
     setError(false);
     try {
       const res = await login({ role, pin });
-      flushSync(() => {
-        doLogin(res.token, res.role, res.displayName, pin);
-      });
+      doLogin(res.token, res.role, res.displayName, pin);
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });
       vibrate(haptics.success);
-      if (res.role === 'admin') {
-        navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
-      } else {
-        navigate(redirectPath || `/day/${getToday()}`, { replace: true });
-      }
     } catch {
       setError(true);
     } finally {

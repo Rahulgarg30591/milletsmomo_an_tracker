@@ -47,7 +47,8 @@ client.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
+    const isLoginRequest = originalRequest?.url?.includes('/auth/login');
+    if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('token');
       localStorage.removeItem('role');
       localStorage.removeItem('displayName');
