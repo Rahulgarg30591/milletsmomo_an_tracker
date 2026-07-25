@@ -1,8 +1,8 @@
 name: Weekly DB Export
 
 on:
-  schedule:
-    - cron: '0 2 * * 1'
+  # No longer scheduled — with the 32GB free-tier database, there's no space
+  # pressure requiring a recurring backup+wipe cadence. Kept as a manual tool.
   workflow_dispatch: {}
 
 permissions:
