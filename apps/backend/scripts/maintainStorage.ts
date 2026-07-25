@@ -62,16 +62,6 @@ async function main(): Promise<void> {
     }
   }
 
-  for (const table of LOG_TABLES) {
-    console.log(`\nRebuilding indexes on ${table} (post-shrink, best-effort)...`);
-    try {
-      await pool.request().query(`ALTER INDEX ALL ON ${table} REBUILD;`);
-      console.log('  done.');
-    } catch (err) {
-      console.warn(`  REBUILD on ${table} failed (non-fatal):`, (err as Error).message);
-    }
-  }
-
   await logFileState('after');
 
   await closePool();
