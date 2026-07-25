@@ -1,8 +1,10 @@
 name: Maintain Storage
 
 on:
-  schedule:
-    - cron: '30 3 * * *'
+  # No longer scheduled — the ~16MB ADR/PVS overhead this fights was significant
+  # against a 32MB quota but is a rounding error against the current 32GB free-tier
+  # database. Routine shrinking has a real fragmentation cost with no offsetting
+  # benefit once space isn't scarce. Kept as a manual tool in case it's ever needed.
   workflow_dispatch: {}
 
 jobs:
