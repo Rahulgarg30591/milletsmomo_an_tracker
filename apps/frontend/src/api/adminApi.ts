@@ -1,5 +1,5 @@
 import { client } from './client';
-import type { AdminSummary, Order } from '../types';
+import type { AdminSummary, Order, MinimumSaleValueResult } from '../types';
 
 export async function getAdminSummary(startDate: string, endDate?: string): Promise<AdminSummary> {
   const params: Record<string, string> = { date: startDate };
@@ -16,5 +16,10 @@ export async function getAdminOrders(startDate: string, endDate?: string): Promi
     params.endDate = endDate;
   }
   const res = await client.get<{ date: string; orders: Order[] }>('/admin/orders', { params });
+  return res.data;
+}
+
+export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValueResult | null> {
+  const res = await client.get<MinimumSaleValueResult | null>('/admin/minimum-sale-value', { params: { date } });
   return res.data;
 }

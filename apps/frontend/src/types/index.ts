@@ -53,6 +53,23 @@ export interface AdminSummary {
   itemBreakdown: { itemName: string; totalQuantity: number; totalRevenue: number }[];
 }
 
+export interface MinimumSaleValueFilling {
+  filling: string;
+  openingPieces: number;
+  closingPieces: number;
+  wastagePieces: number;
+  consumedPieces: number;
+  plates: number;
+  basePrice: number;
+  minValue: number;
+}
+
+export interface MinimumSaleValueResult {
+  date: string;
+  fillings: MinimumSaleValueFilling[];
+  totalMinimumSaleValue: number;
+}
+
 export interface SupplyItem {
   id: number;
   name: string;

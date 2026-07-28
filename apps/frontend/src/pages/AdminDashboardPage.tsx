@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, memo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions, Accordion, AccordionSummary, AccordionDetails, Divider } from '@mui/material';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet, ChevronDown } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { getAdminSummary, getAdminOrders } from '../api/adminApi';
+import { getAdminSummary, getAdminOrders, getMinimumSaleValue } from '../api/adminApi';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
 import { listSupplyVerifications, getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
@@ -227,6 +227,13 @@ export default function AdminDashboardPage() {
     gcTime: Infinity,
   });
 
+  const { data: minSaleValueData } = useQuery({
+    queryKey: ['minSaleValue', startDate],
+    queryFn: () => getMinimumSaleValue(startDate),
+    enabled: startDate === endDate,
+    staleTime: 30_000,
+  });
+
   const allItemsBreakdown = useMemo<{ itemName: string; totalQuantity: number; totalRevenue: number; preparation: string; filling: string }[]>(() => {
     if (!menuData?.items) return [];
     const orderedMap = new Map<string, { totalQuantity: number; totalRevenue: number }>(
@@ -427,6 +434,33 @@ export default function AdminDashboardPage() {
   }, [adminOrders, menuData, fillingView]);
 
   const maxFillingValue = useMemo(() => Math.max(...fillingBreakdown.map((i) => i.value), 1), [fillingBreakdown]);
+
+  const PLATE_PREPARATIONS = PREP_ORDER.slice(1);
+
+  const plateCounts = useMemo(() => {
+    if (!menuData?.items || adminOrders.length === 0) {
+      return PLATE_PREPARATIONS.map((prep) => ({ prep, Veg: 0, Paneer: 0, 'Cheese Corn': 0 }));
+    }
+    const menuMap = new Map<string, MenuItem>((menuData.items as MenuItem[]).map((i) => [i.displayName, i]));
+    const grid: Record<string, Record<string, number>> = {};
+    for (const prep of PLATE_PREPARATIONS) {
+      grid[prep] = { Veg: 0, Paneer: 0, 'Cheese Corn': 0 };
+    }
+    for (const order of adminOrders) {
+      for (const item of order.items) {
+        const mi = menuMap.get(item.itemName);
+        if (!mi || mi.preparation === 'Steam' || mi.filling === 'Platter') continue;
+        if (!grid[mi.preparation] || !(mi.filling in grid[mi.preparation])) continue;
+        grid[mi.preparation][mi.filling] += item.quantity / 6;
+      }
+    }
+    return PLATE_PREPARATIONS.map((prep) => ({
+      prep,
+      Veg: Math.round(grid[prep].Veg * 10) / 10,
+      Paneer: Math.round(grid[prep].Paneer * 10) / 10,
+      'Cheese Corn': Math.round(grid[prep]['Cheese Corn'] * 10) / 10,
+    }));
+  }, [adminOrders, menuData]);
 
   const toggleItem = useCallback((itemName: string) => {
     vibrate(haptics.light);
@@ -809,6 +843,134 @@ export default function AdminDashboardPage() {
                 />
               </StaggerItem>
             </StaggerContainer>
+
+            {/* Minimum Sale Value vs Actual */}
+            {minSaleValueData && (() => {
+              const actualRevenue = data?.totalRevenue ?? 0;
+              const delta = actualRevenue - minSaleValueData.totalMinimumSaleValue;
+              const isSurplus = delta >= 0;
+              const deltaColor = isSurplus ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626');
+              const deltaBg = isSurplus ? (isDark ? 'rgba(74,222,128,0.12)' : '#DCFCE7') : (isDark ? 'rgba(248,113,113,0.12)' : '#FEE2E2');
+
+              return (
+                <Accordion sx={{
+                  mb: 2,
+                  borderRadius: '12px !important',
+                  overflow: 'hidden',
+                  border: 1,
+                  borderColor: 'divider',
+                  boxShadow: 'none',
+                  '&:before': { display: 'none' },
+                  background: isDark ? 'linear-gradient(135deg, #1E1E26 0%, #252530 100%)' : undefined,
+                }}>
+                  <AccordionSummary
+                    expandIcon={<ChevronDown size={20} />}
+                    sx={{ px: 1.5, py: 0.5, '& .MuiAccordionSummary-content': { m: 0 } }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', width: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Box sx={{ width: 28, height: 28, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,140,66,0.15)' : '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <TrendingUp size={14} color={isDark ? '#FBBF24' : '#FF8C42'} />
+                        </Box>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+                          Sale Value
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>Min:</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#FBBF24' : '#FF8C42' }}>
+                            ₹{minSaleValueData.totalMinimumSaleValue.toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>Actual:</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
+                            ₹{actualRevenue.toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, backgroundColor: deltaBg, display: 'flex', alignItems: 'center' }}>
+                          <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: deltaColor }}>
+                            {isSurplus ? '+' : ''}₹{delta.toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ p: 1.5, pt: 0 }}>
+                    {/* Per-filling minimum sale value breakdown */}
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.primary', mb: 1, mt: 0.5 }}>
+                      Minimum Sale Value Breakdown
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, borderRadius: 1.5 }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'action.hover' }}>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Filling</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Opening</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Closing</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Wastage</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Sold</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Plates</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Rate</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Min Value</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {minSaleValueData.fillings.map((f) => (
+                            <TableRow key={f.filling}>
+                              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>{f.filling}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{f.openingPieces}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{f.closingPieces}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{f.wastagePieces}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{f.consumedPieces}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{f.plates}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>₹{f.basePrice}</TableCell>
+                              <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 700, color: isDark ? '#FBBF24' : '#FF8C42' }}>₹{f.minValue.toLocaleString('en-IN')}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'action.selected' }}>
+                            <TableCell colSpan={7} sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Total Minimum Sale Value</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.8rem', color: isDark ? '#FBBF24' : '#FF8C42' }}>
+                              ₹{minSaleValueData.totalMinimumSaleValue.toLocaleString('en-IN')}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    {/* Plates per preparation (excluding Steam) */}
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.primary', mb: 1 }}>
+                      Plates per Preparation
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1.5 }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'action.hover' }}>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Preparation</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Veg</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Paneer</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Cheese Corn</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {plateCounts.map((row) => (
+                            <TableRow key={row.prep}>
+                              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>{row.prep}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row.Veg || '-'}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row.Paneer || '-'}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row['Cheese Corn'] || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })()}
 
             {/* Supply Orders */}
             <Paper sx={{
