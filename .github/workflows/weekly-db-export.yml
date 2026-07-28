@@ -1,24 +1,18 @@
-name: Weekly DB Export and Cleanup
+name: Weekly DB Export
 
 on:
-  schedule:
-    - cron: '0 2 * * 1'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Export + commit only, skip the destructive cleanup step'
-        required: false
-        default: true
-        type: boolean
+  # No longer scheduled — with the 32GB free-tier database, there's no space
+  # pressure requiring a recurring backup+wipe cadence. Kept as a manual tool.
+  workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
-  export-and-cleanup:
+  export:
     runs-on: ubuntu-latest
     environment: production
-    name: Export DB to CSV, then clean up transactional tables
+    name: Export DB to a weekly CSV/XLSX backup
     steps:
       - uses: actions/checkout@v5
 
@@ -48,20 +42,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add db-backups/
           if git diff --cached --quiet; then
-            echo "No new export files to commit — aborting before cleanup for safety."
-            exit 1
+            echo "No new export files to commit."
+            exit 0
           fi
           git commit -m "Weekly DB export $(date -u +%Y-%m-%d)"
           git push
-
-      - name: Run weekly cleanup
-        if: github.event_name == 'schedule' || github.event.inputs.dry_run == 'false'
-        env:
-          SQL_SERVER: ${{ secrets.SQL_SERVER }}
-          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-          SQL_USER: ${{ secrets.SQL_USER }}
-          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
-          SQL_PORT: '1433'
-          SQL_ENCRYPT: 'true'
-          SQL_TRUST_CERT: 'false'
-        run: npm run prod:db:weekly-cleanup

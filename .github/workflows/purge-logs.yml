@@ -1,8 +1,9 @@
 name: Purge Old Logs
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
+  # No longer scheduled — this existed to keep ClientActivityLogs/StaffOperationLogs
+  # from filling a 32MB database. At current volume, years of unpurged logs are
+  # trivial against the current 32GB free-tier database. Kept as a manual tool.
   workflow_dispatch: {}
 
 jobs:
