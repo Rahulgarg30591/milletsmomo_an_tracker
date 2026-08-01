@@ -14,12 +14,12 @@ const shakeAnim = keyframes`
 
 interface PinPadProps {
   onComplete: (pin: string) => void;
-  error: boolean;
+  errorMessage: string | null;
   onErrorAck: () => void;
   loading?: boolean;
 }
 
-export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPadProps) {
+export default function PinPad({ onComplete, errorMessage, onErrorAck, loading }: PinPadProps) {
   const [pin, setPin] = useState('');
   const [shake, setShake] = useState(false);
 
@@ -29,15 +29,16 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
   }, []);
 
   useEffect(() => {
-    if (error) {
+    if (errorMessage) {
       triggerShake();
+      setPin('');
     }
-  }, [error, triggerShake]);
+  }, [errorMessage, triggerShake]);
 
   const handleDigit = useCallback(
     (digit: string) => {
       if (loading) return;
-      if (error) onErrorAck();
+      if (errorMessage) onErrorAck();
       if (pin.length < 4) {
         vibrate(haptics.light);
         const next = pin + digit;
@@ -47,22 +48,22 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
         }
       }
     },
-    [pin, error, onErrorAck, onComplete, loading]
+    [pin, errorMessage, onErrorAck, onComplete, loading]
   );
 
   const handleDelete = useCallback(() => {
     if (loading) return;
-    if (error) onErrorAck();
+    if (errorMessage) onErrorAck();
     vibrate(haptics.light);
     setPin((p) => p.slice(0, -1));
-  }, [error, onErrorAck, loading]);
+  }, [errorMessage, onErrorAck, loading]);
 
   const handleClear = useCallback(() => {
     if (loading) return;
-    if (error) onErrorAck();
+    if (errorMessage) onErrorAck();
     vibrate(haptics.light);
     setPin('');
-  }, [error, onErrorAck, loading]);
+  }, [errorMessage, onErrorAck, loading]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -109,16 +110,16 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
               height: 14,
               borderRadius: '50%',
               backgroundColor: i < pin.length
-                ? error ? 'error.main' : 'primary.main'
+                ? errorMessage ? 'error.main' : 'primary.main'
                 : 'action.disabledBackground',
-              boxShadow: i < pin.length && !error ? '0 0 8px rgba(27,107,58,0.3)' : 'none',
+              boxShadow: i < pin.length && !errorMessage ? '0 0 8px rgba(27,107,58,0.3)' : 'none',
             }}
           />
         ))}
       </Box>
 
       {/* Error message */}
-      {error && (
+      {errorMessage && (
         <Box
           sx={{
             textAlign: 'center',
@@ -132,7 +133,7 @@ export default function PinPad({ onComplete, error, onErrorAck, loading }: PinPa
             fontSize: '0.875rem',
           }}
         >
-          Invalid PIN. Please try again.
+          {errorMessage}
         </Box>
       )}
 

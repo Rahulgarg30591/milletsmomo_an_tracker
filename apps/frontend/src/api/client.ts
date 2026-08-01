@@ -23,10 +23,11 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isLoginRequest = originalRequest?.url?.includes('/auth/login');
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(originalRequest?.method?.toLowerCase());
     const isOffline = !isOnline();
 
-    if (isMutation && isOffline) {
+    if (isMutation && isOffline && !isLoginRequest) {
       const url = originalRequest.url || originalRequest.baseURL;
       const method = originalRequest.method?.toUpperCase() || 'POST';
       const data = originalRequest.data ? JSON.parse(originalRequest.data) : null;
@@ -47,7 +48,6 @@ client.interceptors.response.use(
       }
     }
 
-    const isLoginRequest = originalRequest?.url?.includes('/auth/login');
     if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('token');
       localStorage.removeItem('role');

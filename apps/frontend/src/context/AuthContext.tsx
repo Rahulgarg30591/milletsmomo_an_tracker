@@ -17,9 +17,41 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * Validates a JWT token by checking format and expiry.
+ * Returns false for "undefined", null, expired, or malformed tokens.
+ */
+function isTokenValid(token: string | null): boolean {
+  if (!token || token === 'undefined') return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    if (typeof payload.exp !== 'number') return false;
+    return payload.exp > Date.now() / 1000;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clears all auth-related storage entries.
+ * Used when a stale or expired token is detected on init.
+ */
+function clearAuthStorage(): void {
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('displayName');
+  sessionStorage.removeItem('mm_pin');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(() => {
     const token = localStorage.getItem('token');
+    if (!isTokenValid(token)) {
+      clearAuthStorage();
+      return { token: null, role: null, displayName: null, pin: null };
+    }
     const role = localStorage.getItem('role');
     const displayName = localStorage.getItem('displayName');
     const pin = sessionStorage.getItem('mm_pin');
@@ -46,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.role, auth.displayName]);
 
   const isAuthenticated = useCallback(() => {
-    return !!auth.token;
+    return isTokenValid(auth.token);
   }, [auth.token]);
 
   return (

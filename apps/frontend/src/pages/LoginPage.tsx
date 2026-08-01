@@ -12,7 +12,7 @@ import { getToday } from '../utils/dateUtils';
 
 export default function LoginPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff');
-  const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { login: doLogin, isAuthenticated, auth } = useAuth();
   const navigate = useNavigate();
@@ -25,35 +25,45 @@ export default function LoginPage() {
     if (auth.role === 'admin') {
       navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
     } else {
-      navigate(redirectPath || `/day/${getToday()}`, { replace: true });
+      const safeRedirect = redirectPath && !redirectPath.startsWith('/admin') ? redirectPath : `/day/${getToday()}`;
+      navigate(safeRedirect, { replace: true });
     }
   }, [isAuthenticated, auth.role, auth.token, navigate, redirectPath]);
 
   useEffect(() => {
-    if (error) {
+    if (errorMessage) {
       vibrate(haptics.error);
     }
-  }, [error]);
+  }, [errorMessage]);
 
   const handlePinComplete = async (pin: string) => {
-    if (loading) return;
+    if (loading || isAuthenticated()) return;
     setLoading(true);
-    setError(false);
+    setErrorMessage(null);
     try {
       const res = await login({ role, pin });
       doLogin(res.token, res.role, res.displayName, pin);
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });
       vibrate(haptics.success);
-    } catch {
-      setError(true);
+    } catch (err: any) {
+      const status = err.response?.status;
+      if (status === 429) {
+        setErrorMessage('Too many login attempts. Wait 15 minutes.');
+      } else if (status === 401) {
+        setErrorMessage('Invalid PIN. Try again.');
+      } else if (!err.response) {
+        setErrorMessage('Network error. Check connection.');
+      } else {
+        setErrorMessage('Login failed. Try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleErrorAck = useCallback(() => {
-    setError(false);
+    setErrorMessage(null);
   }, []);
 
   const isDark = theme.palette.mode === 'dark';
@@ -173,7 +183,7 @@ export default function LoginPage() {
               onClick={() => {
                 vibrate(haptics.light);
                 setRole('staff');
-                setError(false);
+                setErrorMessage(null);
               }}
               sx={{
                 borderRadius: 3,
@@ -195,7 +205,7 @@ export default function LoginPage() {
               onClick={() => {
                 vibrate(haptics.light);
                 setRole('admin');
-                setError(false);
+                setErrorMessage(null);
               }}
               sx={{
                 borderRadius: 3,
@@ -215,7 +225,7 @@ export default function LoginPage() {
 
           <PinPad
             onComplete={handlePinComplete}
-            error={error}
+            errorMessage={errorMessage}
             onErrorAck={handleErrorAck}
             loading={loading}
           />
