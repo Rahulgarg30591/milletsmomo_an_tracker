@@ -18,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 /**
- * Validates a JWT token by checking format and expiry.
+ * Validates a signed token by checking format and expiry.
  * Returns false for "undefined", null, expired, or malformed tokens.
  */
 function isTokenValid(token: string | null): boolean {

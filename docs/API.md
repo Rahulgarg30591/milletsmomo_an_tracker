@@ -305,7 +305,7 @@ Common HTTP status codes:
 | Status | Meaning |
 |---|---|
 | 400 | Validation error or bad request |
-| 401 | Missing/invalid JWT token |
+| 401 | Missing/invalid auth token |
 | 403 | Insufficient role (e.g., non-admin accessing admin routes) |
 | 404 | Resource not found |
 | 429 | Rate limit exceeded (login endpoint) |

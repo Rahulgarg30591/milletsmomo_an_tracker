@@ -1,6 +1,6 @@
 ---
 name: security
-description: Security standards for apps/backend and apps/frontend — input validation, SQL injection prevention, auth/authz, secret management, secure headers, CSRF, XSS, sensitive data handling, environment variables. Use when editing auth, SQL, config, middleware, validators, or any code touching secrets/user input. Auto-load when touching security-sensitive code (authMiddleware, pool, validators, helmet, env, login, JWT, bcrypt).
+description: Security standards for apps/backend and apps/frontend — input validation, SQL injection prevention, auth/authz, secret management, secure headers, CSRF, XSS, sensitive data handling, environment variables. Use when editing auth, SQL, config, middleware, validators, or any code touching secrets/user input. Auto-load when touching security-sensitive code (authMiddleware, pool, validators, helmet, env, login, token, bcrypt).
 ---
 
 # Security Standards
@@ -37,8 +37,8 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 - **PIN-based auth**: PINs are stored as **bcrypt hashes** (cost factor 10) in `Users.pin_hash`. Never store or log plaintext PINs.
 - Use `bcryptjs` (the JS port, not native `bcrypt`) — `bcrypt.compare(pin, user.pin_hash)` for verification.
 - PIN is a 4-digit string. The rate limiter (5 attempts / 15 min / IP) prevents brute force (10,000 combinations would take ~12 days at 5/15min).
-- **JWT**: signed with `JWT_SECRET` (env var), `expiresIn: '12h'` (43200 seconds). Payload: `{ sub: userId, role, displayName }`.
-- **JWT_SECRET MUST be set in production.** An empty `JWT_SECRET` (`''`) means `jsonwebtoken` signs with an empty string — a critical vulnerability. The app currently falls back to `''` — this is a known risk; ensure `JWT_SECRET` is always set in `.env.production` / Azure app settings.
+- **Token**: HMAC-SHA256 signed token (`utils/simpleToken.ts`), 12h expiry (43200 seconds). Payload: `{ sub: userId, role, displayName, exp }`. Uses a static baked-in secret overridable via `MM_TOKEN_SECRET` (optional; the fallback is always non-empty so signing never crashes).
+- Token shape: `base64(header).base64(payload).base64(signature)` — standard base64 so the frontend can decode the payload via `atob(parts[1])`.
 - Token is transmitted via the custom `x-auth-token` header (NOT `Authorization`), because Azure SWA injects its own `Authorization` header. Do not change this.
 - `authMiddleware` verifies the token on every `/api/*` route except `/api/auth/login` and `/api/health`.
 - On `401`, the frontend (`api/client.ts`) clears `localStorage` and redirects to `/login`.
@@ -56,7 +56,7 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 
 - **No secrets in Git.** Gitignored files: `local.settings.json`, `.env.development`, `.env.production`, `apps/backend/local.settings.json`.
 - `local.settings.example.json` documents the required keys — keep it updated when adding env vars. It is the template; the real file is local-only.
-- Required secrets: `JWT_SECRET`, `SQL_PASSWORD`. Required config (non-secret): `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PORT`, `ALLOWED_ORIGINS`.
+- Required secrets: `SQL_PASSWORD`. Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback). Required config (non-secret): `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PORT`, `ALLOWED_ORIGINS`.
 - Azure production secrets are set in Azure Portal app settings / Key Vault — never in the repo.
 - Never log secrets, tokens, PINs, or password hashes. The `morgan` log format excludes bodies and headers — keep it that way.
 - `npm run generate-pin-hash -- <4-digit-pin>` generates a bcrypt hash for updating seed PINs. Never commit a real PIN — only its hash.
@@ -65,7 +65,7 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 
 - Env loading: `db/pool.ts` `loadEnvConfig()` reads `.env.development` / `.env.production`, then `loadLocalSettings()` reads `local.settings.json` (dev only, not in production).
 - Never `console.log` env vars. Never expose `process.env` to the frontend (frontend uses `VITE_*` prefixed vars only, e.g., `VITE_API_BASE_URL`).
-- Access env via `process.env.KEY` with a safe default **only for non-sensitive values** (`NODE_ENV`, `SQL_PORT`). Sensitive values (`JWT_SECRET`, `SQL_PASSWORD`) must be set — do not provide a default that masks a missing secret.
+- Access env via `process.env.KEY` with a safe default **only for non-sensitive values** (`NODE_ENV`, `SQL_PORT`). `SQL_PASSWORD` must be set — do not provide a default that masks a missing secret. `MM_TOKEN_SECRET` is optional (the token util has a baked-in fallback).
 
 ## Secure headers (helmet)
 
@@ -120,7 +120,7 @@ When adding a third-party script/style/font source, update the CSP `directives` 
 - **Never return `password`/`secret` fields** — the schema has none, but this rule applies if added.
 - Staff log `details` may contain order summaries (item counts, totals, payment methods) — acceptable. Never include PINs or tokens in log details.
 - `ClientActivityLogs` store frontend telemetry — do not log sensitive form values, tokens, or PINs in `details`/`metadata`.
-- JWT payload contains `userId`, `role`, `displayName` — not the PIN. Safe to decode on the client.
+- Token payload contains `sub`, `role`, `displayName`, `exp` — not the PIN. Safe to decode on the client.
 
 ## Output encoding
 
@@ -133,14 +133,14 @@ When adding a third-party script/style/font source, update the CSP `directives` 
 
 - Run `npm audit` periodically. Address high/critical vulnerabilities.
 - Do not add dependencies with known critical vulnerabilities.
-- Keep `bcryptjs`, `jsonwebtoken`, `helmet`, `mssql`, `zod`, `express` updated within their major versions.
+- Keep `bcryptjs`, `helmet`, `mssql`, `zod`, `express` updated within their major versions.
 
 ## Cross-cutting rules
 
 - Defer to the `project-context` skill for role/access details.
 - Defer to code over drifted docs.
 - **Parameterized SQL is non-negotiable.** Any string-interpolated user value in SQL is a critical bug.
-- **`JWT_SECRET` must be set in production.** An empty secret is a critical vulnerability.
+- **`MM_TOKEN_SECRET`** may be set in production for a stronger token signing secret (the app has a baked-in fallback).
 - **`dangerouslySetInnerHTML` is forbidden.** No exceptions.
 - Never log secrets, tokens, PINs, hashes, or request bodies/headers.
 - Security findings and fixes use normal clarity — do not compress security-critical communication.

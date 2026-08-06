@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || '';
+import { verifyToken } from '../utils/simpleToken.js';
 
 export interface AuthUser {
   id: number;
@@ -21,7 +19,7 @@ export function authMiddleware(
   next: NextFunction,
 ): void {
   // Azure SWA injects its own Authorization header when proxying to managed functions,
-  // so we use a custom header to carry the user's JWT instead.
+  // so we use a custom header to carry the user's signed token instead.
   const customToken = req.headers['x-auth-token'] as string | undefined;
   if (!customToken) {
     res.status(401).json({ error: 'Missing or invalid token' });
@@ -29,17 +27,17 @@ export function authMiddleware(
   }
 
   const token = customToken;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    req.user = {
-      id: Number(decoded.sub),
-      role: decoded.role,
-      displayName: decoded.displayName,
-    };
-    next();
-  } catch {
+  const decoded = verifyToken(token);
+  if (!decoded) {
     res.status(401).json({ error: 'Invalid or expired token' });
+    return;
   }
+  req.user = {
+    id: Number(decoded.sub),
+    role: decoded.role,
+    displayName: decoded.displayName,
+  };
+  next();
 }
 
 export function requireRole(role: string) {

@@ -11,8 +11,6 @@
     "SQL_PORT": "1433",
     "SQL_ENCRYPT": "false",
     "SQL_TRUST_CERT": "true",
-    "JWT_SECRET": "<random-long-secret-string>",
-    "JWT_EXPIRY": "12h",
     "ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174"
   }
 }

@@ -14,9 +14,9 @@ param sqlAdminPassword string
 @description('SQL Database name')
 param sqlDbName string = '${baseName}-db'
 
-@description('JWT secret for API auth')
+@description('HMAC signing secret for API auth tokens (optional; app has a baked-in fallback). Set for a stronger production secret.')
 @secure()
-param jwtSecret string
+param tokenSecret string = ''
 
 @description('Client public IP for SQL firewall (leave empty to skip)')
 param clientIp string = ''
@@ -129,8 +129,7 @@ resource swaAppSettings 'Microsoft.Web/staticSites/configuredAppSettings@2023-12
       SQL_PORT: '1433'
       SQL_ENCRYPT: 'true'
       SQL_TRUST_CERT: 'false'
-      JWT_SECRET: jwtSecret
-      JWT_EXPIRY: '12h'
+      MM_TOKEN_SECRET: tokenSecret
       ALLOWED_ORIGINS: empty(allowedOrigins) ? 'https://${swaHostName}' : allowedOrigins
       NODE_ENV: 'production'
     }

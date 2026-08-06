@@ -17,7 +17,7 @@ BASE_NAME="${BASE_NAME:-millets-momo}"
 SQL_ADMIN_USER="${SQL_ADMIN_USER:-momoadmin}"
 SQL_ADMIN_PASSWORD="${SQL_ADMIN_PASSWORD:-}"
 SQL_DB_NAME="${SQL_DB_NAME:-${BASE_NAME}-db}"
-JWT_SECRET="${JWT_SECRET:-}"
+MM_TOKEN_SECRET="${MM_TOKEN_SECRET:-}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-}"
 REPO_URL="${REPO_URL:-}"
 REPOSITORY_TOKEN="${REPOSITORY_TOKEN:-}"
@@ -33,10 +33,10 @@ if [[ -z "$SQL_ADMIN_PASSWORD" ]]; then
   echo "Generated SQL_ADMIN_PASSWORD (save this!): $SQL_ADMIN_PASSWORD"
 fi
 
-if [[ -z "$JWT_SECRET" ]]; then
-  echo "JWT_SECRET not set. Auto-generating..."
-  JWT_SECRET=$(openssl rand -base64 32 | tr -d '/+=')
-  echo "Generated JWT_SECRET (save this!): $JWT_SECRET"
+if [[ -z "$MM_TOKEN_SECRET" ]]; then
+  echo "MM_TOKEN_SECRET not set. Auto-generating a stronger production secret..."
+  MM_TOKEN_SECRET=$(openssl rand -base64 32 | tr -d '/+=')
+  echo "Generated MM_TOKEN_SECRET (save this!): $MM_TOKEN_SECRET"
 fi
 
 if [[ -z "$REPOSITORY_TOKEN" ]]; then
@@ -67,7 +67,7 @@ BASE_NAME=$BASE_NAME
 SQL_ADMIN_USER=$SQL_ADMIN_USER
 SQL_ADMIN_PASSWORD=$SQL_ADMIN_PASSWORD
 SQL_DB_NAME=$SQL_DB_NAME
-JWT_SECRET=$JWT_SECRET
+MM_TOKEN_SECRET=$MM_TOKEN_SECRET
 ALLOWED_ORIGINS=$ALLOWED_ORIGINS
 REPO_URL=$REPO_URL
 REPOSITORY_TOKEN=$REPOSITORY_TOKEN
@@ -106,7 +106,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
       sqlAdminUser="$SQL_ADMIN_USER" \
       sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
       sqlDbName="$SQL_DB_NAME" \
-      jwtSecret="$JWT_SECRET" \
+      tokenSecret="$MM_TOKEN_SECRET" \
       allowedOrigins="$ALLOWED_ORIGINS" \
       repoUrl="$REPO_URL" \
       repositoryToken="$REPOSITORY_TOKEN" \
@@ -157,6 +157,6 @@ echo "   az staticwebapp secrets list --name ${BASE_NAME}-swa --resource-group $
 echo ""
 echo "3. Add GitHub repo secrets (Settings → Secrets → Actions):"
 echo "   AZURE_STATIC_WEB_APPS_API_TOKEN  — from step 2"
-echo "   SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT, JWT_SECRET"
+echo "   SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT, MM_TOKEN_SECRET"
 echo ""
 echo "4. If using GitHub Actions CI/CD, set REPO_URL in infra/.env (owner/repo format)"

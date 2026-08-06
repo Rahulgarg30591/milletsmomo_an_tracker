@@ -13,7 +13,7 @@ Authoritative project knowledge. Code is source of truth (docs drift behind).
 - **App**: "Millets Momo Order Tracker" — internal PWA, NOT customer-facing.
 - **Purpose**: Daily customer order tracking, payment recording, sales/revenue monitoring, daily reporting & analytics, supply-chain tracking (supply order → staff verification → live stock → closing stock → payment settlement reconciliation).
 - **Deployment**: Azure Static Web Apps (FE PWA) + Azure Functions v4 (Express BE) + Azure SQL (Free tier). CI/CD via GitHub Actions: PR→staging, push `main`→production. Region `centralindia`; RG `millets-momo-rg`; SWA `millets-momo-swa`; SQL `millets-momo-sql`; DB `millets-momo-db`.
-- **Tech**: React 18 + TS + Vite + MUI 6 + Framer Motion + React Query + react-router-dom v7 + Axios; Express 4 + Azure Functions v4 + mssql + bcryptjs + jsonwebtoken + Zod; Azure SQL / SQL Server Edge (local Docker); npm workspaces monorepo. License ISC.
+- **Tech**: React 18 + TS + Vite + MUI 6 + Framer Motion + React Query + react-router-dom v7 + Axios; Express 4 + Azure Functions v4 + mssql + bcryptjs + Zod; Azure SQL / SQL Server Edge (local Docker); npm workspaces monorepo. License ISC.
 - **PWA**: installable iOS Safari + Android Chrome; offline app shell; Workbox runtime caching (`/api/menu` CacheFirst 24h, `/api/orders`+`/api/admin` NetworkFirst 5min). Theme color `#1B6B3A`, bg `#F0F4F1`.
 - **Design**: dark-green primary `#1B6B3A`, warm accent `#FF8C42`, card-based, radii 8/12/16/20px, dark mode supported.
 
@@ -26,7 +26,7 @@ Authoritative project knowledge. Code is source of truth (docs drift behind).
 
 ## User personas / roles
 
-Two roles only. Auth = bcrypt PIN (cost 10) → JWT (12h, `expiresIn:43200`). Token via custom header `x-auth-token` (NOT `Authorization`, avoids clashing with Azure SWA injected header).
+Two roles only. Auth = bcrypt PIN (cost 10) → HMAC-SHA256 signed token (12h, `exp:43200`). Token via custom header `x-auth-token` (NOT `Authorization`, avoids clashing with Azure SWA injected header).
 
 | Role | username | PIN | displayName | Access |
 |---|---|---|---|---|
@@ -35,7 +35,7 @@ Two roles only. Auth = bcrypt PIN (cost 10) → JWT (12h, `expiresIn:43200`). To
 
 Route guards: DayView/New/Edit/Verify/Closing/Stock require `staff+`; `/admin`, `/admin/supply`, `/admin/staff-logs`, `/admin/settlement` require `admin`.
 
-Backend: `authMiddleware` verifies JWT on all `/api/*` except `/api/auth/login` + `/api/health`. `requireRole('admin')` guards `/api/admin/*` + `/api/settlement*`. Supply verification + closing-stock endpoints under `/api/supply/*` are staff+ (no admin guard). Rate limit: login 5/15min/IP; global 200/min (skips health).
+Backend: `authMiddleware` verifies the HMAC token on all `/api/*` except `/api/auth/login` + `/api/health`. `requireRole('admin')` guards `/api/admin/*` + `/api/settlement*`. Supply verification + closing-stock endpoints under `/api/supply/*` are staff+ (no admin guard). Rate limit: login 5/15min/IP; global 200/min (skips health).
 
 ## Frontend pages (apps/frontend/src/pages/)
 

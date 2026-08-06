@@ -16,8 +16,8 @@ Authoritative REST API conventions for `apps/backend`. Code is the source of tru
 
 ## Authentication & authorization
 
-- **Auth header**: `x-auth-token` (custom header), NOT `Authorization: Bearer`. Azure SWA injects its own `Authorization` header when proxying to managed functions, so the app uses a custom header to carry the user JWT. `docs/API.md` is wrong on this point — code wins.
-- `authMiddleware` verifies the JWT on every `/api/*` route except `/api/auth/login` and `/api/health`. Apply it at the route level (`router.get('/', authMiddleware, controller)`), not globally.
+- **Auth header**: `x-auth-token` (custom header), NOT `Authorization: Bearer`. Azure SWA injects its own `Authorization` header when proxying to managed functions, so the app uses a custom header to carry the user's signed token. `docs/API.md` is wrong on this point — code wins.
+- `authMiddleware` verifies the token on every `/api/*` route except `/api/auth/login` and `/api/health`. Apply it at the route level (`router.get('/', authMiddleware, controller)`), not globally.
 - `requireRole('admin')` guards admin-only routes. Apply after `authMiddleware`:
 
 ```ts

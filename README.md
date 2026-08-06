@@ -188,7 +188,7 @@ npm run generate-pin-hash -- 1234
 | Frontend | React 18, TypeScript, Vite, MUI 6, Framer Motion, React Query |
 | Backend | Node.js, Express, Azure Functions v4, TypeScript |
 | Database | Azure SQL (cloud) / SQL Server Edge (local) |
-| Auth | bcrypt PIN hashes + JWT |
+| Auth | bcrypt PIN hashes + HMAC-SHA256 token |
 | Deployment | Azure Static Web Apps + Azure Functions + Azure SQL |
 
 ---

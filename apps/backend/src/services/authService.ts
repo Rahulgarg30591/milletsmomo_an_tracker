@@ -1,9 +1,7 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || '';
+import { signToken } from '../utils/simpleToken.js';
 
 export interface LoginResult {
   token: string;
@@ -40,11 +38,7 @@ export async function login(
     throw Object.assign(new Error('Invalid PIN'), { status: 401 });
   }
 
-  const token = jwt.sign(
-    { sub: String(user.id), role: user.role, displayName: user.display_name },
-    JWT_SECRET,
-    { expiresIn: '12h' as const },
-  );
+  const token = signToken(String(user.id), user.role, user.display_name, 43200);
 
   return {
     token,

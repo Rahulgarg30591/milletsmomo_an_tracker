@@ -43,7 +43,7 @@ A Bicep template at `infra/main.bicep` provisions all required resources in one 
 ```bash
 export SQL_ADMIN_USER="momoadmin"          # SQL admin username
 export SQL_ADMIN_PASSWORD="<strong-password>"  # SQL admin password (min 8 chars)
-export JWT_SECRET="<64-char-random-string>"     # JWT signing secret
+export MM_TOKEN_SECRET="<64-char-random-string>"  # HMAC token signing secret (optional; auto-generated if unset)
 export RG_NAME="millets-momo-rg"               # Optional: resource group name
 export LOCATION="centralindia"                 # Optional: Azure region
 export ALLOWED_ORIGIN=""                        # Optional: CORS origin (auto-detected)
@@ -68,7 +68,7 @@ az deployment group create \
   --parameters baseName=millets-momo \
                sqlAdminUser="$SQL_ADMIN_USER" \
                sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
-               jwtSecret="$JWT_SECRET"
+               tokenSecret="$MM_TOKEN_SECRET"
 ```
 
 The script outputs the SWA URL and SQL Server FQDN after deployment.
@@ -88,8 +88,7 @@ The Bicep template sets these automatically:
 | `SQL_USER` | `<admin-username>` (from parameter) |
 | `SQL_PASSWORD` | `<admin-password>` (from parameter) |
 | `SQL_ENCRYPT` | `true` |
-| `JWT_SECRET` | `<random-64-char-string>` (from parameter) |
-| `JWT_EXPIRY` | `12h` |
+| `MM_TOKEN_SECRET` | `<random-64-char-string>` (optional; app has a baked-in fallback) |
 | `ALLOWED_ORIGIN` | `https://<swa-hostname>` (auto-detected) |
 | `NODE_ENV` | `production` |
 
@@ -99,7 +98,7 @@ To update manually via Azure Portal → SWA → Configuration → App settings.
 
 ```bash
 cp apps/backend/local.settings.example.json apps/backend/local.settings.json
-# Edit local.settings.json with your database credentials and JWT_SECRET
+# Edit local.settings.json with your database credentials
 ```
 
 ### GitHub Secrets
@@ -210,7 +209,7 @@ npm install
 
 # Copy and configure local settings
 cp apps/backend/local.settings.example.json apps/backend/local.settings.json
-# Edit local.settings.json with your database credentials and JWT_SECRET
+# Edit local.settings.json with your database credentials
 
 # Run both frontend and backend
 npm run dev
@@ -269,7 +268,7 @@ Ensure `ALLOWED_ORIGIN` in app settings matches your SWA URL exactly (including 
 ### Function App Startup Errors
 
 Check application logs in the Azure Portal → Static Web App → Functions → Logs. Common issues:
-- Missing `JWT_SECRET` or database connection env vars
+- Missing database connection env vars
 - Database firewall blocking Azure services (ensure `AllowAzureServices` firewall rule exists)
 
 ### PWA Not Installable
@@ -282,7 +281,7 @@ Verify that `/icons/icon-192.png`, `/icons/icon-512.png`, and `/icons/maskable-5
 
 - **Never commit** `local.settings.json` or `.env` files (they are gitignored)
 - **Change default PINs** before deploying to production
-- **Use a strong `JWT_SECRET`** (64+ random characters)
+- **Use a strong `MM_TOKEN_SECRET`** (64+ random characters) in production for a stronger token signing secret
 - **Enable Azure SQL firewall** — only allow Azure services and your dev IP
 - **Review CSP headers** set by `helmet()` — add Azure SWA origin if needed
 - **Store deployment token** in GitHub Secrets, never in code

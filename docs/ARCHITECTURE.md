@@ -14,12 +14,12 @@ packages/shared ──► apps/frontend
 - **React 18** + **MUI 6** + **Vite** SPA
 - **react-router-dom v7** for client-side routing
 - **@tanstack/react-query v5** for server state (caching, refetch, mutations)
-- **Axios** with JWT interceptor for API calls
+- **Axios** with auth-token interceptor for API calls
 - **vite-plugin-pwa** generates a service worker (Workbox `generateSW`) with runtime caching:
   - `/api/menu` → CacheFirst (24h TTL)
   - `/api/orders`, `/api/admin` → NetworkFirst (5min TTL)
 - **Theme**: MUI theme per PRD §6 — dark green primary (`#1B6B3A`), warm accent (`#FF8C42`), status badges, RTL-safe
-- **Auth**: PIN-based login → JWT stored in `sessionStorage` — 12h expiry, auto-redirect on 401
+- **Auth**: PIN-based login → HMAC-signed token stored in `sessionStorage` — 12h expiry, auto-redirect on 401
 - **State**: `OrderDraftContext` manages in-progress order drafts (items map, order type, payment method)
 
 ### Route Table
@@ -60,7 +60,7 @@ App
 
 - **Express 4** app wrapped in **Azure Functions v4** HTTP trigger (`functions/api.ts`)
 - Middleware stack: `helmet()` → `cors()` → `express.json({limit:'50kb'})` → `morgan()` → routes → `errorHandler`
-- **Authentication**: bcrypt PIN verification → JWT (`jsonwebtoken`, 12h expiry, `JWT_SECRET` env var)
+- **Authentication**: bcrypt PIN verification → HMAC-SHA256 signed token (`utils/simpleToken.ts`, 12h expiry, static baked-in secret overridable via `MM_TOKEN_SECRET`)
 - **Authorization**: `authMiddleware` sets `req.user`; `requireRole('admin')` guards admin routes
 - **Rate limiting**: `express-rate-limit` on `POST /api/auth/login` — 5 requests per 15 minutes per IP
 - **Validation**: All endpoint inputs validated with **Zod** schemas (`src/validators/`)
@@ -70,14 +70,14 @@ App
 
 | Service | Responsibility |
 |---|---|
-| `authService` | PIN login, bcrypt verify, JWT issue |
+| `authService` | PIN login, bcrypt verify, token issue |
 | `menuService` | Return canonical 6×4 menu grid |
 | `ordersService` | CRUD orders; server-side total recomputation; transactional inserts |
 | `adminService` | Aggregate summary (totals, breakdown), order list per date |
 
 ### Data Flow (Create Order)
 
-1. Client POSTs `{ orderDate, orderType, paymentMethod, items[] }` with JWT
+1. Client POSTs `{ orderDate, orderType, paymentMethod, items[] }` with auth token
 2. `authMiddleware` verifies token, sets `req.user`
 3. `createOrderSchema` validates payload via Zod
 4. `ordersService.createOrder`:
@@ -111,7 +111,7 @@ Indexes: `IX_Orders_OrderDate`, `IX_Orders_Completed`, `IX_OrderItems_OrderId`
 
 - No secrets in Git — `local.settings.json` gitignored, `local.settings.example.json` documents env vars
 - PINs stored as bcrypt hashes (cost factor 10)
-- JWT with 12h expiry; `authMiddleware` on all protected routes
+- HMAC-SHA256 token with 12h expiry; `authMiddleware` on all protected routes
 - All SQL uses parameterized queries (`request.input()`)
 - `helmet()` sets security headers; CSP restricts to `'self'` + Azure SWA origin
 - JSON body limited to 50kb

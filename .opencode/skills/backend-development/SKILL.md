@@ -121,9 +121,9 @@ throw Object.assign(new Error('Cannot edit a completed order'), { status: 400 })
 ## Configuration management
 
 - Env loading: `db/pool.ts` `loadEnvConfig()` reads `.env.development` / `.env.production`, then `loadLocalSettings()` reads `local.settings.json` (dev only). Never read env files ad hoc in services.
-- Required env vars: `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SQL_PORT`, `JWT_SECRET`, `ALLOWED_ORIGINS`.
+- Required env vars: `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SQL_PORT`, `ALLOWED_ORIGINS`. Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback).
 - Never commit secrets. `local.settings.json` and `.env.*` are gitignored. Document new keys in `local.settings.example.json`.
-- Access env via `process.env.KEY` with a safe default only for non-sensitive values (`NODE_ENV`, `SQL_PORT`). `JWT_SECRET` MUST be set in production — an empty secret is a critical security failure.
+- Access env via `process.env.KEY` with a safe default only for non-sensitive values (`NODE_ENV`, `SQL_PORT`). `SQL_PASSWORD` must be set. `MM_TOKEN_SECRET` is optional (baked-in fallback in `utils/simpleToken.ts`).
 
 ## Dependency injection
 

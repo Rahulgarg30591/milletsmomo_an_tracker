@@ -82,7 +82,7 @@ Authoritative quality standards for all workspaces. Code is the source of truth.
 - **Files**: `<resource>Routes.ts` / `<resource>Controller.ts` / `<resource>Service.ts` / `<resource>Validators.ts` (backend); `PascalCase.tsx` for components/pages, `camelCase.ts` for utils/hooks/api (frontend).
 - **Functions/variables**: `camelCase` (`getOrders`, `createOrder`, `isFullyVerified`).
 - **Types/interfaces**: `PascalCase` (`OrderItem`, `SupplyVerification`).
-- **Constants**: `UPPER_SNAKE_CASE` (`FILLINGS`, `FULL_PRICES`, `JWT_SECRET`).
+- **Constants**: `UPPER_SNAKE_CASE` (`FILLINGS`, `FULL_PRICES`, `DEFAULT_SECRET`).
 - **Zod schemas**: `<purpose>Schema` (`createOrderSchema`).
 - **React components**: `PascalCase` (`OrderCard`, `PinPad`). Props interface: `<Component>Props`.
 - **React hooks**: `use<Resource>` / `use<Behavior>` (`useOrders`, `useMenu`, `useAuth`).
