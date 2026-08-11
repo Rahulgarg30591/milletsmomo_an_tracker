@@ -30,7 +30,7 @@ export async function getVerification(
     const { date } = getSupplyVerificationSchema.parse(req.query);
     const verification = await supplyVerificationService.getVerification(date);
     if (!verification) {
-      res.json({ items: [], isFullyVerified: false, conflictCount: 0, orderDate: date });
+      res.json({ items: [], isFullyVerified: false, conflictCount: 0, noSupply: false, orderDate: date });
       return;
     }
     res.json(verification);

@@ -18,6 +18,7 @@ export interface SupplyVerification {
   items: SupplyVerificationItem[];
   isFullyVerified: boolean;
   conflictCount: number;
+  noSupply: boolean;
 }
 
 export async function getVerification(date: string): Promise<SupplyVerification | null> {
@@ -31,6 +32,30 @@ export async function getVerification(date: string): Promise<SupplyVerification 
   );
 
   if (orderResult.recordset.length === 0) {
+    // No supply order — check if admin marked "No Supply Today"
+    const noSupplyReq = pool.request();
+    noSupplyReq.input('orderDate', sql.Date, date);
+    noSupplyReq.input('operationType', sql.NVarChar, 'supply_order');
+    const noSupplyResult = await noSupplyReq.query(
+      `SELECT metadata FROM StaffOperationLogs
+       WHERE order_date = @orderDate AND operation_type = @operationType`,
+    );
+    const noSupply = noSupplyResult.recordset.some((row: any) => {
+      try {
+        return row.metadata ? JSON.parse(row.metadata)?.noSupply === true : false;
+      } catch {
+        return false;
+      }
+    });
+    if (noSupply) {
+      return {
+        orderDate: date,
+        items: [],
+        isFullyVerified: false,
+        conflictCount: 0,
+        noSupply: true,
+      };
+    }
     return null; // No supply order for this date
   }
 
@@ -90,6 +115,7 @@ export async function getVerification(date: string): Promise<SupplyVerification 
     items,
     isFullyVerified,
     conflictCount,
+    noSupply: false,
   };
 }
 

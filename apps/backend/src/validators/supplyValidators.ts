@@ -15,3 +15,7 @@ export const createSupplyOrderSchema = z.object({
 export const getSupplyOrderSchema = z.object({
   date: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
 });
+
+export const noSupplySchema = z.object({
+  orderDate: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
+});

@@ -269,7 +269,7 @@ export default function StockPage() {
               </Typography>
               <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.5 }}>
                 {supplyVerification?.items.length === 0
-                  ? 'Place and verify a supply order first'
+                  ? 'No supply order for this date. Closing stock from yesterday will appear here once recorded.'
                   : 'Could not load stock data'}
               </Typography>
             </Box>

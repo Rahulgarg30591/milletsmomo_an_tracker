@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download, ClipboardCopy } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download, ClipboardCopy, Ban } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder } from '../api/supplyApi';
+import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder, getNoSupply, markNoSupply } from '../api/supplyApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
 import { getStaffLogs } from '../api/staffLogApi';
@@ -52,6 +52,14 @@ export default function SupplyOrderPage() {
     queryFn: () => getSupplyVerification(date),
     enabled: !!date,
   });
+
+  // No-supply flag for selected date
+  const { data: noSupplyData } = useQuery({
+    queryKey: ['noSupply', date],
+    queryFn: () => getNoSupply(date),
+    enabled: !!date,
+  });
+  const noSupply = noSupplyData?.noSupply === true;
 
   // Yesterday's closing stock
   const yesterday = addDays(date, -1);
@@ -196,6 +204,30 @@ export default function SupplyOrderPage() {
       setToast({ message: 'Failed to save order', type: 'error' });
     },
   });
+
+  const noSupplyMutation = useMutation({
+    mutationFn: () => markNoSupply(date),
+    onSuccess: () => {
+      vibrate(haptics.success);
+      setToast({ message: 'Marked as No Supply Today', type: 'success' });
+      qc.invalidateQueries({ queryKey: ['noSupply', date] });
+      qc.invalidateQueries({ queryKey: ['staffLogs', date, 'supply_order'] });
+      navigate('/admin');
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error || 'Failed to mark no supply';
+      setToast({ message: msg, type: 'error' });
+    },
+  });
+
+  const handleNoSupply = () => {
+    vibrate(haptics.light);
+    if (existingOrder?.id) {
+      setToast({ message: 'A supply order already exists for this date.', type: 'error' });
+      return;
+    }
+    noSupplyMutation.mutate();
+  };
 
   const renderSection = (title: string, sectionItems: SupplyItem[]) => (
     <Paper sx={{
@@ -369,11 +401,13 @@ export default function SupplyOrderPage() {
           alignItems: 'center',
           justifyContent: 'space-between',
           background: (() => {
+            if (noSupply) return isDark ? 'rgba(156,163,175,0.08)' : '#F3F4F6';
             if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.08)' : '#F9FAFB';
             if (verification.isFullyVerified) return isDark ? 'rgba(45,138,78,0.08)' : '#F0FDF4';
             return isDark ? 'rgba(220,38,38,0.08)' : '#FEF2F2';
           })(),
           border: `1px solid ${(() => {
+            if (noSupply) return isDark ? 'rgba(156,163,175,0.25)' : 'rgba(156,163,175,0.3)';
             if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.2)' : 'rgba(156,163,175,0.2)';
             if (verification.isFullyVerified) return isDark ? 'rgba(45,138,78,0.2)' : 'rgba(45,138,78,0.15)';
             return isDark ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.15)';
@@ -381,6 +415,7 @@ export default function SupplyOrderPage() {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {(() => {
+              if (noSupply) return <Ban size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />;
               if (!verification?.items || verification.items.length === 0) return <Package size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />;
               if (verification.isFullyVerified) return <CheckCircle2 size={18} color={isDark ? '#4ADE80' : '#16A34A'} />;
               return <AlertCircle size={18} color={isDark ? '#F87171' : '#DC2626'} />;
@@ -388,6 +423,7 @@ export default function SupplyOrderPage() {
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
                 {(() => {
+                  if (noSupply) return 'No Supply Today';
                   if (!verification?.items || verification.items.length === 0) return 'No Supply Created';
                   if (verification.isFullyVerified) return 'Supply Verified';
                   return 'Not Verified';
@@ -395,6 +431,7 @@ export default function SupplyOrderPage() {
               </Typography>
               <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                 {(() => {
+                  if (noSupply) return 'Marked by admin — no supply arrived today';
                   if (!verification?.items || verification.items.length === 0) return 'No supply order found for this date';
                   if (verification.isFullyVerified) return (verification.conflictCount && verification.conflictCount > 0 ? `${verification.conflictCount} conflict(s) reported` : 'All items match');
                   return 'Staff has not verified today\'s supply yet';
@@ -411,17 +448,20 @@ export default function SupplyOrderPage() {
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             backgroundColor: (() => {
+              if (noSupply) return isDark ? 'rgba(156,163,175,0.18)' : '#E5E7EB';
               if (!verification?.items || verification.items.length === 0) return isDark ? 'rgba(156,163,175,0.15)' : '#F3F4F6';
               if (verification.isFullyVerified) return isDark ? 'rgba(74,222,128,0.15)' : '#D1FAE5';
               return isDark ? 'rgba(248,113,113,0.15)' : '#FEE2E2';
             })(),
             color: (() => {
+              if (noSupply) return isDark ? '#9CA3AF' : '#6B7280';
               if (!verification?.items || verification.items.length === 0) return isDark ? '#9CA3AF' : '#6B7280';
               if (verification.isFullyVerified) return isDark ? '#4ADE80' : '#16A34A';
               return isDark ? '#F87171' : '#DC2626';
             })(),
           }}>
             {(() => {
+              if (noSupply) return 'No Supply';
               if (!verification?.items || verification.items.length === 0) return 'No Supply';
               if (verification.isFullyVerified) return 'Verified';
               return 'Pending';
@@ -559,6 +599,28 @@ export default function SupplyOrderPage() {
           }}
         >
           Create Order Text
+        </Button>
+
+        <Button
+          fullWidth
+          variant={noSupply ? 'contained' : 'outlined'}
+          size="large"
+          disabled={noSupply || noSupplyMutation.isPending || !!existingOrder?.id}
+          onClick={handleNoSupply}
+          startIcon={<Ban size={18} />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: 2,
+            py: 1.5,
+            fontSize: '0.95rem',
+            mt: 1.5,
+            borderColor: noSupply ? undefined : 'divider',
+            color: noSupply ? undefined : 'text.secondary',
+            backgroundColor: noSupply ? (isDark ? 'rgba(156,163,175,0.2)' : '#E5E7EB') : undefined,
+          }}
+        >
+          {noSupply ? 'No Supply Today — Recorded' : noSupplyMutation.isPending ? 'Marking...' : 'No Supply Today'}
         </Button>
 
         {/* Supply Change Logs */}

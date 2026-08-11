@@ -1,5 +1,5 @@
 import { client } from './client';
-import type { SupplyItem, SupplyOrder, CreateSupplyOrderRequest, SupplyOrderLog } from '../types';
+import type { SupplyItem, SupplyOrder, CreateSupplyOrderRequest, SupplyOrderLog, NoSupplyResponse } from '../types';
 
 export async function getSupplyItems(): Promise<SupplyItem[]> {
   const res = await client.get<SupplyItem[]>('/admin/supply/items');
@@ -23,5 +23,15 @@ export async function getSupplyOrderLogs(date: string): Promise<SupplyOrderLog[]
 
 export async function saveSupplyOrder(data: CreateSupplyOrderRequest): Promise<SupplyOrder> {
   const res = await client.put<SupplyOrder>('/admin/supply/order', data);
+  return res.data;
+}
+
+export async function getNoSupply(date: string): Promise<NoSupplyResponse> {
+  const res = await client.get<NoSupplyResponse>('/admin/supply/no-supply', { params: { date } });
+  return res.data;
+}
+
+export async function markNoSupply(orderDate: string): Promise<NoSupplyResponse> {
+  const res = await client.post<NoSupplyResponse>('/admin/supply/no-supply', { orderDate });
   return res.data;
 }

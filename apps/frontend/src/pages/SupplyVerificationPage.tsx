@@ -105,7 +105,7 @@ export default function SupplyVerificationPage() {
       <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 } }}>
         <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
           <Typography sx={{ color: 'text.secondary', fontSize: '1rem', fontWeight: 600 }}>
-            No supply order for this date
+            {supplyVerification?.noSupply ? 'No Supply Today — Recorded by admin' : 'No supply order for this date'}
           </Typography>
           <Button
             sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}

@@ -30,8 +30,10 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
     `SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate`,
   );
 
+  // No supply order today: fall back to active momo_packet supply items so
+  // closing stock can still be recorded against yesterday's leftovers.
   if (orderResult.recordset.length === 0) {
-    return null;
+    return getClosingStockFallback(date);
   }
 
   const orderId = orderResult.recordset[0].id;
@@ -134,4 +136,63 @@ export async function createClosingStock(
   }
 
   return (await getClosingStock(orderDate))!;
+}
+
+/**
+ * Fallback when no supply order exists for a date (e.g. "No Supply Today").
+ * Returns active momo_packet supply items as the basis for recording closing
+ * stock, overlaid with any already-recorded DailyClosingStock rows for today.
+ * Supply contribution is implicitly 0; the frontend derives live stock from
+ * yesterday's closing stock.
+ */
+async function getClosingStockFallback(date: string): Promise<ClosingStock> {
+  const pool = await getPool();
+
+  const itemsReq = pool.request();
+  const itemsResult = await itemsReq.query(
+    `SELECT id, display_name, category, pieces_per
+     FROM SupplyItems
+     WHERE is_active = 1 AND category = 'momo_packet'
+     ORDER BY id`,
+  );
+
+  const stockReq = pool.request();
+  stockReq.input('orderDate', sql.Date, date);
+  const stockResult = await stockReq.query(
+    `SELECT supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason
+     FROM DailyClosingStock WHERE order_date = @orderDate`,
+  );
+
+  const stockMap = new Map<number, { packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }>();
+  for (const row of stockResult.recordset) {
+    stockMap.set(row.supply_item_id, {
+      packetsLeft: row.packets_left,
+      piecesLeft: row.pieces_left,
+      wastagePieces: row.wastage_pieces,
+      hasConflict: row.has_conflict,
+      conflictReason: row.conflict_reason,
+    });
+  }
+
+  const items: ClosingStockItem[] = itemsResult.recordset.map((row: any) => {
+    const s = stockMap.get(row.id);
+    return {
+      supplyItemId: row.id,
+      displayName: row.display_name,
+      category: row.category,
+      piecesPer: row.pieces_per,
+      packetsLeft: s ? s.packetsLeft : 0,
+      piecesLeft: s ? s.piecesLeft : 0,
+      wastagePieces: s ? s.wastagePieces : 0,
+      hasConflict: s ? s.hasConflict : false,
+      conflictReason: s ? s.conflictReason : null,
+      totalPiecesLeft: (s ? s.packetsLeft : 0) * row.pieces_per + (s ? s.piecesLeft : 0),
+    };
+  });
+
+  return {
+    orderDate: date,
+    items,
+    isSubmitted: stockResult.recordset.length > 0,
+  };
 }

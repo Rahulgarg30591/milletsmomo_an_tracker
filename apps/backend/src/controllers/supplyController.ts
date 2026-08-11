@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createSupplyOrderSchema, getSupplyOrderSchema } from '../validators/supplyValidators.js';
+import { createSupplyOrderSchema, getSupplyOrderSchema, noSupplySchema } from '../validators/supplyValidators.js';
 import * as supplyService from '../services/supplyService.js';
 import * as staffLogService from '../services/staffLogService.js';
 
@@ -136,6 +136,56 @@ export async function upsertOrder(
   } catch (err: any) {
     if (err.name === 'ZodError') {
       res.status(400).json({ error: 'Invalid input', details: err.errors });
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function markNoSupply(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { orderDate } = noSupplySchema.parse(req.body);
+    const userId = req.user!.id;
+
+    const existing = await supplyService.getSupplyOrder(orderDate);
+    if (existing) {
+      res.status(400).json({ error: 'A supply order already exists for this date. Delete or update it instead.' });
+      return;
+    }
+
+    const details = 'Marked as No Supply Today';
+    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
+      noSupply: true,
+      orderDate,
+    });
+
+    res.status(201).json({ orderDate, noSupply: true });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function getNoSupply(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { date } = getSupplyOrderSchema.parse(req.query);
+    const logs = await staffLogService.getLogs(date, 'supply_order', 50);
+    const noSupply = logs.some((l) => l.metadata?.noSupply === true);
+    res.json({ orderDate: date, noSupply });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
       return;
     }
     next(err);

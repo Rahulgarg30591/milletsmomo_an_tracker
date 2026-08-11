@@ -407,11 +407,12 @@ export default function ClosingStockPage() {
   }
 
   if (!closingStock || closingStock.items.length === 0) {
+    const hasYesterdayLeftovers = yesterdayClosing?.items.some((i) => i.category === 'momo_packet' && i.totalPiecesLeft > 0);
     return (
       <Box sx={{ minHeight: 'calc(100vh - 56px)', backgroundColor: 'background.default', p: { xs: 1, md: 2 } }}>
         <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
           <Typography sx={{ color: 'text.secondary', fontSize: '1rem', fontWeight: 600 }}>
-            No supply order for this date
+            {hasYesterdayLeftovers ? 'Loading yesterday\u2019s leftovers\u2026' : 'No stock items to record for this date'}
           </Typography>
           <Button
             sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
@@ -447,6 +448,30 @@ export default function ClosingStockPage() {
             <Typography sx={{ fontSize: '0.8rem', fontWeight: 600 }}>{targetDate}</Typography>
           </Box>
         </Box>
+
+        {/* No Supply Today banner */}
+        {supplyVerification && supplyVerification.items.length === 0 && (
+          <Paper sx={{
+            borderRadius: 2,
+            p: 1.5,
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            background: isDark ? 'rgba(156,163,175,0.08)' : '#F3F4F6',
+            border: `1px solid ${isDark ? 'rgba(156,163,175,0.25)' : 'rgba(156,163,175,0.3)'}`,
+          }}>
+            <Package size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.primary' }}>
+                No Supply Today
+              </Typography>
+              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                Recording yesterday{"\u2019"}s leftover momos. Supply contribution is 0.
+              </Typography>
+            </Box>
+          </Paper>
+        )}
 
         {/* Liv Stock Summary */}
         {expectedStock.length > 0 && (

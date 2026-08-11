@@ -104,6 +104,11 @@ export interface CreateSupplyOrderRequest {
   items: { supplyItemId: number; quantity: number }[];
 }
 
+export interface NoSupplyResponse {
+  orderDate: string;
+  noSupply: boolean;
+}
+
 export interface SupplyOrderLog {
   id: number;
   orderDate: string;
@@ -130,6 +135,7 @@ export interface SupplyVerification {
   items: SupplyVerificationItem[];
   isFullyVerified: boolean;
   conflictCount: number;
+  noSupply?: boolean;
 }
 
 export interface CreateSupplyVerificationRequest {

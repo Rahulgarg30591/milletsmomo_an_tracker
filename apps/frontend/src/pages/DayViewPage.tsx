@@ -532,8 +532,7 @@ export default function DayViewPage() {
         </Box>
 
         {/* Quick Actions */}
-        {((supplyVerification && supplyVerification.items.length > 0) ||
-          (supplyVerification?.isFullyVerified) ||
+        {(!!supplyVerification ||
           (closingStock && closingStock.items.length > 0)) && (
           <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
             <Box
@@ -568,6 +567,16 @@ export default function DayViewPage() {
                         : 'Supply pending'}
                     </Typography>
                   )}
+                  {supplyVerification && supplyVerification.items.length === 0 && supplyVerification.noSupply && (
+                    <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: 'text.secondary', fontWeight: 600 }}>
+                      No supply today
+                    </Typography>
+                  )}
+                  {supplyVerification && supplyVerification.items.length === 0 && !supplyVerification.noSupply && (
+                    <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: 'text.secondary', fontWeight: 600 }}>
+                      No supply order
+                    </Typography>
+                  )}
                   {closingStock && closingStock.items.length > 0 && (
                     <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.78rem' }, color: closingStock.isSubmitted ? 'success.main' : 'text.secondary', fontWeight: 600 }}>
                       {closingStock.isSubmitted ? 'Closing recorded' : 'Closing pending'}
@@ -585,7 +594,7 @@ export default function DayViewPage() {
                   gap: { xs: 0.75, md: 1 },
                 }}
               >
-            {supplyVerification && supplyVerification.items.length > 0 && (
+            {supplyVerification && (
                   <Button
                 variant="outlined"
                 size="small"
@@ -594,7 +603,7 @@ export default function DayViewPage() {
                   vibrate(haptics.light);
                   navigate(`/day/${date}/verify`);
                 }}
-                disabled={supplyVerification.isFullyVerified && supplyVerification.conflictCount === 0}
+                disabled={!supplyVerification.noSupply && supplyVerification.isFullyVerified && supplyVerification.conflictCount === 0}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
@@ -602,19 +611,25 @@ export default function DayViewPage() {
                   py: { xs: 1, md: 1.25 },
                   fontSize: { xs: '0.75rem', md: '0.85rem' },
                   justifyContent: 'flex-start',
-                  borderColor: supplyVerification.isFullyVerified
-                    ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
-                    : 'warning.main',
-                  color: supplyVerification.isFullyVerified
-                    ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
-                    : 'warning.main',
-                  background: isDark
-                    ? (supplyVerification.isFullyVerified
-                      ? (supplyVerification.conflictCount > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(45,138,78,0.08)')
-                      : 'rgba(245,158,11,0.08)')
-                    : (supplyVerification.isFullyVerified
-                      ? (supplyVerification.conflictCount > 0 ? '#FEF2F2' : '#F0FDF4')
-                      : '#FFFBEB'),
+                  borderColor: supplyVerification.noSupply
+                    ? 'divider'
+                    : supplyVerification.isFullyVerified
+                      ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
+                      : 'warning.main',
+                  color: supplyVerification.noSupply
+                    ? 'text.secondary'
+                    : supplyVerification.isFullyVerified
+                      ? (supplyVerification.conflictCount > 0 ? 'error.main' : 'success.main')
+                      : 'warning.main',
+                  background: supplyVerification.noSupply
+                    ? 'transparent'
+                    : isDark
+                      ? (supplyVerification.isFullyVerified
+                        ? (supplyVerification.conflictCount > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(45,138,78,0.08)')
+                        : 'rgba(245,158,11,0.08)')
+                      : (supplyVerification.isFullyVerified
+                        ? (supplyVerification.conflictCount > 0 ? '#FEF2F2' : '#F0FDF4')
+                        : '#FFFBEB'),
                   position: 'relative',
                   overflow: 'visible',
                   '&:disabled': {
@@ -630,12 +645,14 @@ export default function DayViewPage() {
                     Verify Supply
                   </Typography>
                   <Typography sx={{ fontSize: '0.65rem', color: 'inherit', opacity: 0.8, fontWeight: 500 }}>
-                    {supplyVerification.isFullyVerified
-                      ? (supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} conflict` : 'Verified')
-                      : 'Not verified'}
+                    {supplyVerification.noSupply
+                      ? 'No Supply Today'
+                      : supplyVerification.isFullyVerified
+                        ? (supplyVerification.conflictCount > 0 ? `${supplyVerification.conflictCount} conflict` : 'Verified')
+                        : 'Not verified'}
                   </Typography>
                 </Box>
-                {!supplyVerification.isFullyVerified && (
+                {supplyVerification.items.length > 0 && !supplyVerification.isFullyVerified && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -652,7 +669,7 @@ export default function DayViewPage() {
                 )}
               </Button>
             )}
-            {supplyVerification?.isFullyVerified && (
+            {(supplyVerification && (supplyVerification.isFullyVerified || supplyVerification.items.length === 0)) && (
               <Button
                 variant="outlined"
                 size="small"
@@ -679,7 +696,7 @@ export default function DayViewPage() {
                     Live Stock
                   </Typography>
                   <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
-                    View remaining stock
+                    {supplyVerification.items.length === 0 ? 'Yesterday\u2019s leftovers' : 'View remaining stock'}
                   </Typography>
                 </Box>
               </Button>
