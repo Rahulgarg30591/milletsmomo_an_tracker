@@ -62,7 +62,7 @@ App
 - Middleware stack: `helmet()` → `cors()` → `express.json({limit:'50kb'})` → `morgan()` → routes → `errorHandler`
 - **Authentication**: bcrypt PIN verification → HMAC-SHA256 signed token (`utils/simpleToken.ts`, 12h expiry, static baked-in secret overridable via `MM_TOKEN_SECRET`)
 - **Authorization**: `authMiddleware` sets `req.user`; `requireRole('admin')` guards admin routes
-- **Rate limiting**: `express-rate-limit` on `POST /api/auth/login` — 5 requests per 15 minutes per IP
+- **Rate limiting**: `express-rate-limit` on `POST /api/auth/login` — 5 requests per 30 seconds per IP
 - **Validation**: All endpoint inputs validated with **Zod** schemas (`src/validators/`)
 - **Database**: Azure SQL via `mssql` driver; singleton connection pool (`db/pool.ts`). ALL queries use parameterized `request.input()` — no string interpolation.
 

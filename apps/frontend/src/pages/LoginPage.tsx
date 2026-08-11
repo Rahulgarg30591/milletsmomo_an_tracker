@@ -49,7 +49,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const status = err.response?.status;
       if (status === 429) {
-        setErrorMessage('Too many login attempts. Wait 15 minutes.');
+        setErrorMessage('Too many login attempts. Wait 30 seconds.');
       } else if (status === 401) {
         setErrorMessage('Invalid PIN. Try again.');
       } else if (!err.response) {

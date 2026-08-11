@@ -831,7 +831,7 @@ Deleting an order (`DELETE /api/orders/:id`) permanently removes the order and c
 { "error": "Invalid PIN" }
 ```
 
-> ⚠ Rate-limited to 5 attempts per 15 minutes per IP.
+> ⚠ Rate-limited to 5 attempts per 30 seconds per IP.
 
 ### 11.3 GET /api/menu
 
@@ -1000,7 +1000,7 @@ Security is a first-class requirement. All of the following **MUST** be implemen
 1. `helmet()` — sets secure HTTP headers (CSP, X-Content-Type-Options, X-Frame-Options: DENY, HSTS, etc.).
 2. `cors({ origin: process.env.ALLOWED_ORIGIN, credentials: true })` — restrict to deployed frontend origin only; **no wildcard `"*"` in production**.
 3. `express.json({ limit: '50kb' })` — small body size limit.
-4. `express-rate-limit` on `/api/auth/login`: 5 requests per 15 minutes per IP.
+4. `express-rate-limit` on `/api/auth/login`: 5 requests per 30 seconds per IP.
 5. Request logging via `morgan` — **MUST NOT log request bodies or Authorization headers** (to avoid logging PINs).
 6. Centralised `errorHandler.ts` — **NEVER includes stack traces in production responses**.
 

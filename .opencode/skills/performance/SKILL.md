@@ -91,7 +91,7 @@ Authoritative performance guidance for both workspaces. Code is the source of tr
 
 - `Promise.all` for independent DB queries (e.g., fetching orders and supply data for the same date in parallel).
 - Never use `Promise.all` for queries inside a transaction — they must be sequential and on the same transaction.
-- `bcrypt.compare` is CPU-bound (~100ms at cost 10) — do not parallelize many login attempts; the rate limiter (5/15min) handles this.
+- `bcrypt.compare` is CPU-bound (~100ms at cost 10) — do not parallelize many login attempts; the rate limiter (5/30s) handles this.
 
 ### Memory
 

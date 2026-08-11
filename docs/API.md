@@ -12,7 +12,7 @@ All protected endpoints require an `Authorization: Bearer <token>` header. Token
 
 Authenticate with PIN.
 
-**Rate-limited**: 5 requests per 15 minutes per IP.
+**Rate-limited**: 5 requests per 30 seconds per IP.
 
 #### Request
 
