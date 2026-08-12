@@ -25,8 +25,7 @@ export default function LoginPage() {
     if (auth.role === 'admin') {
       navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
     } else {
-      const safeRedirect = redirectPath && !redirectPath.startsWith('/admin') ? redirectPath : `/day/${getToday()}`;
-      navigate(safeRedirect, { replace: true });
+      navigate(`/day/${getToday()}`, { replace: true });
     }
   }, [isAuthenticated, auth.role, auth.token, navigate, redirectPath]);
 
