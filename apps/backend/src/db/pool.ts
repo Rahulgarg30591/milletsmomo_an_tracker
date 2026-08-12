@@ -69,19 +69,34 @@ const config: sql.config = {
 };
 
 let pool: sql.ConnectionPool | null = null;
+let lastUsedAt = 0;
+const STALE_MS = 25_000;
+
+function watch(p: sql.ConnectionPool) {
+  p.on('error', () => {
+    pool = null;
+    lastUsedAt = 0;
+  });
+}
 
 export async function getPool(): Promise<sql.ConnectionPool> {
   if (!config.server) {
     throw new Error('Database not configured: SQL_SERVER environment variable is not set');
   }
-  if (pool && pool.connected) return pool;
+  if (pool && pool.connected && Date.now() - lastUsedAt <= STALE_MS) {
+    lastUsedAt = Date.now();
+    return pool;
+  }
   if (pool && pool.connecting) {
     return new Promise<sql.ConnectionPool>((resolve, reject) => {
       pool!.once('connect', resolve);
       pool!.once('error', reject);
     });
   }
+  if (pool) await closePool();
   pool = await sql.connect(config);
+  watch(pool);
+  lastUsedAt = Date.now();
   return pool;
 }
 
@@ -90,4 +105,5 @@ export async function closePool(): Promise<void> {
     await pool.close();
     pool = null;
   }
+  lastUsedAt = 0;
 }
