@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { trackLogout } from '../utils/tracking';
+import { isTokenValid } from '../utils/tokenUtils';
 
 interface AuthState {
   token: string | null;
@@ -17,27 +18,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/**
- * Validates a signed token by checking format and expiry.
- * Returns false for "undefined", null, expired, or malformed tokens.
- */
-function isTokenValid(token: string | null): boolean {
-  if (!token || token === 'undefined') return false;
-  const parts = token.split('.');
-  if (parts.length !== 3) return false;
-  try {
-    const payload = JSON.parse(atob(parts[1]));
-    if (typeof payload.exp !== 'number') return false;
-    return payload.exp > Date.now() / 1000;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Clears all auth-related storage entries.
- * Used when a stale or expired token is detected on init.
- */
 function clearAuthStorage(): void {
   localStorage.removeItem('token');
   localStorage.removeItem('role');

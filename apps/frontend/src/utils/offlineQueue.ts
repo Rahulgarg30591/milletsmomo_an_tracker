@@ -1,5 +1,6 @@
 import { client } from '../api/client';
 import { queryClient } from '../api/queryClient';
+import { hasValidToken } from './tokenUtils';
 
 const DB_NAME = 'mm_offline_queue';
 const DB_VERSION = 1;
@@ -119,6 +120,8 @@ export async function updateMutationRetry(id: string): Promise<void> {
 }
 
 export async function flushOfflineQueue(): Promise<number> {
+  if (!hasValidToken()) return 0;
+
   const mutations = await getQueuedMutations();
   if (mutations.length === 0) return 0;
 

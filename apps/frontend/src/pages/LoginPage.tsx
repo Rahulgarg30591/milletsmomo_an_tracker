@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Button, Paper, Typography, useTheme } from '@mui/material';
 
@@ -16,18 +16,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login: doLogin, isAuthenticated, auth } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
-  const redirectPath = searchParams.get('redirect') || null;
+
+  const redirectRef = useRef<string | null>(searchParams.get('redirect') || null);
+
+  useEffect(() => {
+    if (searchParams.toString()) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!isAuthenticated()) return;
+    const redirectPath = redirectRef.current;
     if (auth.role === 'admin') {
       navigate(redirectPath?.startsWith('/admin') ? redirectPath : '/admin', { replace: true });
     } else {
       navigate(`/day/${getToday()}`, { replace: true });
     }
-  }, [isAuthenticated, auth.role, auth.token, navigate, redirectPath]);
+  }, [isAuthenticated, auth.role, auth.token, navigate]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -35,8 +43,11 @@ export default function LoginPage() {
     }
   }, [errorMessage]);
 
+  const submitInFlight = useRef(false);
+
   const handlePinComplete = async (pin: string) => {
-    if (loading || isAuthenticated()) return;
+    if (submitInFlight.current || loading || isAuthenticated()) return;
+    submitInFlight.current = true;
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -48,7 +59,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const status = err.response?.status;
       if (status === 429) {
-        setErrorMessage('Too many login attempts. Wait 30 seconds.');
+        setErrorMessage('Too many login attempts. Wait 60 seconds.');
       } else if (status === 401) {
         setErrorMessage('Invalid PIN. Try again.');
       } else if (!err.response) {
@@ -57,6 +68,7 @@ export default function LoginPage() {
         setErrorMessage('Login failed. Try again.');
       }
     } finally {
+      submitInFlight.current = false;
       setLoading(false);
     }
   };
