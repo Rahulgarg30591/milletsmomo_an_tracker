@@ -439,17 +439,17 @@ export default function AdminDashboardPage() {
 
   const plateCounts = useMemo(() => {
     if (!menuData?.items || adminOrders.length === 0) {
-      return PLATE_PREPARATIONS.map((prep) => ({ prep, Veg: 0, Paneer: 0, 'Cheese Corn': 0 }));
+      return PLATE_PREPARATIONS.map((prep) => ({ prep, Veg: 0, Paneer: 0, 'Cheese Corn': 0, Platter: 0 }));
     }
     const menuMap = new Map<string, MenuItem>((menuData.items as MenuItem[]).map((i) => [i.displayName, i]));
     const grid: Record<string, Record<string, number>> = {};
     for (const prep of PLATE_PREPARATIONS) {
-      grid[prep] = { Veg: 0, Paneer: 0, 'Cheese Corn': 0 };
+      grid[prep] = { Veg: 0, Paneer: 0, 'Cheese Corn': 0, Platter: 0 };
     }
     for (const order of adminOrders) {
       for (const item of order.items) {
         const mi = menuMap.get(item.itemName);
-        if (!mi || mi.preparation === 'Steam' || mi.filling === 'Platter') continue;
+        if (!mi || mi.preparation === 'Steam') continue;
         if (!grid[mi.preparation] || !(mi.filling in grid[mi.preparation])) continue;
         grid[mi.preparation][mi.filling] += item.quantity / 6;
       }
@@ -459,6 +459,7 @@ export default function AdminDashboardPage() {
       Veg: Math.round(grid[prep].Veg * 10) / 10,
       Paneer: Math.round(grid[prep].Paneer * 10) / 10,
       'Cheese Corn': Math.round(grid[prep]['Cheese Corn'] * 10) / 10,
+      Platter: Math.round(grid[prep].Platter * 10) / 10,
     }));
   }, [adminOrders, menuData]);
 
@@ -953,6 +954,7 @@ export default function AdminDashboardPage() {
                             <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Veg</TableCell>
                             <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Paneer</TableCell>
                             <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Cheese Corn</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>Platter</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -962,6 +964,7 @@ export default function AdminDashboardPage() {
                               <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row.Veg || '-'}</TableCell>
                               <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row.Paneer || '-'}</TableCell>
                               <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row['Cheese Corn'] || '-'}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.75rem' }}>{row.Platter || '-'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
