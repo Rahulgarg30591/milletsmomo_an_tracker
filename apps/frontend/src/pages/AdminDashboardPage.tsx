@@ -40,6 +40,8 @@ const MOMO_PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothe
 // Category ordering for the breakdown charts and tables.
 const PREP_ORDER = [...MOMO_PREP_ORDER, BEVERAGE_CATEGORY];
 const FILL_ORDER = ['Veg', 'Paneer', 'Cheese Corn', 'Platter'];
+// A platter plate is made of 2 momos of each of these fillings.
+const PLATTER_FILLINGS = ['Veg', 'Paneer', 'Cheese Corn'];
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Steam': '#6B8E6B',
@@ -374,21 +376,28 @@ export default function AdminDashboardPage() {
 
       const openingTotalPieces = yestTotalPieces + supplyTotalPieces;
 
-      const filling = item.displayName.includes('Cheese Corn') ? 'Cheese Corn'
-        : (item.category === 'sauce' || item.category === 'dip') ? '' : item.displayName.split(' ')[0];
+      // Supply display names are not spaced like menu fillings — the packet is
+      // "CheeseCorn Momo Packet" while the menu filling is "Cheese Corn" — so
+      // match loosely, as StockPage does. Comparing the strings directly left
+      // Cheese Corn matching nothing, so neither its own sales nor its share of
+      // a platter were ever deducted.
+      const filling = (item.category === 'sauce' || item.category === 'dip') ? ''
+        : /cheese\s*corn/i.test(item.displayName) ? 'Cheese Corn'
+        : /paneer/i.test(item.displayName) ? 'Paneer'
+        : /veg/i.test(item.displayName) ? 'Veg'
+        : '';
 
       let consumedPieces = 0;
       for (const order of adminOrders) {
         for (const orderItem of order.items) {
           const menuItem = menuMap.get(orderItem.menuItemId);
           if (!menuItem) continue;
-          if (menuItem.filling === filling) {
-            consumedPieces += orderItem.quantity;
-          } else if (menuItem.filling === 'Platter') {
-            const perType = Math.round(orderItem.quantity / 3);
-            if (filling === 'Veg' || filling === 'Paneer' || filling === 'Cheese Corn') {
-              consumedPieces += perType;
+          if (menuItem.filling === 'Platter') {
+            if (PLATTER_FILLINGS.includes(filling)) {
+              consumedPieces += Math.round(orderItem.quantity / 3);
             }
+          } else if (menuItem.filling === filling) {
+            consumedPieces += orderItem.quantity;
           }
         }
       }
