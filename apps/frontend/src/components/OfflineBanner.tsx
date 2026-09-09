@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { keyframes } from '@emotion/react';
 import { WifiOff, Wifi, CloudOff, CloudCheck } from 'lucide-react';
 import { Box, Typography } from '@mui/material';
 import { getQueuedMutations, flushOfflineQueue, isOnline } from '../utils/offlineQueue';
+
+// CSS rather than framer-motion: this banner is mounted app-wide, so the
+// static import cost every page load ~126 kB. The previous AnimatePresence
+// exit never ran regardless — the early return below unmounts the subtree
+// before AnimatePresence can animate it out.
+const slideDown = keyframes`
+  from { opacity: 0; transform: translateY(-40px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 export default function OfflineBanner() {
   const [online, setOnline] = useState(isOnline());
@@ -59,13 +68,7 @@ export default function OfflineBanner() {
   if (!show && queuedCount === 0) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -40, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      >
+    <Box sx={{ animation: `${slideDown} 260ms ease-out both` }}>
         <Box
           sx={{
             position: 'fixed',
@@ -104,7 +107,6 @@ export default function OfflineBanner() {
             </Box>
           )}
         </Box>
-      </motion.div>
-    </AnimatePresence>
+    </Box>
   );
 }

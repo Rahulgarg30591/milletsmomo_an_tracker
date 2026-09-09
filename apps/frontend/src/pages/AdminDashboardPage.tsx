@@ -522,7 +522,7 @@ export default function AdminDashboardPage() {
     }
   }, [sortBy]);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     vibrate(haptics.light);
     if (data?.date !== startDate || adminOrdersData?.date !== startDate) {
       setToast({ message: 'Data still loading, please wait', type: 'error' });
@@ -532,7 +532,8 @@ export default function AdminDashboardPage() {
       setToast({ message: 'No data to export', type: 'error' });
       return;
     }
-    exportDashboardToExcel({
+    try {
+      await exportDashboardToExcel({
       startDate,
       endDate,
       totalOrders: data?.totalOrders ?? 0,
@@ -548,8 +549,11 @@ export default function AdminDashboardPage() {
       fillingView,
       staffLogs,
       supplyLogs,
-    });
-    setToast({ message: 'Excel exported!', type: 'success' });
+      });
+      setToast({ message: 'Excel exported!', type: 'success' });
+    } catch {
+      setToast({ message: 'Export failed, please retry', type: 'error' });
+    }
   }, [adminOrders, adminOrdersData, data, allItemsBreakdown, supplyOrders, supplyVerifications, fillingBreakdown, fillingView, staffLogs, supplyLogs, startDate, endDate]);
 
   // Payment chart data

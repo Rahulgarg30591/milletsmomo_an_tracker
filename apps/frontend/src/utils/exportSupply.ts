@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import type { SupplyOrder, SupplyOrderLog, StaffOperationLog, SupplyVerification, SupplyItem } from '../types';
 
 interface SupplyExportData {
@@ -10,7 +9,13 @@ interface SupplyExportData {
   items: SupplyItem[];
 }
 
-export function exportSupplyToExcel(data: SupplyExportData) {
+/**
+ * Builds and downloads the supply workbook.
+ *
+ * `xlsx` is loaded on demand; see exportDashboardToExcel.
+ */
+export async function exportSupplyToExcel(data: SupplyExportData) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // 1. Summary Sheet

@@ -1,5 +1,12 @@
-import { motion } from 'framer-motion';
 import { Skeleton, Box, type BoxProps } from '@mui/material';
+import { keyframes } from '@emotion/react';
+
+// CSS rather than framer-motion: this renders on the first paint of the day
+// view, and importing framer-motion here pulled ~126 kB onto that path.
+const enter = keyframes`
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+`;
 
 interface SkeletonLoaderProps extends BoxProps {
   count?: number;
@@ -20,11 +27,12 @@ export default function SkeletonLoader({
   return (
     <Box {...boxProps}>
       {Array.from({ length: count }).map((_, i) => (
-        <motion.div
+        <Box
           key={i}
-          initial={animate ? { opacity: 0, x: -8 } : false}
-          animate={animate ? { opacity: 1, x: 0 } : false}
-          transition={{ delay: i * 0.06, type: 'spring', stiffness: 400, damping: 30 }}
+          sx={animate ? {
+            animation: `${enter} 260ms ease-out both`,
+            animationDelay: `${i * 0.06}s`,
+          } : undefined}
         >
           <Skeleton
             variant={variant}
@@ -33,7 +41,7 @@ export default function SkeletonLoader({
             sx={{ mb: 1.5, borderRadius: 2 }}
             animation="wave"
           />
-        </motion.div>
+        </Box>
       ))}
     </Box>
   );

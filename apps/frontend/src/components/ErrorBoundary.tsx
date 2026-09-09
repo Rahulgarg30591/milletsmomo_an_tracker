@@ -1,5 +1,5 @@
+import { keyframes } from '@emotion/react';
 import { Component, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Box, Typography, Button } from '@mui/material';
 
@@ -12,6 +12,14 @@ interface State {
   hasError: boolean;
   error?: Error;
 }
+
+// CSS rather than framer-motion: ErrorBoundary wraps the whole app, so a
+// static framer-motion import put ~126 kB on the critical path of every page
+// load to animate a screen that virtually never renders.
+const popIn = keyframes`
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+`;
 
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
@@ -38,11 +46,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             background: (theme) => theme.palette.background.default,
           }}
         >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          >
+          <Box sx={{ animation: `${popIn} 260ms ease-out both` }}>
             <Box
               sx={{
                 textAlign: 'center',
@@ -83,7 +87,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 Reload App
               </Button>
             </Box>
-          </motion.div>
+          </Box>
         </Box>
       );
     }

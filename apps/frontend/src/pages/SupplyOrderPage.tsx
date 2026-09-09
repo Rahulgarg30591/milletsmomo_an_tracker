@@ -347,17 +347,21 @@ export default function SupplyOrderPage() {
               size="small"
               variant="outlined"
               startIcon={<Download size={14} />}
-              onClick={() => {
+              onClick={async () => {
                 vibrate(haptics.light);
-                exportSupplyToExcel({
-                  date,
-                  existingOrder,
-                  logs,
-                  staffLogs,
-                  verification,
-                  items,
-                });
-                setToast({ message: 'Excel exported!', type: 'success' });
+                try {
+                  await exportSupplyToExcel({
+                    date,
+                    existingOrder,
+                    logs,
+                    staffLogs,
+                    verification,
+                    items,
+                  });
+                  setToast({ message: 'Excel exported!', type: 'success' });
+                } catch {
+                  setToast({ message: 'Export failed, please retry', type: 'error' });
+                }
               }}
               sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, fontSize: '0.75rem', py: 0.5, px: 1.5 }}
             >

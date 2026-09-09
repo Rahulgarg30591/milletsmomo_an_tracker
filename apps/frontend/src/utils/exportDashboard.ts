@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import type { Order, SupplyOrder, SupplyOrderItem, StaffOperationLog, SupplyOrderLog } from '../types';
 
 interface ExportData {
@@ -27,7 +26,14 @@ function formatSupplyItems(items: SupplyOrderItem[]) {
   return items.map((i) => `${i.quantity}x ${i.displayName}`).join(', ');
 }
 
-export function exportDashboardToExcel(data: ExportData) {
+/**
+ * Builds and downloads the dashboard workbook.
+ *
+ * `xlsx` is ~277 kB and only needed once someone actually exports, so it is
+ * imported on demand rather than shipped with the dashboard route.
+ */
+export async function exportDashboardToExcel(data: ExportData) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // 1. Summary Sheet

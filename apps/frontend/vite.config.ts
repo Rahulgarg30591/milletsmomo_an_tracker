@@ -28,7 +28,21 @@ export default defineConfig({
       workbox: {
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
+        // Excluded from precache, not from the build: xlsx (~277 kB) and
+        // recharts (~366 kB) are admin-only, so precaching them made every
+        // staff phone download ~640 kB it never executes. They are fetched on
+        // demand and then runtime-cached below.
+        globIgnores: ['**/vendor-xlsx-*.js', '**/vendor-charts-*.js'],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/vendor-(xlsx|charts)-.*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'heavy-vendor-chunks',
+              expiration: { maxAgeSeconds: 86400 * 30, maxEntries: 8 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|svg|gif|ico|woff2?)$/,
             handler: 'CacheFirst',
@@ -57,6 +71,7 @@ export default defineConfig({
           'vendor-query': ['@tanstack/react-query'],
           'vendor-motion': ['framer-motion'],
           'vendor-charts': ['recharts'],
+          // Kept a named chunk so the precache exclusion can match it by name.
           'vendor-xlsx': ['xlsx'],
           'vendor-icons': ['lucide-react'],
         },
