@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { withDbRetry } from '../db/pool.js';
 import { signToken } from '../utils/simpleToken.js';
 
 export interface LoginResult {
@@ -15,13 +15,13 @@ export async function login(
   role: string,
   pin: string,
 ): Promise<LoginResult> {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('role', sql.NVarChar, role);
-
-  const result = await request.query(
-    'SELECT id, username, role, pin_hash, display_name FROM Users WHERE role = @role AND is_active = 1',
-  );
+  const result = await withDbRetry((pool) => {
+    const request = pool.request();
+    request.input('role', sql.NVarChar, role);
+    return request.query(
+      'SELECT id, username, role, pin_hash, display_name FROM Users WHERE role = @role AND is_active = 1',
+    );
+  });
 
   if (result.recordset.length === 0) {
     throw Object.assign(new Error('Invalid PIN'), { status: 401 });

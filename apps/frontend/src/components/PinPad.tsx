@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Button, CircularProgress } from '@mui/material';
 import { keyframes } from '@emotion/react';
 import { Delete, ArrowLeft } from 'lucide-react';
@@ -17,9 +17,10 @@ interface PinPadProps {
   errorMessage: string | null;
   onErrorAck: () => void;
   loading?: boolean;
+  statusMessage?: string | null;
 }
 
-export default function PinPad({ onComplete, errorMessage, onErrorAck, loading }: PinPadProps) {
+export default function PinPad({ onComplete, errorMessage, onErrorAck, loading, statusMessage }: PinPadProps) {
   const [pin, setPin] = useState('');
   const [shake, setShake] = useState(false);
 
@@ -35,21 +36,30 @@ export default function PinPad({ onComplete, errorMessage, onErrorAck, loading }
     }
   }, [errorMessage, triggerShake]);
 
+  // Taps that land in one React batch all see the same `pin`, so reading it
+  // from the closure silently dropped digits when tapping quickly. The
+  // functional update keeps every tap, and an effect submits once full.
   const handleDigit = useCallback(
     (digit: string) => {
       if (loading) return;
       if (errorMessage) onErrorAck();
-      if (pin.length < 4) {
-        vibrate(haptics.light);
-        const next = pin + digit;
-        setPin(next);
-        if (next.length === 4) {
-          onComplete(next);
-        }
-      }
+      vibrate(haptics.light);
+      setPin((prev) => (prev.length < 4 ? prev + digit : prev));
     },
-    [pin, errorMessage, onErrorAck, onComplete, loading]
+    [errorMessage, onErrorAck, loading]
   );
+
+  const submittedPin = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pin.length === 0) {
+      submittedPin.current = null;
+      return;
+    }
+    if (pin.length < 4 || submittedPin.current === pin) return;
+    submittedPin.current = pin;
+    onComplete(pin);
+  }, [pin, onComplete]);
 
   const handleDelete = useCallback(() => {
     if (loading) return;
@@ -79,14 +89,11 @@ export default function PinPad({ onComplete, errorMessage, onErrorAck, loading }
       } else if (key === 'Escape') {
         e.preventDefault();
         handleClear();
-      } else if (key === 'Enter' && pin.length === 4) {
-        e.preventDefault();
-        onComplete(pin);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDigit, handleDelete, handleClear, onComplete, pin, loading]);
+  }, [handleDigit, handleDelete, handleClear, loading]);
 
   const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
 
@@ -139,8 +146,13 @@ export default function PinPad({ onComplete, errorMessage, onErrorAck, loading }
 
       {/* Loading state */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 2 }}>
           <CircularProgress size={24} color="primary" />
+          {statusMessage && (
+            <Box sx={{ color: 'text.secondary', fontSize: '0.8rem', textAlign: 'center' }}>
+              {statusMessage}
+            </Box>
+          )}
         </Box>
       )}
 

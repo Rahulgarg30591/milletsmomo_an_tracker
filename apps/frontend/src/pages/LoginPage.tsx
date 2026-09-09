@@ -6,6 +6,7 @@ import { Leaf, Shield, User } from 'lucide-react';
 import PinPad from '../components/PinPad';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../api/authApi';
+import { warmUpApi } from '../api/warmup';
 import { trackLogin, markSessionStart } from '../utils/tracking';
 import { vibrate, haptics } from '../theme/tokens';
 import { getToday } from '../utils/dateUtils';
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { login: doLogin, isAuthenticated, auth } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,15 +45,36 @@ export default function LoginPage() {
     }
   }, [errorMessage]);
 
+  // Start waking the API now, and again whenever this tab is brought back to
+  // the foreground, so the PIN submit does not pay the cold-start cost.
+  useEffect(() => {
+    warmUpApi();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') warmUpApi();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    window.addEventListener('online', warmUpApi);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      window.removeEventListener('online', warmUpApi);
+    };
+  }, []);
+
   const submitInFlight = useRef(false);
 
-  const handlePinComplete = async (pin: string) => {
-    if (submitInFlight.current || loading || isAuthenticated()) return;
+  const handlePinComplete = useCallback(async (pin: string) => {
+    if (submitInFlight.current || isAuthenticated()) return;
     submitInFlight.current = true;
     setLoading(true);
     setErrorMessage(null);
+    setStatusMessage(null);
     try {
-      const res = await login({ role, pin });
+      const res = await login(
+        { role, pin },
+        { onRetry: () => setStatusMessage('Waking up the server, hold on...') },
+      );
       doLogin(res.token, res.role, res.displayName, pin);
       markSessionStart();
       trackLogin({ role: res.role, displayName: res.displayName });
@@ -62,16 +85,21 @@ export default function LoginPage() {
         setErrorMessage('Too many login attempts. Wait 60 seconds.');
       } else if (status === 401) {
         setErrorMessage('Invalid PIN. Try again.');
+      } else if (status === 400) {
+        setErrorMessage('Enter your 4-digit PIN.');
+      } else if (!navigator.onLine) {
+        setErrorMessage('You are offline. Check your connection.');
       } else if (!err.response) {
-        setErrorMessage('Network error. Check connection.');
+        setErrorMessage('Server is not responding. Tap a digit to retry.');
       } else {
-        setErrorMessage('Login failed. Try again.');
+        setErrorMessage('Server is waking up. Try again in a moment.');
       }
     } finally {
       submitInFlight.current = false;
       setLoading(false);
+      setStatusMessage(null);
     }
-  };
+  }, [role, doLogin, isAuthenticated]);
 
   const handleErrorAck = useCallback(() => {
     setErrorMessage(null);
@@ -239,6 +267,7 @@ export default function LoginPage() {
             errorMessage={errorMessage}
             onErrorAck={handleErrorAck}
             loading={loading}
+            statusMessage={statusMessage}
           />
         </Paper>
       </Box>

@@ -1,4 +1,5 @@
 import { formatDateTimeIST } from './dateUtils';
+import { decodeTokenSegment } from './tokenUtils';
 
 export interface ClientLogEntry {
   id: string;
@@ -68,8 +69,8 @@ function getUserInfo(): { userId?: number; userRole?: string } {
   try {
     const token = localStorage.getItem('token');
     if (!token) return {};
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return { userId: payload.id, userRole: payload.role };
+    const payload = decodeTokenSegment(token.split('.')[1]) as { sub?: string; role?: string };
+    return { userId: payload.sub ? Number(payload.sub) : undefined, userRole: payload.role };
   } catch {
     return {};
   }

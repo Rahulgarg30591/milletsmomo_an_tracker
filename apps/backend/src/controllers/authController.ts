@@ -13,15 +13,17 @@ export async function login(
     const { role, pin } = loginSchema.parse(req.body);
     const result = await authService.login(role, pin);
 
-    try {
+    // Awaited, but bounded: the Functions host freezes the instance once the
+    // handler resolves, and a query torn down mid-flight poisons the pool for
+    // the next login. Audit logging must never fail or delay the login itself.
+    await Promise.race([
       staffLogService.createLog(formatDate(getNowIST()), 'login', result.userId, `Login: ${result.role} (${result.displayName})`, {
         userId: result.userId,
         role: result.role,
         displayName: result.displayName,
-      }).catch(() => {});
-    } catch {
-      // Log failure should not block login
-    }
+      }).catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
 
     res.status(200).json(result);
   } catch (err: any) {
