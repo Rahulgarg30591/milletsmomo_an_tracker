@@ -49,7 +49,7 @@ export const BEVERAGE_CATEGORY = 'Beverages';
 
 export const BEVERAGES: { name: string; price: number }[] = [
   { name: 'Cold Drink', price: 10 },
-  { name: 'Water', price: 20 },
+  { name: 'Water', price: 10 },
 ];
 
 export function buildMenu(): MenuItem[] {

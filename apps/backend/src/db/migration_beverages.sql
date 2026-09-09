@@ -32,7 +32,7 @@ ELSE
 IF NOT EXISTS (SELECT 1 FROM MenuItems WHERE id = @waterId)
 BEGIN
     INSERT INTO MenuItems (id, filling, preparation, display_name, full_price, half_price, is_active)
-    VALUES (@waterId, 'Water', 'Beverages', 'Water', 20.00, 20.00, 1);
+    VALUES (@waterId, 'Water', 'Beverages', 'Water', 10.00, 10.00, 1);
     PRINT 'MenuItems: Water added (id 30).';
 END
 ELSE
@@ -46,7 +46,7 @@ UPDATE MenuItems
  WHERE id = @coldDrinkId;
 
 UPDATE MenuItems
-   SET preparation = 'Beverages', full_price = 20.00, half_price = 20.00, is_active = 1
+   SET preparation = 'Beverages', full_price = 10.00, half_price = 10.00, is_active = 1
  WHERE id = @waterId;
 
 PRINT 'Beverage migration complete.';

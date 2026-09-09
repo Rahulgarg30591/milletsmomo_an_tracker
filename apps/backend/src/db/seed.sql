@@ -49,7 +49,7 @@ IF NOT EXISTS (SELECT 1 FROM MenuItems WHERE id = 29)
 
 IF NOT EXISTS (SELECT 1 FROM MenuItems WHERE id = 30)
   INSERT INTO MenuItems (id, filling, preparation, display_name, full_price, half_price)
-  VALUES (30, 'Water', 'Beverages', 'Water', 20.00, 20.00);
+  VALUES (30, 'Water', 'Beverages', 'Water', 10.00, 10.00);
 
 SET IDENTITY_INSERT MenuItems OFF;
 

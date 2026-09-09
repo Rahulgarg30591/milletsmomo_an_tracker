@@ -23,7 +23,7 @@ describe('beverage menu items', () => {
 
   it('prices beverages flat, per unit', () => {
     expect(coldDrink.fullPrice).toBe(10);
-    expect(water.fullPrice).toBe(20);
+    expect(water.fullPrice).toBe(10);
   });
 
   it('leaves momo ids untouched', () => {
@@ -36,14 +36,14 @@ describe('computeLineTotal for beverages', () => {
   it('multiplies unit price by quantity', () => {
     expect(computeLineTotal(coldDrink.id, 1, false)).toEqual({ unitPrice: 10, lineTotal: 10 });
     expect(computeLineTotal(coldDrink.id, 3, false)).toEqual({ unitPrice: 10, lineTotal: 30 });
-    expect(computeLineTotal(water.id, 2, false)).toEqual({ unitPrice: 20, lineTotal: 40 });
+    expect(computeLineTotal(water.id, 2, false)).toEqual({ unitPrice: 10, lineTotal: 20 });
   });
 
   it('ignores plate math at momo-significant quantities', () => {
     // 3 and 6 are the half/full plate presets for momos; a beverage must not
     // fall through to plate pricing at those counts.
-    expect(computeLineTotal(water.id, 3, true).lineTotal).toBe(60);
-    expect(computeLineTotal(water.id, 6, false).lineTotal).toBe(120);
+    expect(computeLineTotal(water.id, 3, true).lineTotal).toBe(30);
+    expect(computeLineTotal(water.id, 6, false).lineTotal).toBe(60);
   });
 
   it('ignores isHalf entirely', () => {
@@ -57,9 +57,9 @@ describe('computeOrderTotal with a mixed order', () => {
     const total = computeOrderTotal([
       { menuItemId: vegSteam.id, quantity: 6, isHalf: false }, // full plate = 89
       { menuItemId: coldDrink.id, quantity: 2, isHalf: false }, // 2 x 10 = 20
-      { menuItemId: water.id, quantity: 1, isHalf: false }, // 1 x 20 = 20
+      { menuItemId: water.id, quantity: 1, isHalf: false }, // 1 x 10 = 10
     ]);
-    expect(total).toBe(vegSteam.fullPrice + 20 + 20);
+    expect(total).toBe(vegSteam.fullPrice + 20 + 10);
   });
 
   it('still prices a momo-only order the same as before', () => {
