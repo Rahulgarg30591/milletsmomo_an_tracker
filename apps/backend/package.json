@@ -13,6 +13,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate:staff-logs": "tsx scripts/migrateStaffLogs.ts",
     "db:migrate:order-comment": "tsx scripts/migrateOrderComment.ts",
+    "db:migrate:beverages": "tsx scripts/migrateBeverages.ts",
     "logs:purge": "tsx scripts/purgeOldLogs.ts",
     "maintain:storage": "tsx scripts/maintainStorage.ts",
     "db:export": "tsx scripts/exportDatabase.ts",

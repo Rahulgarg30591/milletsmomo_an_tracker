@@ -16,6 +16,10 @@ export function calculateLineTotal(
   if (!item) {
     return { unitPrice: 0, lineTotal: 0 };
   }
+  // Beverages are flat-priced per unit; plate math does not apply.
+  if (item.isBeverage) {
+    return { unitPrice: item.fullPrice, lineTotal: item.fullPrice * quantity };
+  }
   // Half plate preset: exactly 3 momos at half price
   if (isHalf && !isCustom && quantity === 3) {
     return { unitPrice: item.halfPrice, lineTotal: item.halfPrice };

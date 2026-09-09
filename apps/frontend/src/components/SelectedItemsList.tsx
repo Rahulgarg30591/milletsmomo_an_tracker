@@ -16,7 +16,7 @@ export default function SelectedItemsList() {
     .map(([menuItemId, item]) => {
       const menuItem = getMenuItem(menuItemId);
       const { lineTotal } = calculateLineTotal(menuItemId, item.quantity, item.isHalf, item.isCustom);
-      return { menuItemId, ...item, menuItem, lineTotal };
+      return { menuItemId, ...item, menuItem, lineTotal, isBeverage: !!menuItem?.isBeverage };
     });
 
   const total = calculateOrderTotal(items.map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity, isHalf: i.isHalf, isCustom: i.isCustom })));
@@ -29,7 +29,8 @@ export default function SelectedItemsList() {
     return 6;
   };
 
-  const stepLabel = (item: { isHalf: boolean; isCustom: boolean }) => {
+  const stepLabel = (item: { isHalf: boolean; isCustom: boolean; isBeverage?: boolean }) => {
+    if (item.isBeverage) return 'qty';
     if (item.isHalf) return '½';
     if (item.isCustom) return 'cst';
     return 'pcs';
@@ -89,24 +90,26 @@ export default function SelectedItemsList() {
                       lineHeight: 1.3,
                     }}
                   >
-                    {item.menuItem?.preparation || '—'}
+                    {item.isBeverage ? item.menuItem?.displayName : (item.menuItem?.preparation || '—')}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.375 }}>
-                    <Box
-                      component="span"
-                      sx={{
-                        fontSize: { xs: '0.55rem', md: '0.65rem' },
-                        fontWeight: 700,
-                        color: isDark ? '#8CB4E8' : '#2563EB',
-                        backgroundColor: isDark ? '#1A2E4A' : '#EFF6FF',
-                        px: { xs: 0.375, md: 0.5 },
-                        py: 0.05,
-                        borderRadius: { xs: 0.5, md: 0.75 },
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {item.menuItem?.filling || 'Unknown'}
-                    </Box>
+                    {!item.isBeverage && (
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: { xs: '0.55rem', md: '0.65rem' },
+                          fontWeight: 700,
+                          color: isDark ? '#8CB4E8' : '#2563EB',
+                          backgroundColor: isDark ? '#1A2E4A' : '#EFF6FF',
+                          px: { xs: 0.375, md: 0.5 },
+                          py: 0.05,
+                          borderRadius: { xs: 0.5, md: 0.75 },
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {item.menuItem?.filling || 'Unknown'}
+                      </Box>
+                    )}
                     {item.isHalf && !item.isCustom && (
                       <Box
                         component="span"
@@ -124,7 +127,7 @@ export default function SelectedItemsList() {
                         ½
                       </Box>
                     )}
-                    {item.isCustom && (
+                    {item.isCustom && !item.isBeverage && (
                       <Box
                         component="span"
                         sx={{
@@ -148,7 +151,7 @@ export default function SelectedItemsList() {
                         fontWeight: 500,
                       }}
                     >
-                      {formatQuantity(item.quantity)}
+                      {formatQuantity(item.quantity, item.isBeverage)}
                     </Typography>
                   </Box>
                 </Box>

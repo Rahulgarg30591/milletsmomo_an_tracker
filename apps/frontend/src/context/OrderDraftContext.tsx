@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { getMenuItem } from '../utils/pricing';
 
 interface DraftItem {
   quantity: number;
@@ -26,6 +27,7 @@ interface OrderDraftContextType {
   setValidationErrors: (errors: ValidationErrors) => void;
   clearValidationError: (field: 'type' | 'payment') => void;
   addItem: (menuItemId: number) => void;
+  addUnit: (menuItemId: number) => void;
   removeItem: (menuItemId: number) => void;
   incrementItem: (menuItemId: number) => void;
   decrementItem: (menuItemId: number) => void;
@@ -76,6 +78,25 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         next.set(menuItemId, { ...existing, quantity: existing.quantity + 6 });
       } else {
         next.set(menuItemId, { quantity: 6, isHalf: false, isCustom: false });
+      }
+      return { ...prev, items: next };
+    });
+  }, []);
+
+  /**
+   * Adds one unit of a flat-priced item (beverages).
+   *
+   * Stored as `isCustom` so the existing per-unit stepping — `step()` in
+   * SelectedItemsList, incrementByPlate/decrementByPlate — applies unchanged.
+   */
+  const addUnit = useCallback((menuItemId: number) => {
+    setDraft((prev) => {
+      const next = new Map(prev.items);
+      const existing = next.get(menuItemId);
+      if (existing) {
+        next.set(menuItemId, { ...existing, quantity: existing.quantity + 1 });
+      } else {
+        next.set(menuItemId, { quantity: 1, isHalf: false, isCustom: true });
       }
       return { ...prev, items: next };
     });
@@ -224,6 +245,12 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
   }) => {
     const items = new Map<number, DraftItem>();
     for (const item of order.items) {
+      // Beverages are always per-unit; 3 or 6 of them must not be mistaken for
+      // a momo half/full plate preset.
+      if (getMenuItem(item.menuItemId)?.isBeverage) {
+        items.set(item.menuItemId, { quantity: item.quantity, isHalf: false, isCustom: true });
+        continue;
+      }
       const isHalfPreset = item.isHalf && item.quantity === 3;
       const isFullPreset = !item.isHalf && item.quantity === 6;
       items.set(item.menuItemId, {
@@ -265,6 +292,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setValidationErrors,
     clearValidationError,
     addItem,
+    addUnit,
     removeItem,
     incrementItem,
     decrementItem,
@@ -287,6 +315,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     setValidationErrors,
     clearValidationError,
     addItem,
+    addUnit,
     removeItem,
     incrementItem,
     decrementItem,

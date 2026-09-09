@@ -5,6 +5,8 @@ export interface MenuItem {
   displayName: string;
   fullPrice: number;
   halfPrice: number;
+  /** Sold by the unit at a flat price, with no plate/half concept. */
+  isBeverage?: boolean;
 }
 
 export interface OrderItem {

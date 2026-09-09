@@ -13,6 +13,10 @@ export function calculateOrderTotal(
   for (const item of items) {
     const menuItem = menu.find((m) => m.id === item.menuItemId);
     if (!menuItem) continue;
+    if (menuItem.isBeverage) {
+      total += menuItem.fullPrice * item.quantity;
+      continue;
+    }
     const price = item.isHalf ? menuItem.halfPrice : menuItem.fullPrice;
     total += price * item.quantity;
   }

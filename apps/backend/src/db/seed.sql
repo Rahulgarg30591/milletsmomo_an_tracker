@@ -39,6 +39,20 @@ WHEN NOT MATCHED THEN
   INSERT (filling, preparation, display_name, full_price, half_price)
   VALUES (source.filling, source.preparation, source.display_name, source.full_price, source.half_price);
 
+-- Beverages (flat unit price, no half plate). Ids are explicit and must match
+-- buildMenu() in src/constants/menu.ts: momos hold 1-28, beverages 29-30.
+SET IDENTITY_INSERT MenuItems ON;
+
+IF NOT EXISTS (SELECT 1 FROM MenuItems WHERE id = 29)
+  INSERT INTO MenuItems (id, filling, preparation, display_name, full_price, half_price)
+  VALUES (29, 'Cold Drink', 'Beverages', 'Cold Drink', 10.00, 10.00);
+
+IF NOT EXISTS (SELECT 1 FROM MenuItems WHERE id = 30)
+  INSERT INTO MenuItems (id, filling, preparation, display_name, full_price, half_price)
+  VALUES (30, 'Water', 'Beverages', 'Water', 20.00, 20.00);
+
+SET IDENTITY_INSERT MenuItems OFF;
+
 -- ============================================
 -- 2. User accounts
 -- ============================================

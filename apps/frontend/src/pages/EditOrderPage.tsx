@@ -3,13 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, IconButton, Typography, useTheme, Chip, Paper } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ArrowLeft, ChefHat, ShoppingCart, Save } from 'lucide-react';
+import { ArrowLeft, ChefHat, ShoppingCart, Save, CupSoda } from 'lucide-react';
 import { getMenu } from '../api/menuApi';
 import { getOrders, updateOrder } from '../api/ordersApi';
 import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext';
 import { trackPageView, trackNavigation } from '../utils/tracking';
 import { calculateLineTotal, calculateOrderTotal, getMenuItem } from '../utils/pricing';
+import { BEVERAGE_CATEGORY } from 'shared';
 import MenuGrid from '../components/MenuGrid';
+import BeverageGrid from '../components/BeverageGrid';
 import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
 import SelectedItemsList from '../components/SelectedItemsList';
 import TotalBar from '../components/TotalBar';
@@ -26,6 +28,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Nepalese Kothey': '🥟',
   'Pan Fried Gravy': '🍛',
   'Fried Peri Peri': '🌶️',
+  [BEVERAGE_CATEGORY]: '🥤',
 };
 
 const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string }> = {
@@ -36,6 +39,7 @@ const CATEGORY_COLORS_LIGHT: Record<string, { bg: string; border: string; text: 
   'Nepalese Kothey': { bg: '#ECFDF5', border: '#059669', text: '#047857' },
   'Pan Fried Gravy': { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
   'Fried Peri Peri': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
+  [BEVERAGE_CATEGORY]: { bg: '#EFF6FF', border: '#2563EB', text: '#1D4ED8' },
 };
 
 const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: string }> = {
@@ -46,6 +50,7 @@ const CATEGORY_COLORS_DARK: Record<string, { bg: string; border: string; text: s
   'Nepalese Kothey': { bg: '#1A3D2A', border: '#2D8A4E', text: '#8CE8B4' },
   'Pan Fried Gravy': { bg: '#1A2E4A', border: '#2563EB', text: '#8CB4E8' },
   'Fried Peri Peri': { bg: '#3D1A1A', border: '#DC2626', text: '#FCA5A5' },
+  [BEVERAGE_CATEGORY]: { bg: '#16233D', border: '#2563EB', text: '#93C5FD' },
 };
 
 function EditOrderContent() {
@@ -98,6 +103,7 @@ function EditOrderContent() {
     if (!menuData?.items) return [];
     const groups = new Map<string, MenuItem[]>();
     menuData.items.forEach((item: MenuItem) => {
+      if (item.isBeverage) return;
       const prep = item.preparation || 'Other';
       if (!groups.has(prep)) groups.set(prep, []);
       groups.get(prep)!.push(item);
@@ -105,12 +111,24 @@ function EditOrderContent() {
     return Array.from(groups.entries());
   }, [menuData]);
 
-  const totalSelectedItems = useMemo(() => {
-    let total = 0;
-    draft.items.forEach((item) => {
-      total += item.quantity;
+  const beverageItems = useMemo(
+    () => ((menuData?.items || []) as MenuItem[]).filter((item) => item.isBeverage),
+    [menuData],
+  );
+
+  // Counted separately: a drink is not a momo, so it must not inflate the
+  // momo tally shown in the header.
+  const { momoCount, drinkCount } = useMemo(() => {
+    let momos = 0;
+    let drinks = 0;
+    draft.items.forEach((item, menuItemId) => {
+      if (getMenuItem(menuItemId)?.isBeverage) {
+        drinks += item.quantity;
+      } else {
+        momos += item.quantity;
+      }
     });
-    return total;
+    return { momoCount: momos, drinkCount: drinks };
   }, [draft.items]);
 
   useEffect(() => {
@@ -257,15 +275,26 @@ function EditOrderContent() {
               {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : ''}
             </Typography>
           </Box>
-          {totalSelectedItems > 0 && (
-            <Chip
-              icon={<ShoppingCart size={12} />}
-              label={`${totalSelectedItems} momo${totalSelectedItems > 1 ? 's' : ''}`}
-              color="primary"
-              size="small"
-              sx={{ fontWeight: 700, fontSize: { xs: '0.65rem', md: '0.75rem' }, height: { xs: 22, md: 26 } }}
-            />
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+            {momoCount > 0 && (
+              <Chip
+                icon={<ShoppingCart size={12} />}
+                label={`${momoCount} momo${momoCount > 1 ? 's' : ''}`}
+                color="primary"
+                size="small"
+                sx={{ fontWeight: 700, fontSize: { xs: '0.65rem', md: '0.75rem' }, height: { xs: 22, md: 26 } }}
+              />
+            )}
+            {drinkCount > 0 && (
+              <Chip
+                icon={<CupSoda size={12} />}
+                label={`${drinkCount} drink${drinkCount > 1 ? 's' : ''}`}
+                color="info"
+                size="small"
+                sx={{ fontWeight: 700, fontSize: { xs: '0.65rem', md: '0.75rem' }, height: { xs: 22, md: 26 } }}
+              />
+            )}
+          </Box>
         </Box>
 
         {/* Menu Grid by Category */}
@@ -305,6 +334,40 @@ function EditOrderContent() {
               </Box>
             );
           })}
+
+          {/* Beverages */}
+          {beverageItems.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 1, md: 1.5 },
+                borderRadius: { xs: 0.75, md: 1 },
+                border: { xs: 1, md: 1.5 },
+                borderColor: CATEGORY_COLORS[BEVERAGE_CATEGORY].border,
+                backgroundColor: CATEGORY_COLORS[BEVERAGE_CATEGORY].bg,
+                mb: { xs: 0.5, md: 1 },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1 }, mb: { xs: 0.75, md: 1 } }}>
+                <Typography sx={{ fontSize: { xs: '1rem', md: '1.2rem' }, lineHeight: 1 }}>
+                  {CATEGORY_ICONS[BEVERAGE_CATEGORY]}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '0.8rem', md: '1rem' },
+                    color: CATEGORY_COLORS[BEVERAGE_CATEGORY].text,
+                    letterSpacing: '-0.2px',
+                    textTransform: 'uppercase',
+                    lineHeight: 1,
+                  }}
+                >
+                  {BEVERAGE_CATEGORY}
+                </Typography>
+              </Box>
+              <BeverageGrid items={beverageItems} />
+            </Paper>
+          )}
         </Box>
 
         {/* Order Config */}

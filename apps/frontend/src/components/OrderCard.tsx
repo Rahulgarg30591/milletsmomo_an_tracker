@@ -4,6 +4,7 @@ import { memo } from 'react';
 import type { Order } from '../types';
 import { statusColors, darkStatusColors, vibrate, haptics } from '../theme/tokens';
 import { formatQuantity } from '../utils/formatQuantity';
+import { getMenuItem } from '../utils/pricing';
 
 interface OrderCardProps {
   order: Order;
@@ -184,16 +185,19 @@ function OrderCardBase({ order, onComplete, onEdit }: OrderCardProps) {
         </Box>
 
         <Box sx={{ mb: { xs: 0.75, md: 1 } }}>
-          {order.items.map((item, idx) => (
+          {order.items.map((item, idx) => {
+            const isBeverage = !!getMenuItem(item.menuItemId)?.isBeverage;
+            return (
             <Typography key={idx} sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' }, color: 'text.secondary', lineHeight: { xs: 1.4, md: 1.5 }, fontWeight: 500 }}>
-              {formatQuantity(item.quantity)} {item.itemName}
-              {item.isHalf && (
+              {formatQuantity(item.quantity, isBeverage)} {item.itemName}
+              {item.isHalf && !isBeverage && (
                 <Box component="span" sx={{ color: 'secondary.main', fontWeight: 700, ml: 0.5, fontSize: { xs: '0.7rem', md: '0.8rem' } }}>
                   (½)
                 </Box>
               )}
             </Typography>
-          ))}
+            );
+          })}
           {order.comment && (
             <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: 'text.secondary', fontStyle: 'italic', mt: 0.5, lineHeight: 1.3 }}>
               "{order.comment}"

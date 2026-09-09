@@ -37,7 +37,20 @@ export interface MenuItem {
   displayName: string;
   fullPrice: number;
   halfPrice: number;
+  /** Sold by the unit at a flat price, with no plate/half concept. */
+  isBeverage?: boolean;
 }
+
+/**
+ * Category name for beverages. Deliberately kept out of `PREPARATIONS`, which
+ * drives momo-only logic (plate counts, stock, minimum sale value).
+ */
+export const BEVERAGE_CATEGORY = 'Beverages';
+
+export const BEVERAGES: { name: string; price: number }[] = [
+  { name: 'Cold Drink', price: 10 },
+  { name: 'Water', price: 20 },
+];
 
 export function buildMenu(): MenuItem[] {
   const items: MenuItem[] = [];
@@ -52,6 +65,19 @@ export function buildMenu(): MenuItem[] {
         fullPrice: FULL_PRICES[pi][fi],
         halfPrice: HALF_PRICES[pi][fi],
       });
+    });
+  });
+  // Appended last so momo ids stay stable; these ids are the MenuItems.id
+  // values that OrderItems.menu_item_id points at.
+  BEVERAGES.forEach((bev) => {
+    items.push({
+      id: id++,
+      filling: bev.name,
+      preparation: BEVERAGE_CATEGORY,
+      displayName: bev.name,
+      fullPrice: bev.price,
+      halfPrice: bev.price,
+      isBeverage: true,
     });
   });
   return items;

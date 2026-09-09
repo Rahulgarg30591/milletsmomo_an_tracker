@@ -13,6 +13,8 @@ import { getStaffLogs } from '../api/staffLogApi';
 import { getMenu } from '../api/menuApi';
 import { getToday, getYesterday, addDays, formatDateLabel } from '../utils/dateUtils';
 import { formatQuantity } from '../utils/formatQuantity';
+import { getMenuItem } from '../utils/pricing';
+import { BEVERAGE_CATEGORY } from 'shared';
 import { exportDashboardToExcel } from '../utils/exportDashboard';
 import { useForegroundRefetch } from '../hooks/useForegroundRefetch';
 import StatChip from '../components/StatChip';
@@ -30,9 +32,13 @@ const ITEM_CHART_COLORS = [
   '#6B9B8A', '#7AABA0', '#8BB9A8', '#9CC9B8',
   '#7B8EA8', '#8B9EB8', '#9BAEC8', '#ABBED8',
   '#A86B5A', '#B87B6A', '#C88B7A', '#D89B8A',
+  '#5A8CA8', '#6FA3BF',
 ];
 
-const PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothey', 'Pan Fried Gravy', 'Fried Peri Peri'];
+// Momo preparations only — drives plate math, which beverages have no part in.
+const MOMO_PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothey', 'Pan Fried Gravy', 'Fried Peri Peri'];
+// Category ordering for the breakdown charts and tables.
+const PREP_ORDER = [...MOMO_PREP_ORDER, BEVERAGE_CATEGORY];
 const FILL_ORDER = ['Veg', 'Paneer', 'Cheese Corn', 'Platter'];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -43,6 +49,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Nepalese Kothey': '#6B9B8A',
   'Pan Fried Gravy': '#7B8EA8',
   'Fried Peri Peri': '#A86B5A',
+  [BEVERAGE_CATEGORY]: '#5A8CA8',
 };
 
 const FILLING_COLORS: Record<string, string> = {
@@ -242,13 +249,26 @@ export default function AdminDashboardPage() {
     return (menuData.items as MenuItem[]).map((item) => {
       const ordered = orderedMap.get(item.displayName);
       return {
-        itemName: `${item.preparation} ${item.filling}`,
+        itemName: item.isBeverage ? item.displayName : `${item.preparation} ${item.filling}`,
         totalQuantity: ordered?.totalQuantity || 0,
         totalRevenue: ordered?.totalRevenue || 0,
         preparation: item.preparation,
         filling: item.filling,
       };
     });
+  }, [menuData, data]);
+
+  // Minimum sale value is derived purely from momo stock consumed, so drink
+  // revenue must be excluded from the figure it is compared against.
+  const beverageRevenue = useMemo(() => {
+    const beverageNames = new Set(
+      ((menuData?.items || []) as MenuItem[]).filter((i) => i.isBeverage).map((i) => i.displayName),
+    );
+    return (data?.itemBreakdown || []).reduce(
+      (sum: number, i: { itemName: string; totalRevenue: number }) =>
+        beverageNames.has(i.itemName) ? sum + i.totalRevenue : sum,
+      0,
+    );
   }, [menuData, data]);
 
   const sortedAllItems = useMemo(() => {
@@ -435,7 +455,7 @@ export default function AdminDashboardPage() {
 
   const maxFillingValue = useMemo(() => Math.max(...fillingBreakdown.map((i) => i.value), 1), [fillingBreakdown]);
 
-  const PLATE_PREPARATIONS = PREP_ORDER.slice(1);
+  const PLATE_PREPARATIONS = MOMO_PREP_ORDER.slice(1);
 
   const plateCounts = useMemo(() => {
     if (!menuData?.items || adminOrders.length === 0) {
@@ -847,7 +867,7 @@ export default function AdminDashboardPage() {
 
             {/* Minimum Sale Value vs Actual */}
             {minSaleValueData && (() => {
-              const actualRevenue = data?.totalRevenue ?? 0;
+              const actualRevenue = (data?.totalRevenue ?? 0) - beverageRevenue;
               const delta = actualRevenue - minSaleValueData.totalMinimumSaleValue;
               const isSurplus = delta >= 0;
               const deltaColor = isSurplus ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626');
@@ -889,6 +909,11 @@ export default function AdminDashboardPage() {
                           <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: isDark ? '#4ADE80' : '#1B6B3A' }}>
                             ₹{actualRevenue.toLocaleString('en-IN')}
                           </Typography>
+                          {beverageRevenue > 0 && (
+                            <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 500 }}>
+                              (excl. ₹{beverageRevenue.toLocaleString('en-IN')} drinks)
+                            </Typography>
+                          )}
                         </Box>
                         <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, backgroundColor: deltaBg, display: 'flex', alignItems: 'center' }}>
                           <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: deltaColor }}>
@@ -1504,7 +1529,7 @@ export default function AdminDashboardPage() {
                         )}
                       </Box>
                       <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                        {order.items.map((i) => `${formatQuantity(i.quantity)} ${i.itemName}${i.isHalf ? ' (½)' : ''}`).join(', ')}
+                        {order.items.map((i) => { const bev = !!getMenuItem(i.menuItemId)?.isBeverage; return `${formatQuantity(i.quantity, bev)} ${i.itemName}${i.isHalf && !bev ? ' (½)' : ''}`; }).join(', ')}
                       </Typography>
                     </Box>
                     <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: 'primary.main' }}>
