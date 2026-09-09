@@ -62,6 +62,16 @@ export default function LoginPage() {
     };
   }, []);
 
+  // Routes are lazy-loaded, so the screen this login lands on is only fetched
+  // after navigating. Entering a PIN takes a few seconds — spend them fetching
+  // that chunk instead, so the post-login screen paints immediately.
+  useEffect(() => {
+    const prefetch = role === 'admin'
+      ? () => import('./AdminDashboardPage')
+      : () => import('./DayViewPage');
+    prefetch().catch(() => {});
+  }, [role]);
+
   const submitInFlight = useRef(false);
 
   const handlePinComplete = useCallback(async (pin: string) => {
