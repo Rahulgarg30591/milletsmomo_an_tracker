@@ -25,6 +25,7 @@ on:
           - schema
           - staff-logs
           - order-comment
+          - beverages
 
 jobs:
   migrate:
@@ -57,6 +58,7 @@ jobs:
             schema) npm run prod:db:migrate ;;
             staff-logs) npm run prod:db:migrate:staff-logs ;;
             order-comment) npm run prod:db:migrate:order-comment ;;
+            beverages) npm run prod:db:migrate:beverages ;;
           esac
 
       - name: Run seed data
