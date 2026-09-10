@@ -10,6 +10,7 @@ import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext'
 import { trackPageView, trackOrderSubmit, trackNavigation, trackSelection } from '../utils/tracking';
 import { calculateLineTotal, calculateOrderTotal, getMenuItem } from '../utils/pricing';
 import { BEVERAGE_CATEGORY } from 'shared';
+import { addFailedOrder } from '../utils/failedOrders';
 import MenuGrid from '../components/MenuGrid';
 import BeverageGrid from '../components/BeverageGrid';
 import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
@@ -59,7 +60,13 @@ function NewOrderContent() {
   const { draft, clearDraft, getItemList, setValidationErrors } = useOrderDraft();
   const configPanelRef = useRef<OrderConfigPanelHandle>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const submitContextRef = useRef<{ itemCount: number; optimisticId?: number }>({ itemCount: 0 });
+  const submitContextRef = useRef<{
+    itemCount: number;
+    optimisticId?: number;
+    payload?: Record<string, unknown>;
+    summary?: string;
+    totalAmount?: number;
+  }>({ itemCount: 0 });
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
@@ -130,9 +137,22 @@ function NewOrderContent() {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
     },
     onError: () => {
+      // The draft is already cleared and the day view already open, so hold on
+      // to the rejected order — otherwise it is lost and has to be re-keyed
+      // from memory.
+      const { payload, summary, totalAmount } = submitContextRef.current;
+      if (payload) {
+        addFailedOrder({
+          kind: 'create',
+          orderDate: date!,
+          totalAmount: totalAmount ?? 0,
+          summary: summary ?? '',
+          payload,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       vibrate(haptics.error);
-      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Failed to place order' } }));
+      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Order not saved — see the alert on this page' } }));
     },
   });
 
@@ -200,7 +220,13 @@ function NewOrderContent() {
       return { ...old, orders: [...old.orders, optimisticOrder] };
     });
 
-    submitContextRef.current = { itemCount: items.length, optimisticId: optimisticOrder.id };
+    submitContextRef.current = {
+      itemCount: items.length,
+      optimisticId: optimisticOrder.id,
+      payload,
+      totalAmount,
+      summary: optimisticItems.map((i) => `${i.quantity}x ${i.itemName}`).join(', '),
+    };
     sessionStorage.setItem('scrollToOrderId', String(optimisticOrder.id));
     trackSelection('new_order', 'submit', 'confirmed', { itemCount: items.length, totalAmount, orderType: draft.orderType, paymentMethod: draft.paymentMethod });
     clearDraft();

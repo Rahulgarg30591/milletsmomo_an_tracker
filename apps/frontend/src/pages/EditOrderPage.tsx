@@ -10,6 +10,7 @@ import { OrderDraftProvider, useOrderDraft } from '../context/OrderDraftContext'
 import { trackPageView, trackNavigation } from '../utils/tracking';
 import { calculateLineTotal, calculateOrderTotal, getMenuItem } from '../utils/pricing';
 import { BEVERAGE_CATEGORY } from 'shared';
+import { addFailedOrder } from '../utils/failedOrders';
 import MenuGrid from '../components/MenuGrid';
 import BeverageGrid from '../components/BeverageGrid';
 import OrderConfigPanel, { OrderConfigPanelHandle } from '../components/OrderConfigPanel';
@@ -59,6 +60,11 @@ function EditOrderContent() {
   const queryClient = useQueryClient();
   const { draft, clearDraft, getItemList, setValidationErrors, loadFromOrder } = useOrderDraft();
   const configPanelRef = useRef<OrderConfigPanelHandle>(null);
+  const failedContextRef = useRef<{
+    payload?: Record<string, unknown>;
+    summary?: string;
+    totalAmount?: number;
+  }>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -142,9 +148,22 @@ function EditOrderContent() {
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
     },
     onError: () => {
+      // Same reasoning as NewOrderPage: the draft is gone and the day view is
+      // already open, so keep the rejected edit recoverable.
+      const { payload, summary, totalAmount } = failedContextRef.current;
+      if (payload) {
+        addFailedOrder({
+          kind: 'update',
+          orderId: Number(orderId),
+          orderDate: date!,
+          totalAmount: totalAmount ?? 0,
+          summary: summary ?? '',
+          payload,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['orders', date] });
       vibrate(haptics.error);
-      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Failed to update order' } }));
+      window.dispatchEvent(new CustomEvent('order-error', { detail: { message: 'Changes not saved — see the alert on this page' } }));
     },
   });
 
@@ -213,6 +232,12 @@ function EditOrderContent() {
         orders: old.orders.map((o: Order) => (o.id === Number(orderId) ? optimisticOrder : o)),
       };
     });
+
+    failedContextRef.current = {
+      payload,
+      totalAmount,
+      summary: optimisticItems.map((i) => `${i.quantity}x ${i.itemName}`).join(', '),
+    };
 
     clearDraft();
     vibrate(haptics.success);

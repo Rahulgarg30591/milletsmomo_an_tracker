@@ -19,6 +19,7 @@ import { useForegroundRefetch } from '../hooks/useForegroundRefetch';
 import { trackNavigation, trackOrderComplete, trackButtonClick, trackRevenueCheck } from '../utils/tracking';
 import { useAuth } from '../context/AuthContext';
 import OrderCard from '../components/OrderCard';
+import FailedOrderAlert from '../components/FailedOrderAlert';
 import PaymentModal from '../components/PaymentModal';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import PaymentSuccessDecoration from '../components/animations/PaymentSuccessDecoration';
@@ -738,6 +739,12 @@ export default function DayViewPage() {
             </Collapse>
           </Box>
         )}
+
+        {/* Orders the server rejected — recoverable, not silently dropped */}
+        <FailedOrderAlert
+          date={date!}
+          onRetried={(message, type) => setToast({ message, type })}
+        />
 
         {/* Active Orders */}
         <Box sx={{ mb: { xs: 1, md: 1.5 } }}>
