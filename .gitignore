@@ -37,3 +37,9 @@ apps/frontend/dev-dist/
 
 # Graphify skill output (local knowledge graph artifacts)
 graphify-out
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

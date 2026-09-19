@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const API_PROXY_TARGET = process.env.VITE_API_PROXY || 'http://localhost:7071';
+
 export default defineConfig({
   plugins: [
     react(),
@@ -87,9 +89,9 @@ export default defineConfig({
       },
     },
   },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:7071',
-    },
-  },
+  // The dev server and `vite preview` both forward /api to the backend. The
+  // target is configurable so the browser tests can run their own backend on
+  // another port without colliding with a development one.
+  server: { proxy: { '/api': API_PROXY_TARGET } },
+  preview: { proxy: { '/api': API_PROXY_TARGET } },
 });

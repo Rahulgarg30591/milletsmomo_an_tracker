@@ -1,7 +1,9 @@
 const tseslint = require('typescript-eslint');
 
 module.exports = tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**'] },
+  // coverage/ and the Playwright output are generated; linting them reports
+  // problems in files nobody edits.
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/test-results/**', '**/playwright-report/**'] },
   {
     extends: [...tseslint.configs.recommended],
     files: ['**/*.ts', '**/*.tsx'],

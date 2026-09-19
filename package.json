@@ -31,9 +31,14 @@
     "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p apps/backend/tsconfig.json && tsc --noEmit -p apps/frontend/tsconfig.json",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint . --ext .ts,.tsx",
-    "generate-pin-hash": "npm run generate-pin-hash -w apps/backend"
+    "generate-pin-hash": "npm run generate-pin-hash -w apps/backend",
+    "test:int": "npm run test:int -w apps/backend",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "npm test && npm run test:int && npm run test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "eslint": "^9.22.0",
