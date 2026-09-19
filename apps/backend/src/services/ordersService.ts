@@ -150,8 +150,12 @@ export async function completeOrder(
   cashAmount?: number,
   upiAmount?: number,
 ) {
+  // cash_amount and upi_amount are selected because the no-paymentMethod
+  // branch below reports the amounts already on the order. Leaving them out
+  // made that branch read undefined and report a settled order as 0 / 0.
   const check = await query<any>(
-    'SELECT id, order_date, payment_method, is_completed, total_amount FROM orders WHERE id = $1',
+    `SELECT id, order_date, payment_method, is_completed, total_amount, cash_amount, upi_amount
+     FROM orders WHERE id = $1`,
     [id],
   );
   if (check.length === 0) {
