@@ -56,7 +56,7 @@ Run in a single workspace: `npm run <cmd> --workspace=<workspace>`.
 - **Auth**: PINs stored as bcrypt hashes (cost 10). Login returns an HMAC-SHA256 signed token (12h expiry, static baked-in secret overridable via `MM_TOKEN_SECRET`). `authMiddleware` verifies on every protected route; `requireRole('admin')` guards `/api/admin/*`.
 - **Middleware stack**: `helmet()` → `cors()` → `express.json({limit:'50kb'})` → rate-limit on `/api/auth/login` (5/min) → request logging (no bodies/headers) → routes → `errorHandler`.
 - **Validation**: Every endpoint validates input with zod schemas in `apps/backend/src/validators/`.
-- **Testing**: Backend: Vitest + Supertest (≥80% statement coverage on `src/services` and `src/utils`). Frontend: Vitest + React Testing Library, API calls mocked with MSW.
+- **Testing**: Backend: Vitest (≥80% statement coverage on `src/services` and `src/utils`). Frontend: Vitest + React Testing Library, API calls mocked with MSW.
 - **PWA**: `vite-plugin-pwa` configured; Lighthouse ≥90; installable on iOS Safari and Android Chrome; app shell loads offline.
 - **Security**: No secrets committed. `local.settings.json` gitignored; `local.settings.example.json` documents keys. `dangerouslySetInnerHTML` forbidden. CSP restricts to `'self'` + Azure SWA origin.
 - **Code quality**: TypeScript strict mode. ESLint + Prettier at root. JSDoc/TSDoc on exported functions. No unused deps.

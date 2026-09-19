@@ -12,8 +12,8 @@ Authoritative project knowledge. Code is source of truth (docs drift behind).
 - **Business**: Millets Momo — a momo/dumpling food cart.
 - **App**: "Millets Momo Order Tracker" — internal PWA, NOT customer-facing.
 - **Purpose**: Daily customer order tracking, payment recording, sales/revenue monitoring, daily reporting & analytics, supply-chain tracking (supply order → staff verification → live stock → closing stock → payment settlement reconciliation).
-- **Deployment**: Azure Static Web Apps (FE PWA) + Azure Functions v4 (Express BE) + Azure SQL (Free tier). CI/CD via GitHub Actions: PR→staging, push `main`→production. Region `centralindia`; RG `millets-momo-rg`; SWA `millets-momo-swa`; SQL `millets-momo-sql`; DB `millets-momo-db`.
-- **Tech**: React 18 + TS + Vite + MUI 6 + Framer Motion + React Query + react-router-dom v7 + Axios; Express 4 + Azure Functions v4 + mssql + bcryptjs + Zod; Azure SQL / SQL Server Edge (local Docker); npm workspaces monorepo. License ISC.
+- **Deployment**: Azure Static Web Apps (FE PWA) + Azure Functions v4 (Express BE); the database is Supabase Postgres (free tier), reached over the shared transaction pooler on port 6543 and NOT provisioned by Bicep. CI/CD via GitHub Actions: PR→staging, push `main`→production. Region `centralindia`; RG `millets-momo-rg`; SWA `millets-momo-swa`.
+- **Tech**: React 18 + TS + Vite + MUI 6 + Framer Motion + React Query + react-router-dom v7 + Axios; Express 4 + Azure Functions v4 + pg + bcryptjs + Zod; Supabase Postgres / Postgres 17 (local Docker); npm workspaces monorepo. License ISC.
 - **PWA**: installable iOS Safari + Android Chrome; offline app shell; Workbox runtime caching (`/api/menu` CacheFirst 24h, `/api/orders`+`/api/admin` NetworkFirst 5min). Theme color `#1B6B3A`, bg `#F0F4F1`.
 - **Design**: dark-green primary `#1B6B3A`, warm accent `#FF8C42`, card-based, radii 8/12/16/20px, dark mode supported.
 
@@ -258,7 +258,7 @@ All protected routes require `x-auth-token` header.
 
 `Users`, `MenuItems` (UQ filling+preparation), `Orders` (BIGINT epoch-ms PK, payment_method CHECK cash|upi|split|pending), `OrderItems` (CASCADE on order), `SupplyItems` (category CHECK momo_packet|sauce|dip), `DailySupplyOrders` (UQ order_date), `DailySupplyOrderItems` (CASCADE), `SupplyOrderLogs`, `SupplyVerifications` (UQ date+item), `DailyClosingStock` (UQ date+item, pieces_left 0..23), `StaffOperationLogs`, `ClientActivityLogs`, `DailyPaymentSettlements` (UQ order_date).
 
-All queries use parameterized `request.input()` — string interpolation into SQL forbidden.
+All queries use positional `$1` parameters — string interpolation into SQL forbidden.
 
 ## Commands (run from root)
 

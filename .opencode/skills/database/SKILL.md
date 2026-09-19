@@ -1,6 +1,6 @@
 ---
 name: database
-description: Database standards for apps/backend (Azure SQL via mssql, singleton pool, parameterized queries, transactions). Use when editing files that contain SQL or DB access — apps/backend/src/db/**, apps/backend/src/services/** (any file importing getPool or sql), or schema.sql/seed.sql. Covers query efficiency, N+1 prevention, pagination, data access patterns, transaction handling, repository usage, query readability, connection management, performance, safe migrations, and data consistency. Auto-load whenever SQL or mssql is touched. Schema is frozen — never modify it.
+description: Database standards for apps/backend (Supabase Postgres via pg, singleton pool, parameterized queries, transactions). Use when editing files that contain SQL or DB access — apps/backend/src/db/**, apps/backend/src/services/** (any file importing query/getPool/withTransaction), or schema.sql/seed.sql. Covers query efficiency, N+1 prevention, pagination, data access patterns, transaction handling, repository usage, query readability, connection management, performance, safe migrations, and data consistency. Auto-load whenever SQL is touched.
 ---
 
 # Database Standards
@@ -15,25 +15,20 @@ See the `project-context` skill for full column details, fillings, supply items,
 
 ## Parameterized queries — mandatory
 
-**ALL queries MUST use `request.input()` parameterized placeholders.** String interpolation of user data into SQL is forbidden and is the #1 security rule in this repo.
+**ALL queries MUST use positional `$1` placeholders.** String interpolation of user data into SQL is forbidden and is the #1 security rule in this repo.
 
 ```ts
 // CORRECT
-const request = pool.request();
-request.input('orderDate', sql.Date, date);
-const rows = await request.query(
-  'SELECT * FROM Orders WHERE order_date = @orderDate',
-);
+const rows = await query('SELECT * FROM orders WHERE order_date = $1', [date]);
 
 // FORBIDDEN — SQL injection
-const rows = await pool.request().query(
-  `SELECT * FROM Orders WHERE order_date = '${date}'`,
-);
+const rows = await query(`SELECT * FROM orders WHERE order_date = '${date}'`);
 ```
 
 - Bind every value that originates from user input, query params, or request bodies.
-- Use the correct `sql.<Type>` constant matching the column type: `sql.Int`, `sql.BigInt`, `sql.NVarChar`, `sql.NVarChar(n)`, `sql.Date`, `sql.Decimal(p, s)`, `sql.Bit`.
-- `BIGINT` for `Orders.id` (epoch-ms). `Decimal(8,2)` for money. `Bit` for booleans (pass `1`/`0` or `true`/`false`).
+- No type constants: pass the JS value and let the driver infer. Booleans are real booleans, dates are `'YYYY-MM-DD'` strings.
+- Placeholder numbering follows the order values are pushed, so build the array and the text together when a clause is conditional.
+- Identifiers are `snake_case`. Postgres folds unquoted names to lowercase, so a camelCase column alias must be double-quoted or it comes back lowercased.
 
 ## Dynamic `IN (...)` lists
 
@@ -41,12 +36,14 @@ When building an `IN` clause with a variable-length list (see `supplyService.cre
 
 ```ts
 const ids = items.map((i) => i.supplyItemId);
-const req = pool.request();
-ids.forEach((id, idx) => req.input(`id${idx}`, sql.Int, id));
-const result = await req.query(
-  `SELECT id, unit_price FROM SupplyItems WHERE id IN (${ids.map((_, idx) => `@id${idx}`).join(', ')})`,
+const rows = await query(
+  'SELECT id, unit_price FROM supply_items WHERE id = ANY($1::int[])',
+  [ids],
 );
 ```
+
+`= ANY($1::int[])` takes the whole list as one parameter, so there is no
+placeholder to build per id.
 
 Only the placeholder names (`@id0`, `@id1`, ...) are interpolated — these are safe (controlled identifiers), not user values.
 
@@ -67,13 +64,14 @@ The existing code has one known N+1: `supplyService.listSupplyOrders` loops over
 1. **Single query with JOIN + in-memory grouping** (preferred for parent-child, see `ordersService.getOrders`):
    ```ts
    const rows = await request.query(
-     `SELECT o.*, i.* FROM Orders o
-      LEFT JOIN OrderItems i ON i.order_id = o.id
-      WHERE o.order_date = @orderDate
+     `SELECT o.*, i.* FROM orders o
+      LEFT JOIN order_items i ON i.order_id = o.id
+      WHERE o.order_date = $1
       ORDER BY o.id DESC, i.id`,
+     [date],
    );
    const orderMap = new Map<number, Order>();
-   for (const row of rows.recordset) {
+   for (const row of rows) {
      let order = orderMap.get(row.id);
      if (!order) { order = { /* ... */ items: [] }; orderMap.set(row.id, order); }
      if (row.menu_item_id !== null) order.items.push({ /* ... */ });
@@ -97,17 +95,14 @@ The existing code has one known N+1: `supplyService.listSupplyOrders` loops over
 Use a transaction for any operation that writes to multiple tables or multiple rows and must be atomic. Existing examples: `createOrder` (Orders + N OrderItems), `updateOrder` (UPDATE + DELETE items + re-INSERT), `createSupplyOrder` (order + items + log).
 
 ```ts
-const transaction = pool.transaction();
-await transaction.begin();
-try {
-  // every request here MUST be transaction.request(), not pool.request()
-  const req = transaction.request();
-  req.input('id', sql.BigInt, id);
-  await req.query(`INSERT INTO Orders ... VALUES (@id, ...)`);
+await withTransaction(async (client) => {
+  // every statement here MUST use `client`, not the pool: a pool query would
+  // take a different connection and fall outside the transaction
+  await client.query('INSERT INTO orders (id, ...) VALUES ($1, ...)', [id, ...]);
 
-  for (const item of data.items) {
-    const itemReq = transaction.request();  // new request per query
-    // ... inputs
+  // insert children as ONE multi-row statement, not one per row
+  const { text, params } = bulkValues(data.items.map((item) => [id, ...]));
+  await client.query(`INSERT INTO order_items (...) VALUES ${text}`, params);
     await itemReq.query(`INSERT INTO OrderItems ... VALUES (...)`);
   }
 
@@ -142,12 +137,12 @@ When a query is reused across services (e.g., fetching supply items), extract a 
 Map at the service boundary, never expose raw column names to controllers or the API:
 
 ```ts
-return result.recordset.map((row) => ({
-  id: Number(row.id),              // BIGINT → number
+return rows.map((row) => ({
+  id: Number(row.id),
   orderDate: formatDate(row.order_date),
   timeLabel: row.time_label,
   paymentMethod: row.payment_method,
-  isCompleted: !!row.is_completed,  // BIT → boolean
+  isCompleted: row.is_completed,    // already a boolean
   totalAmount: row.total_amount,
   // ...
 }));
@@ -160,7 +155,7 @@ return result.recordset.map((row) => ({
 
 ## Money / decimal handling
 
-- DB columns are `DECIMAL(p,s)`. `mssql` returns these as JS `number`.
+- DB columns are `NUMERIC(p,s)`. pg returns these as strings by default; the type parsers in `db/pool.ts` convert `NUMERIC` and `INT8` to JS `number`, so do not add `parseFloat` or `Number()` at call sites.
 - Tolerance for float comparison: use `|actual - expected| > 0.01` (see settlement conflict logic). Never `===` on money.
 - Round with `Math.round` for display where the pricing logic requires it (see `computeHalfPrice`).
 
@@ -183,19 +178,17 @@ Current endpoints use date-range filtering without pagination (dataset is small 
 
 ## Safe migrations (future development)
 
-**The schema is frozen.** For future additive changes only:
-
 - **Additive only**: new tables, new nullable columns, new indexes, new `CHECK` constraints that don't reject existing rows. These are non-breaking.
 - **Never rename** an existing table or column (breaks all services). Add a new column, migrate data, switch queries, then drop the old — in separate releases.
 - **Never drop** a column or table in the same release that removes its usage — do it in a later release after confirming no code references it.
 - **Never change a column type** in-place (e.g., `INT` → `BIGINT`) — add a new column, backfill, switch, drop old.
 - Migration scripts go in `apps/backend/src/db/` and run via `npm run local:db:migrate` / `npm run prod:db:migrate`. The current `schema.sql` is a drop-and-recreate script (acceptable for dev; production migrations must be additive `ALTER` scripts, not drops).
-- Always test migrations locally against Docker SQL Edge before production.
+- Always test migrations locally against the Docker Postgres container before production.
 
 ## Data consistency
 
-- **Foreign keys with CASCADE**: `OrderItems` → `Orders` (CASCADE delete), `DailySupplyOrderItems` → `DailySupplyOrders` (CASCADE). Deleting a parent row removes children automatically.
-- **Unique constraints**: `UQ_DailySupplyOrders_Date`, `UQ_SupplyVerification_DateItem`, `UQ_DailyClosingStock_DateItem`, `UQ_DailyPaymentSettlement_Date`. Rely on these for upsert patterns — catch the duplicate-key error and handle (e.g., `updateSupplyOrder` deletes-then-recreates rather than upserting).
+- **Foreign keys with CASCADE**: `order_items` → `orders` (CASCADE delete), `daily_supply_order_items` → `daily_supply_orders` (CASCADE). Deleting a parent row removes children automatically.
+- **Unique constraints**: `uq_daily_supply_orders_date`, `uq_supply_verification_date_item`, `uq_daily_closing_stock_date_item`, `uq_daily_payment_settlement_date`. `INSERT ... ON CONFLICT` is available for upserts. Rely on these for upsert patterns — catch the duplicate-key error and handle (e.g., `updateSupplyOrder` deletes-then-recreates rather than upserting).
 - **`updateSupplyOrder` pattern**: delete existing order + items + verifications for the date, then re-create via `createSupplyOrder` with action `UPDATE`. This is the established upsert strategy — replicate it for similar date-keyed single-row resources.
 - **Server-side recomputation**: the backend recomputes all prices/totals from the canonical menu (`utils/pricing.ts`). Never trust client-supplied totals — see `security` skill.
 
@@ -203,7 +196,6 @@ Current endpoints use date-range filtering without pagination (dataset is small 
 
 - Defer to the `project-context` skill for schema details, stock computation, and filling→packet mapping.
 - Defer to code over drifted docs.
-- **Never modify `schema.sql` or `seed.sql`** to satisfy a standard. Schema is frozen.
-- Never introduce an ORM (Prisma, TypeORM, Sequelize) — `mssql` raw parameterized queries are the architecture.
+- Never introduce an ORM (Prisma, TypeORM, Sequelize) — `pg` raw parameterized queries are the architecture.
 - Never introduce a repository layer — services own data access.
 - Apply query-efficiency improvements to new/edited queries; do not mass-rewrite working queries unless a perf issue is demonstrated.

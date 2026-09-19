@@ -1,6 +1,6 @@
 ---
 name: backend-development
-description: Backend engineering standards for apps/backend (Express + Azure Functions v4 + mssql + Zod). Use when creating or editing files under apps/backend/src — controllers, services, routes, validators, middleware, utils, db, constants. Covers layered architecture, separation of concerns, service layer, controllers, API design, error handling, validation, logging, configuration, naming, async, transactions, pagination/filtering/sorting, and code organization. Auto-load whenever a backend .ts file is touched.
+description: Backend engineering standards for apps/backend (Express + Azure Functions v4 + pg + Zod). Use when creating or editing files under apps/backend/src — controllers, services, routes, validators, middleware, utils, db, constants. Covers layered architecture, separation of concerns, service layer, controllers, API design, error handling, validation, logging, configuration, naming, async, transactions, pagination/filtering/sorting, and code organization. Auto-load whenever a backend .ts file is touched.
 ---
 
 # Backend Development Standards
@@ -89,7 +89,7 @@ throw Object.assign(new Error('Cannot edit a completed order'), { status: 400 })
 ```
 
 - Map DB rows from snake_case columns to camelCase fields **at the service boundary** — controllers and clients never see raw column names.
-- Return plain objects/arrays matching the shared types. Do not return `sql.IResult` or raw recordsets.
+- Return plain objects/arrays matching the shared types. Do not return raw driver result objects.
 - For operations touching multiple tables or multiple rows that must be atomic, wrap in a transaction (see Transactions below).
 - Services must not import Express types (`Request`, `Response`). They receive already-parsed primitives.
 
@@ -121,7 +121,7 @@ throw Object.assign(new Error('Cannot edit a completed order'), { status: 400 })
 ## Configuration management
 
 - Env loading: `db/pool.ts` `loadEnvConfig()` reads `.env.development` / `.env.production`, then `loadLocalSettings()` reads `local.settings.json` (dev only). Never read env files ad hoc in services.
-- Required env vars: `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SQL_PORT`, `ALLOWED_ORIGINS`. Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback).
+- Required env vars: `DATABASE_URL`, `ALLOWED_ORIGINS`. Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback), `DB_POOL_MAX`, `DB_CONNECT_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `DB_SSL_STRICT`.
 - Never commit secrets. `local.settings.json` and `.env.*` are gitignored. Document new keys in `local.settings.example.json`.
 - Access env via `process.env.KEY` with a safe default only for non-sensitive values (`NODE_ENV`, `SQL_PORT`). `SQL_PASSWORD` must be set. `MM_TOKEN_SECRET` is optional (baked-in fallback in `utils/simpleToken.ts`).
 
@@ -158,7 +158,7 @@ const transaction = pool.transaction();
 await transaction.begin();
 try {
   const req = transaction.request();
-  req.input('id', sql.BigInt, id);
+  // bind values positionally: $1, $2, ...
   // ... more inputs
   await req.query(`INSERT INTO ... VALUES (@id, ...)`);
 

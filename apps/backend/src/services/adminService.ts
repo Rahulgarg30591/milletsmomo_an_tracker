@@ -1,5 +1,5 @@
 import { query } from '../db/pool.js';
-import { formatDate } from '../utils/dateUtils.js';
+import { ORDER_WITH_ITEMS_COLUMNS, groupOrderRows } from '../utils/orderRows.js';
 
 export async function getSummary(date: string, endDate?: string) {
   const isRange = Boolean(endDate && endDate !== date);
@@ -65,9 +65,8 @@ export async function getAdminOrders(date: string, endDate?: string) {
   const dateFilter = isRange ? 'BETWEEN $1 AND $2' : '= $1';
 
   const rows = await query<any>(
-    `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
-            o.total_amount, o.cash_amount, o.upi_amount, o.comment,
-            i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
+    `SELECT ${ORDER_WITH_ITEMS_COLUMNS}
+
      FROM orders o
      LEFT JOIN order_items i ON i.order_id = o.id
      WHERE o.order_date ${dateFilter}
@@ -75,36 +74,5 @@ export async function getAdminOrders(date: string, endDate?: string) {
     params,
   );
 
-  const orderMap = new Map<number, any>();
-  for (const row of rows) {
-    let order = orderMap.get(row.id);
-    if (!order) {
-      order = {
-        id: Number(row.id),
-        orderDate: formatDate(row.order_date),
-        timeLabel: row.time_label,
-        orderType: row.order_type,
-        paymentMethod: row.payment_method,
-        isCompleted: !!row.is_completed,
-        totalAmount: row.total_amount,
-        cashAmount: row.cash_amount,
-        upiAmount: row.upi_amount,
-        comment: row.comment ?? null,
-        items: [],
-      };
-      orderMap.set(row.id, order);
-    }
-    if (row.menu_item_id !== null) {
-      order.items.push({
-        menuItemId: row.menu_item_id,
-        itemName: row.item_name,
-        quantity: row.quantity,
-        isHalf: !!row.is_half,
-        unitPrice: row.unit_price,
-        lineTotal: row.line_total,
-      });
-    }
-  }
-
-  return { date, orders: [...orderMap.values()] };
+  return { date, orders: groupOrderRows(rows) };
 }

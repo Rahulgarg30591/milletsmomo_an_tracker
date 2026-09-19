@@ -85,6 +85,19 @@ The Bicep template sets these automatically:
 
 To update manually via Azure Portal → SWA → Configuration → App settings.
 
+### Optional database tuning
+
+None of these are required; the defaults suit the Supabase shared pooler.
+
+| Key | Default | Purpose |
+|---|---|---|
+| `DB_POOL_MAX` | `5` | Max pooled connections per Functions instance |
+| `DB_CONNECT_TIMEOUT_MS` | `15000` | How long to wait for a connection |
+| `DB_STATEMENT_TIMEOUT_MS` | `20000` | Server-side cap on a single statement |
+| `DB_SSL_STRICT` | unset | `true` verifies the TLS chain; needs a CA bundle Node trusts |
+
+Locally, `MOMO_DB_PORT` moves the Docker Postgres host port if `5432` is taken.
+
 ### Local Development
 
 ```bash

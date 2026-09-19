@@ -59,7 +59,7 @@ describe('ordersService.getOrders', () => {
   it('maps joined rows into orders with items', async () => {
     const mockRequest = {
       input: vi.fn().mockReturnThis(),
-      query: vi.fn().mockResolvedValue({ recordset: [/* mock rows */] }),
+      query: vi.fn().mockResolvedValue([/* mock rows */]),
     };
     (getPool as any).mockResolvedValue({ request: () => mockRequest });
 
@@ -181,7 +181,8 @@ describe('useOrders', () => {
 
 ## Mocking rules
 
-- **Mock at module boundaries**: mock `db/pool.js` (not `mssql`), mock `services/*` (not controllers' internals), mock API via MSW (not axios internals).
+- **Mock at module boundaries**: mock `db/pool.js` (not `pg`), mock `services/*` (not controllers' internals), mock API via MSW (not axios internals).
+- **Make the pool mock project columns**: return only the fields the SELECT names. A mock that returns the whole row regardless cannot fail when a query stops selecting a column — see `ordersService.completeOrder.test.ts`.
 - Use `vi.mock('<module-path>', () => ({ ... }))` for module mocks. Path is relative to the test file.
 - `vi.fn()` for function mocks. `vi.clearAllMocks()` in `beforeEach` to reset call counts.
 - `vi.mocked(fn)` for typed access to mock assertions.

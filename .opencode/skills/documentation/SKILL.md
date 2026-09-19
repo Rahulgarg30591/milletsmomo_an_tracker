@@ -121,7 +121,7 @@ Authoritative documentation standards. **Code is the source of truth — docs dr
 |---|---|
 | New endpoint | `docs/API.md` + `project-context` skill |
 | New page | `docs/ARCHITECTURE.md` (route table + component tree) + `project-context` skill |
-| Schema change | `docs/ARCHITECTURE.md` + `project-context` skill (schema is frozen — N/A currently) |
+| Schema change | `docs/ARCHITECTURE.md` + `project-context` skill + `apps/backend/src/db/schema.sql` |
 | New npm script | `README.md` (commands table) + `AGENTS.md` (commands table) |
 | New env var | `local.settings.example.json` + `docs/DEPLOYMENT.md` (if production) |
 | New convention/pattern | `AGENTS.md` + relevant engineering skill |
