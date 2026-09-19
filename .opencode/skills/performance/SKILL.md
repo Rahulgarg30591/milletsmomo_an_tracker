@@ -1,6 +1,6 @@
 ---
 name: performance
-description: Performance best practices for frontend (React/MUI/Vite PWA) and backend (Express/mssql/Azure Functions). Use when writing performance-sensitive code — lists, queries, rendering loops, bundle size, caching, lazy loading, memoization, virtualization, state updates. Auto-load when touching lists, queries, or render-heavy components.
+description: Performance best practices for frontend (React/MUI/Vite PWA) and backend (Express/pg/Azure Functions). Use when writing performance-sensitive code — lists, queries, rendering loops, bundle size, caching, lazy loading, memoization, virtualization, state updates. Auto-load when touching lists, queries, or render-heavy components.
 ---
 
 # Performance Standards
@@ -95,7 +95,10 @@ Authoritative performance guidance for both workspaces. Code is the source of tr
 
 ### Memory
 
-- Map rows to plain objects at the service boundary and discard the recordset — do not hold large `sql.IResult` objects.
+- Map rows to plain objects at the service boundary — do not hold large driver result objects.
+- **Never query inside a loop over rows.** A round trip to the Supabase pooler costs roughly 30ms, so per-row queries dominate everything else. Load children for many parents in one `WHERE parent_id = ANY($1::int[])` and group them in memory.
+- **Never insert one row per statement.** Use the `bulkValues` helper in `db/pool.ts` for a single multi-row INSERT, chunked via `chunkForInsert` when the batch size is unbounded.
+- Issue independent queries with `Promise.all` rather than sequentially.
 - `buildMenu()` runs once at module load and the result is shared. Do not call it per-request.
 - Avoid accumulating large arrays in memory across requests (no module-level caches that grow unbounded).
 
@@ -118,7 +121,7 @@ Authoritative performance guidance for both workspaces. Code is the source of tr
 | DB pool (BE) | singleton connection reuse | — |
 | Menu in BE memory | module-level `buildMenu()` once | process lifetime |
 
-- Do not add an HTTP-level cache (Redis, etc.) — the dataset is small and Azure SQL Free tier + Workbox caching is sufficient. Revisit only if measured latency warrants it.
+- Do not add an HTTP-level cache (Redis, etc.) — the dataset is small and Supabase + Workbox caching is sufficient. Revisit only if measured latency warrants it.
 
 ## Cross-cutting rules
 

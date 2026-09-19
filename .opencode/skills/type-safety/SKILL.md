@@ -67,7 +67,7 @@ Types are currently defined in three places that must stay in sync:
 
 ## Avoiding `any` (aspirational + incremental)
 
-The repo's ESLint currently sets `@typescript-eslint/no-explicit-any: 'off'` and uses `any` in two well-defined spots: `catch (err: any)` blocks and mssql row mapping `(row: any) => ({...})`.
+The repo's ESLint currently sets `@typescript-eslint/no-explicit-any: 'off'` and uses `any` in two well-defined spots: `catch (err: any)` blocks and database row mapping `(row: any) => ({...})`.
 
 **Baseline (current allowance):** `any` is permitted in catch blocks and DB row mappers. Do not introduce `any` elsewhere.
 
@@ -90,12 +90,12 @@ The repo's ESLint currently sets `@typescript-eslint/no-explicit-any: 'off'` and
    }
    ```
 
-2. **mssql row mapping**: define a row-shape interface and cast:
+2. **Database row mapping**: define a row-shape interface and pass it to `query<T>()`:
    ```ts
    interface OrderRow {
      id: number; order_date: Date; time_label: string; /* ... */
    }
-   return result.recordset.map((row: OrderRow) => ({
+   return rows.map((row: OrderRow) => ({
      id: Number(row.id),
      orderDate: formatDate(row.order_date),
      /* ... */

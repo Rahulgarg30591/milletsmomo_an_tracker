@@ -1,4 +1,4 @@
-import { query, withTransaction } from '../db/pool.js';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyVerificationItem {
@@ -114,9 +114,9 @@ export async function getVerification(date: string): Promise<SupplyVerification 
 export async function listVerifications(startDate: string, endDate: string): Promise<{ orderDate: string; isFullyVerified: boolean; conflictCount: number }[]> {
   const rows = await query<{
     order_date: string;
-    total_items: string;
-    verified_items: string;
-    conflict_count: string;
+    total_items: number;
+    verified_items: number;
+    conflict_count: number;
   }>(
     `SELECT order_date,
             COUNT(*) as total_items,
@@ -129,17 +129,11 @@ export async function listVerifications(startDate: string, endDate: string): Pro
     [startDate, endDate],
   );
 
-  return rows.map((row) => {
-    // COUNT and SUM return BIGINT, which pg gives back as strings; comparing
-    // them directly would compare text, not numbers.
-    const totalItems = Number(row.total_items);
-    const verifiedItems = Number(row.verified_items);
-    return {
-      orderDate: formatDate(row.order_date),
-      isFullyVerified: totalItems > 0 && verifiedItems === totalItems,
-      conflictCount: Number(row.conflict_count) || 0,
-    };
-  });
+  return rows.map((row) => ({
+    orderDate: formatDate(row.order_date),
+    isFullyVerified: row.total_items > 0 && row.verified_items === row.total_items,
+    conflictCount: row.conflict_count ?? 0,
+  }));
 }
 
 export async function createVerification(
@@ -151,18 +145,21 @@ export async function createVerification(
     // Delete existing verifications for this date
     await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [orderDate]);
 
-    for (const item of items) {
-      await client.query(
-        `INSERT INTO supply_verifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
+    if (items.length > 0) {
+      const { text, params } = bulkValues(
+        items.map((item) => [
           orderDate,
           item.supplyItemId,
           item.expectedQty,
           item.actualQty,
           item.actualQty !== item.expectedQty,
           reportedBy,
-        ],
+        ]),
+      );
+      await client.query(
+        `INSERT INTO supply_verifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
+         VALUES ${text}`,
+        params,
       );
     }
   });

@@ -48,17 +48,8 @@ export async function getSupplyItems(): Promise<SupplyItem[]> {
   }));
 }
 
-async function getOrderItems(orderId: number): Promise<SupplyOrderItem[]> {
-  const rows = await query<any>(
-    `SELECT doi.quantity, doi.unit_price, doi.line_total, si.id AS supply_item_id, si.name, si.category, si.pieces_per, si.display_name
-     FROM daily_supply_order_items doi
-     JOIN supply_items si ON doi.supply_item_id = si.id
-     WHERE doi.order_id = $1
-     ORDER BY ${CATEGORY_ORDER}`,
-    [orderId],
-  );
-
-  return rows.map((row) => ({
+function toOrderItem(row: any): SupplyOrderItem {
+  return {
     supplyItemId: row.supply_item_id,
     name: row.name,
     displayName: row.display_name,
@@ -67,7 +58,41 @@ async function getOrderItems(orderId: number): Promise<SupplyOrderItem[]> {
     unitPrice: row.unit_price,
     lineTotal: row.line_total,
     piecesPer: row.pieces_per,
-  }));
+  };
+}
+
+/**
+ * Loads the items for several supply orders in one query.
+ *
+ * Fetching them one order at a time costs a round trip per order — about 30ms
+ * each against the Supabase pooler — so a three-month listing spent seconds
+ * waiting on the network rather than on the database.
+ *
+ * @returns Items keyed by order id, each list already in category order.
+ */
+async function getOrderItemsByOrder(orderIds: number[]): Promise<Map<number, SupplyOrderItem[]>> {
+  const byOrder = new Map<number, SupplyOrderItem[]>();
+  for (const id of orderIds) byOrder.set(id, []);
+  if (orderIds.length === 0) return byOrder;
+
+  const rows = await query<any>(
+    `SELECT doi.order_id, doi.quantity, doi.unit_price, doi.line_total,
+            si.id AS supply_item_id, si.name, si.category, si.pieces_per, si.display_name
+     FROM daily_supply_order_items doi
+     JOIN supply_items si ON doi.supply_item_id = si.id
+     WHERE doi.order_id = ANY($1::int[])
+     ORDER BY doi.order_id, ${CATEGORY_ORDER}`,
+    [orderIds],
+  );
+
+  for (const row of rows) {
+    byOrder.get(row.order_id)!.push(toOrderItem(row));
+  }
+  return byOrder;
+}
+
+async function getOrderItems(orderId: number): Promise<SupplyOrderItem[]> {
+  return (await getOrderItemsByOrder([orderId])).get(orderId)!;
 }
 
 export async function getSupplyOrder(date: string): Promise<SupplyOrder | null> {
@@ -193,19 +218,16 @@ export async function listSupplyOrders(startDate: string, endDate: string): Prom
     [startDate, endDate],
   );
 
-  const orders: SupplyOrder[] = [];
-  for (const order of orderRows) {
-    orders.push({
-      id: order.id,
-      orderDate: formatDate(order.order_date),
-      totalCost: order.total_cost,
-      createdBy: order.created_by,
-      createdAt: order.created_at.toISOString(),
-      items: await getOrderItems(order.id),
-    });
-  }
+  const itemsByOrder = await getOrderItemsByOrder(orderRows.map((o) => o.id));
 
-  return orders;
+  return orderRows.map((order) => ({
+    id: order.id,
+    orderDate: formatDate(order.order_date),
+    totalCost: order.total_cost,
+    createdBy: order.created_by,
+    createdAt: order.created_at.toISOString(),
+    items: itemsByOrder.get(order.id) ?? [],
+  }));
 }
 
 export interface SupplyOrderLog {

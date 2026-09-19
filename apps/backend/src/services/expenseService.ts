@@ -1,4 +1,4 @@
-import { query, withTransaction } from '../db/pool.js';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 
 export interface ExpenseItem {
   id: number;
@@ -37,11 +37,13 @@ export async function saveDayExpenses(
   await withTransaction(async (client) => {
     await client.query('DELETE FROM day_expenses WHERE order_date = $1', [orderDate]);
 
-    for (const item of items) {
+    if (items.length > 0) {
+      const { text, params } = bulkValues(
+        items.map((item) => [orderDate, item.description, item.amount, userId]),
+      );
       await client.query(
-        `INSERT INTO day_expenses (order_date, description, amount, created_by)
-         VALUES ($1, $2, $3, $4)`,
-        [orderDate, item.description, item.amount, userId],
+        `INSERT INTO day_expenses (order_date, description, amount, created_by) VALUES ${text}`,
+        params,
       );
     }
   });

@@ -1,5 +1,7 @@
-import { query, withTransaction } from '../db/pool.js';
+import type { PoolClient } from 'pg';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
+import { ORDER_WITH_ITEMS_COLUMNS, groupOrderRows } from '../utils/orderRows.js';
 import { formatTimeLabel } from '../utils/time.js';
 import { computeLineTotal, computeOrderTotal } from '../utils/pricing.js';
 import { buildMenu } from '../constants/menu.js';
@@ -16,11 +18,38 @@ function findMenuItem(menuItemId: number) {
   return item;
 }
 
+/**
+ * Writes an order's line items as a single multi-row INSERT.
+ *
+ * One statement per item cost a network round trip each, which is the bulk of
+ * the time spent placing an order with more than a couple of lines.
+ */
+async function insertOrderItems(
+  client: PoolClient,
+  orderId: number,
+  items: { menuItemId: number; quantity: number; isHalf: boolean }[],
+): Promise<void> {
+  if (items.length === 0) return;
+
+  const { text, params } = bulkValues(
+    items.map((item) => {
+      const menuItem = findMenuItem(item.menuItemId);
+      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
+      return [orderId, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal];
+    }),
+  );
+
+  await client.query(
+    `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
+     VALUES ${text}`,
+    params,
+  );
+}
+
 export async function getOrders(date: string) {
   const rows = await query<any>(
-    `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
-            o.total_amount, o.cash_amount, o.upi_amount, o.comment,
-            i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
+    `SELECT ${ORDER_WITH_ITEMS_COLUMNS}
+
      FROM orders o
      LEFT JOIN order_items i ON i.order_id = o.id
      WHERE o.order_date = $1
@@ -28,38 +57,7 @@ export async function getOrders(date: string) {
     [date],
   );
 
-  const orderMap = new Map<number, any>();
-  for (const row of rows) {
-    let order = orderMap.get(row.id);
-    if (!order) {
-      order = {
-        id: Number(row.id),
-        orderDate: formatDate(row.order_date),
-        timeLabel: row.time_label,
-        orderType: row.order_type,
-        paymentMethod: row.payment_method,
-        isCompleted: !!row.is_completed,
-        totalAmount: row.total_amount,
-        cashAmount: row.cash_amount,
-        upiAmount: row.upi_amount,
-        comment: row.comment ?? null,
-        items: [],
-      };
-      orderMap.set(row.id, order);
-    }
-    if (row.menu_item_id !== null) {
-      order.items.push({
-        menuItemId: row.menu_item_id,
-        itemName: row.item_name,
-        quantity: row.quantity,
-        isHalf: !!row.is_half,
-        unitPrice: row.unit_price,
-        lineTotal: row.line_total,
-      });
-    }
-  }
-
-  return { date, orders: [...orderMap.values()] };
+  return { date, orders: groupOrderRows(rows) };
 }
 
 export async function createOrder(
@@ -108,16 +106,7 @@ export async function createOrder(
       ],
     );
 
-    for (const item of data.items) {
-      const menuItem = findMenuItem(item.menuItemId);
-      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
-
-      await client.query(
-        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
-      );
-    }
+    await insertOrderItems(client, id, data.items);
   });
 
   return {
@@ -150,8 +139,12 @@ export async function completeOrder(
   cashAmount?: number,
   upiAmount?: number,
 ) {
+  // cash_amount and upi_amount are selected because the no-paymentMethod
+  // branch below reports the amounts already on the order. Leaving them out
+  // made that branch read undefined and report a settled order as 0 / 0.
   const check = await query<any>(
-    'SELECT id, order_date, payment_method, is_completed, total_amount FROM orders WHERE id = $1',
+    `SELECT id, order_date, payment_method, is_completed, total_amount, cash_amount, upi_amount
+     FROM orders WHERE id = $1`,
     [id],
   );
   if (check.length === 0) {
@@ -273,16 +266,7 @@ export async function updateOrder(
 
     await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
 
-    for (const item of data.items) {
-      const menuItem = findMenuItem(item.menuItemId);
-      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
-
-      await client.query(
-        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
-      );
-    }
+    await insertOrderItems(client, id, data.items);
   });
 
   return {

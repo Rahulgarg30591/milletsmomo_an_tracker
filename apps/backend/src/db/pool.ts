@@ -223,12 +223,84 @@ export async function withTransaction<T>(work: (client: PoolClient) => Promise<T
   }
 }
 
-/** Convenience wrapper returning just the rows, with retry. */
+/**
+ * Runs a statement and returns its rows, retrying once on a transient failure.
+ *
+ * The retry makes this unsafe for a statement that must not run twice: a
+ * connection can drop after the server commits but before the acknowledgement
+ * arrives, and the replay would insert a second row. Reads, UPDATEs and
+ * DELETEs here are all idempotent; anything that is not should use
+ * {@link queryOnce} or run inside {@link withTransaction}.
+ */
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
   return withDbRetry(async (p) => (await p.query<T>(text, params as never[])).rows);
+}
+
+/**
+ * Runs a statement exactly once, with no retry.
+ *
+ * For a non-idempotent write that is not already inside a transaction, where
+ * a duplicate row is worse than a failed request.
+ */
+export async function queryOnce<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const p = await getPool();
+  return (await p.query<T>(text, params as never[])).rows;
+}
+
+/**
+ * Opens connections before the first request needs them.
+ *
+ * pg connects lazily, so without this the TLS handshake and authentication —
+ * around 300ms to the Supabase pooler — land on whichever user request happens
+ * to arrive first on a cold Functions instance.
+ *
+ * Two are opened, not one, because the endpoints that issue their queries
+ * concurrently need a second connection and would otherwise pay that same
+ * handshake on their first call.
+ */
+export async function warmPool(connections = 2): Promise<void> {
+  const p = await getPool();
+  await Promise.all(Array.from({ length: connections }, () => p.query('SELECT 1')));
+}
+
+/**
+ * Builds the VALUES tuples and flat parameter list for a multi-row INSERT.
+ *
+ * One statement per row costs a network round trip each; against the Supabase
+ * pooler that is roughly 30ms a row, which dominates any batch insert.
+ *
+ * @param rows - One array of column values per row, all the same length.
+ * @returns The text to follow `VALUES`, and the parameters to bind.
+ */
+export function bulkValues(rows: unknown[][]): { text: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const tuples = rows.map((row) => {
+    const slots = row.map((value) => {
+      params.push(value);
+      return `$${params.length}`;
+    });
+    return `(${slots.join(', ')})`;
+  });
+  return { text: tuples.join(', '), params };
+}
+
+/**
+ * Splits `items` into chunks small enough to stay under Postgres' limit of
+ * 65535 bind parameters per statement.
+ */
+export function chunkForInsert<T>(items: T[], columnsPerRow: number): T[][] {
+  const maxRows = Math.max(1, Math.floor(60000 / Math.max(1, columnsPerRow)));
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += maxRows) {
+    chunks.push(items.slice(i, i + maxRows));
+  }
+  return chunks;
 }
 
 export async function closePool(): Promise<void> {

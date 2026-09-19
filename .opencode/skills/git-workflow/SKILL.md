@@ -37,7 +37,7 @@ Examples:
 ```
 feat(orders): support split payment on order completion
 fix(stock): correct Cheese Corn consumption mapping
-chore(deps): bump mssql to 11.0.1
+chore(deps): bump pg to 8.23.0
 docs(api): fix auth header to x-auth-token
 ```
 
@@ -71,7 +71,7 @@ Before approving a PR, verify:
 - [ ] `npm run lint` passes (no new warnings).
 - [ ] `npm test` passes (or tests are added for new logic).
 - [ ] No secrets committed (`git diff` checked for tokens/keys/hashes).
-- [ ] All SQL uses parameterized `request.input()` — no string interpolation.
+- [ ] All SQL uses positional `$1` parameters — no string interpolation.
 - [ ] All new endpoints have Zod validation.
 - [ ] Auth: protected routes have `authMiddleware`; admin routes have `requireRole('admin')`.
 - [ ] No `dangerouslySetInnerHTML`.
@@ -109,7 +109,7 @@ Before approving a PR, verify:
   - All CI gates green.
   - Preview environment tested (for UI changes).
   - No breaking changes that require FE+BE coordination beyond what the single deploy handles (the CI builds both in one job, so a merged PR deploys atomically).
-  - DB migrations (if any) are additive and safe to run on production — run `npm run prod:db:migrate` after deploy if schema changes are involved (currently the schema is frozen).
+  - `npm run prod:db:migrate` runs `schema.sql`, which DROPS every table before recreating it. Production schema changes must be additive `ALTER` scripts run separately, never this command.
 - Production secrets (`AZURE_STATIC_WEB_APPS_API_TOKEN_*`, `MM_TOKEN_SECRET` (optional), SQL credentials) are set in Azure Portal app settings — verify they exist before a deploy that depends on them.
 
 ## Gitignored files (never commit)

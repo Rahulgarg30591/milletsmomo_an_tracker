@@ -1,4 +1,4 @@
-import { query } from '../db/pool.js';
+import { query, queryOnce } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export type StaffOperationType =
@@ -32,7 +32,9 @@ export async function createLog(
   metadata?: Record<string, any>,
 ): Promise<void> {
   const metadataJson = metadata ? JSON.stringify(metadata) : null;
-  await query(
+  // queryOnce, not query: this is the only INSERT outside a transaction, and a
+  // retried insert would leave two log rows for one operation.
+  await queryOnce(
     `INSERT INTO staff_operation_logs (order_date, operation_type, created_by, details, metadata)
      VALUES ($1, $2, $3, $4, $5)`,
     [orderDate, operationType, createdBy, details, metadataJson],

@@ -12,13 +12,12 @@ Run all from root unless noted.
 
 | Command | What |
 |---|---|
-| `npm run local:setup` | Start Docker SQL, wait for ready, create DB, run schema + seed |
-| `npm run local:db:wait` | Wait for local SQL Server to accept connections |
-| `npm run local:db:create` | Create local database if not exists |
-| `npm run local:db:migrate` | Run schema.sql + seed.sql on local DB |
+| `npm run local:setup` | Start Docker Postgres, wait for ready, run schema + seed |
+| `npm run local:db:wait` | Wait for local Postgres to accept connections |
+| `npm run local:db:migrate` | Run schema.sql + seed.sql on local DB (**drops every table first**) |
 | `npm run local:db:seed` | Re-run seed.sql only on local DB |
-| `npm run local:dev` | Start Docker SQL, then FE (Vite) + BE (Azure Functions) concurrently |
-| `npm run local:stop` | Stop Docker SQL container |
+| `npm run local:dev` | Start Docker Postgres, then FE (Vite) + BE (Azure Functions) concurrently |
+| `npm run local:stop` | Stop Docker Postgres container |
 | `npm run local:build` | Build both FE + BE for local |
 | `npm run local:build:fe` | Build frontend only for local |
 | `npm run local:build:be` | Build backend only for local |
@@ -27,10 +26,9 @@ Run all from root unless noted.
 
 | Command | What |
 |---|---|
-| `npm run prod:setup` | Deploy all Azure infra via Bicep (full stack) |
-| `npm run prod:db:migrate` | Run schema.sql + seed.sql on production DB |
+| `npm run prod:setup` | Deploy the Static Web App via Bicep (the database is on Supabase) |
+| `npm run prod:db:migrate` | Run schema.sql + seed.sql on production DB (**drops every table first**) |
 | `npm run prod:db:seed` | Re-run seed.sql only on production DB |
-| `npm run prod:deploy` | Deploy SQL infra only via Bicep |
 | `npm run prod:build` | Build both FE + BE for production |
 | `npm run prod:build:fe` | Build frontend only for production |
 | `npm run prod:build:be` | Build backend only for production |
@@ -58,7 +56,7 @@ Run in a single workspace: `npm run <cmd> --workspace=<workspace>`.
 - **Auth**: PINs stored as bcrypt hashes (cost 10). Login returns an HMAC-SHA256 signed token (12h expiry, static baked-in secret overridable via `MM_TOKEN_SECRET`). `authMiddleware` verifies on every protected route; `requireRole('admin')` guards `/api/admin/*`.
 - **Middleware stack**: `helmet()` → `cors()` → `express.json({limit:'50kb'})` → rate-limit on `/api/auth/login` (5/min) → request logging (no bodies/headers) → routes → `errorHandler`.
 - **Validation**: Every endpoint validates input with zod schemas in `apps/backend/src/validators/`.
-- **Testing**: Backend: Vitest + Supertest (≥80% statement coverage on `src/services` and `src/utils`). Frontend: Vitest + React Testing Library, API calls mocked with MSW.
+- **Testing**: Backend: Vitest (≥80% statement coverage on `src/services` and `src/utils`). Frontend: Vitest + React Testing Library, API calls mocked with MSW.
 - **PWA**: `vite-plugin-pwa` configured; Lighthouse ≥90; installable on iOS Safari and Android Chrome; app shell loads offline.
 - **Security**: No secrets committed. `local.settings.json` gitignored; `local.settings.example.json` documents keys. `dangerouslySetInnerHTML` forbidden. CSP restricts to `'self'` + Azure SWA origin.
 - **Code quality**: TypeScript strict mode. ESLint + Prettier at root. JSDoc/TSDoc on exported functions. No unused deps.

@@ -17,11 +17,11 @@ Authoritative security standards for all workspaces. Code is the source of truth
 
 ## SQL injection prevention (critical)
 
-**ALL SQL queries MUST use `request.input()` parameterized placeholders. String interpolation of user data into SQL is forbidden.**
+**ALL SQL queries MUST use positional `$1` placeholders. String interpolation of user data into SQL is forbidden.**
 
 ```ts
 // CORRECT
-request.input('orderDate', sql.Date, date);
+await query('SELECT * FROM orders WHERE order_date = $1', [date]);
 await request.query('SELECT * FROM Orders WHERE order_date = @orderDate');
 
 // CRITICAL VULNERABILITY — never do this
@@ -30,7 +30,7 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 
 - This is the single most important security rule in this repo. Violations are critical bugs.
 - See the `database` skill for the dynamic `IN (...)` pattern (only placeholder names are interpolated, never values).
-- `mssql` parameterization handles escaping automatically — never manually escape strings.
+- `pg` parameterization handles escaping automatically — never manually escape strings.
 
 ## Authentication
 
@@ -56,7 +56,7 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 
 - **No secrets in Git.** Gitignored files: `local.settings.json`, `.env.development`, `.env.production`, `apps/backend/local.settings.json`.
 - `local.settings.example.json` documents the required keys — keep it updated when adding env vars. It is the template; the real file is local-only.
-- Required secrets: `SQL_PASSWORD`. Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback). Required config (non-secret): `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PORT`, `ALLOWED_ORIGINS`.
+- Required secrets: `DATABASE_URL` (it embeds the database password, so treat the whole string as a secret). Optional: `MM_TOKEN_SECRET` (token signing; app has a baked-in fallback). Required config (non-secret): `ALLOWED_ORIGINS`.
 - Azure production secrets are set in Azure Portal app settings / Key Vault — never in the repo.
 - Never log secrets, tokens, PINs, or password hashes. The `morgan` log format excludes bodies and headers — keep it that way.
 - `npm run generate-pin-hash -- <4-digit-pin>` generates a bcrypt hash for updating seed PINs. Never commit a real PIN — only its hash.
@@ -133,7 +133,7 @@ When adding a third-party script/style/font source, update the CSP `directives` 
 
 - Run `npm audit` periodically. Address high/critical vulnerabilities.
 - Do not add dependencies with known critical vulnerabilities.
-- Keep `bcryptjs`, `helmet`, `mssql`, `zod`, `express` updated within their major versions.
+- Keep `bcryptjs`, `helmet`, `pg`, `zod`, `express` updated within their major versions.
 
 ## Cross-cutting rules
 

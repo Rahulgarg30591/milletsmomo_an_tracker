@@ -27,8 +27,8 @@ export interface SettlementSummary {
 const SETTLEMENT_COLUMNS = `id, order_date, expected_cash, expected_upi, actual_cash, actual_upi,
       cash_conflict, upi_conflict, notes, created_by, created_at`;
 
-// NUMERIC columns already arrive as numbers thanks to the type parsers in
-// src/db/pool.ts, so none of these need parseFloat any more.
+// NUMERIC and BIGINT columns already arrive as numbers thanks to the type
+// parsers in src/db/pool.ts, so nothing here needs parseFloat or Number.
 function toSettlement(row: any): DailyPaymentSettlement {
   return {
     id: row.id,
@@ -46,7 +46,7 @@ function toSettlement(row: any): DailyPaymentSettlement {
 }
 
 export async function getExpectedAmounts(date: string): Promise<{ cash: number; upi: number; totalOrders: number }> {
-  const rows = await query<{ total_orders: string; total_cash: number; total_upi: number }>(
+  const rows = await query<{ total_orders: number; total_cash: number; total_upi: number }>(
     `SELECT
       COUNT(*) as total_orders,
       COALESCE(SUM(cash_amount), 0) as total_cash,
@@ -59,8 +59,7 @@ export async function getExpectedAmounts(date: string): Promise<{ cash: number; 
 
   const row = rows[0];
   return {
-    // COUNT returns BIGINT, which pg surfaces as a string.
-    totalOrders: Number(row.total_orders),
+    totalOrders: row.total_orders,
     cash: row.total_cash,
     upi: row.total_upi,
   };
@@ -79,8 +78,11 @@ export async function getSettlement(date: string): Promise<DailyPaymentSettlemen
 }
 
 export async function getSettlementSummary(date: string): Promise<SettlementSummary> {
-  const expected = await getExpectedAmounts(date);
-  const settlement = await getSettlement(date);
+  // Independent queries, so they go out together rather than back to back.
+  const [expected, settlement] = await Promise.all([
+    getExpectedAmounts(date),
+    getSettlement(date),
+  ]);
 
   return {
     orderDate: date,
