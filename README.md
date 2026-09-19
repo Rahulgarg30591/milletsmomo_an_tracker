@@ -1,6 +1,6 @@
 # Millets Momo - Order Tracker
 
-A Progressive Web App for daily order tracking at a momo cart. Built as a monorepo with React + MUI frontend and Express + Azure Functions backend backed by SQL Server.
+A Progressive Web App for daily order tracking at a momo cart. Built as a monorepo with a React + MUI frontend and an Express + Azure Functions backend, backed by Postgres (Supabase in production, a Docker container locally).
 
 ---
 
@@ -12,9 +12,9 @@ Before you start, ensure you have:
 |---|---|---|
 | **Node.js** | ≥ 18 | Runtime for frontend and backend |
 | **npm** | ≥ 9 | Package manager (comes with Node.js) |
-| **Docker Desktop** | Latest | Runs local SQL Server container |
+| **Docker Desktop** | Latest | Runs the local Postgres container |
 
-> **macOS users:** Docker Desktop is required. If you're on Apple Silicon (M1/M2/M3), the app uses `azure-sql-edge` which runs natively — no extra setup needed.
+> **macOS users:** Docker Desktop is required. The `postgres:17-alpine` image runs natively on Apple Silicon — no extra setup needed.
 
 Verify your setup:
 
@@ -45,12 +45,19 @@ npm run local:setup
 ```
 
 This command:
-1. Starts a SQL Server container via Docker
-2. Waits for the database to be ready
-3. Creates the database if it doesn't exist
-4. Runs the schema and seed scripts (24 menu items + 2 users)
+1. Starts a Postgres container via Docker
+2. Waits for it to accept connections
+3. Runs the schema and seed scripts (30 menu items, 3 users, 8 supply items)
+
+The database itself is created by the container on first start, so there is no separate create-database step.
 
 > **First time only.** On subsequent runs, you can skip this if the container is already running. Check with `docker ps`.
+
+> **Port 5432 already taken?** Another project's Postgres may already hold it. Start this one elsewhere and point the app at it:
+> ```bash
+> MOMO_DB_PORT=5433 docker compose up -d
+> ```
+> then set `DATABASE_URL` in `apps/backend/.env.development` to use port `5433`.
 
 ### Step 3: Start the development servers
 
@@ -83,10 +90,10 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 | Command | What it does |
 |---|---|
-| `npm run local:setup` | Start Docker SQL, create DB, run migrations |
+| `npm run local:setup` | Start Docker Postgres and run schema + seed |
 | `npm run local:dev` | Start frontend + backend concurrently |
-| `npm run local:stop` | Stop the Docker SQL container |
-| `npm run local:db:migrate` | Re-run schema + seed (resets data) |
+| `npm run local:stop` | Stop the Docker Postgres container |
+| `npm run local:db:migrate` | Re-run schema + seed (**drops every table first**) |
 | `npm run local:db:seed` | Re-run seed only (updates PINs, menu) |
 | `npm run local:build` | Build both frontend and backend for local |
 
@@ -113,15 +120,19 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it's running before `npm run local:setup`.
 
-### `SQL Server not available after 60 attempts`
+### `Postgres not available after 60 attempts`
 
-The SQL container is still starting. Run:
+The container is still starting. Run:
 
 ```bash
 npm run local:db:wait
 ```
 
-Wait for it to say `SQL Server is ready.`, then run `npm run local:db:migrate`.
+Wait for it to say `Postgres is ready.`, then run `npm run local:db:migrate`.
+
+### `The server does not support SSL connections`
+
+`DATABASE_URL` is pointing at a server without TLS while the pool is asking for it. For a host other than `localhost`, add `?sslmode=disable` to the URL.
 
 ### Port already in use
 
@@ -168,7 +179,7 @@ npm run generate-pin-hash -- 1234
 │   └── backend/           Express API on Azure Functions
 │       ├── src/
 │       │   ├── controllers/ Route handlers
-│       │   ├── db/          SQL pool, schema, seed
+│       │   ├── db/          Postgres pool, schema, seed
 │       │   ├── middleware/  Auth, rate-limit, error handler
 │       │   ├── routes/      Express routers
 │       │   ├── services/    Business logic
@@ -176,7 +187,7 @@ npm run generate-pin-hash -- 1234
 │       └── functions/       Azure Functions entry point
 ├── packages/
 │   └── shared/            Menu data + pricing logic
-└── docker-compose.yml     Local SQL Server container
+└── docker-compose.yml     Local Postgres container
 ```
 
 ---
