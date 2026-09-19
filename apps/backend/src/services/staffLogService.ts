@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export type StaffOperationType =
@@ -32,17 +31,11 @@ export async function createLog(
   details: string,
   metadata?: Record<string, any>,
 ): Promise<void> {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('orderDate', sql.Date, orderDate);
-  request.input('operationType', sql.NVarChar, operationType);
-  request.input('createdBy', sql.Int, createdBy);
-  request.input('details', sql.NVarChar, details);
   const metadataJson = metadata ? JSON.stringify(metadata) : null;
-  request.input('metadata', sql.NVarChar, metadataJson);
-  await request.query(
-    `INSERT INTO StaffOperationLogs (order_date, operation_type, created_by, details, metadata)
-     VALUES (@orderDate, @operationType, @createdBy, @details, @metadata)`,
+  await query(
+    `INSERT INTO staff_operation_logs (order_date, operation_type, created_by, details, metadata)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [orderDate, operationType, createdBy, details, metadataJson],
   );
 }
 
@@ -51,31 +44,31 @@ export async function getLogs(
   operationType?: string,
   limit = 50,
 ): Promise<StaffOperationLog[]> {
-  const pool = await getPool();
-  let query = `
+  let text = `
     SELECT l.id, l.order_date, l.operation_type, l.created_by, l.created_at, l.details, l.metadata, u.display_name
-    FROM StaffOperationLogs l
-    JOIN Users u ON l.created_by = u.id
+    FROM staff_operation_logs l
+    JOIN users u ON l.created_by = u.id
     WHERE 1=1
   `;
 
-  const request = pool.request();
+  const params: unknown[] = [];
 
   if (date) {
-    query += ` AND l.order_date = @date`;
-    request.input('date', sql.Date, date);
+    params.push(date);
+    text += ` AND l.order_date = $${params.length}`;
   }
 
   if (operationType) {
-    query += ` AND l.operation_type = @operationType`;
-    request.input('operationType', sql.NVarChar, operationType);
+    params.push(operationType);
+    text += ` AND l.operation_type = $${params.length}`;
   }
 
-  query += ` ORDER BY l.created_at DESC`;
-  query += ` OFFSET 0 ROWS FETCH NEXT ${limit} ROWS ONLY`;
+  text += ` ORDER BY l.created_at DESC`;
+  params.push(limit);
+  text += ` LIMIT $${params.length}`;
 
-  const result = await request.query(query);
-  return result.recordset.map((row: any) => ({
+  const rows = await query<any>(text, params);
+  return rows.map((row) => ({
     id: row.id,
     orderDate: formatDate(row.order_date),
     operationType: row.operation_type as StaffOperationType,

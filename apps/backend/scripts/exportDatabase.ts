@@ -8,25 +8,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 const TABLES = [
-  'Users',
-  'MenuItems',
-  'Orders',
-  'OrderItems',
-  'SupplyItems',
-  'DailySupplyOrders',
-  'DailySupplyOrderItems',
-  'SupplyOrderLogs',
-  'SupplyVerifications',
-  'DailyClosingStock',
-  'StaffOperationLogs',
-  'ClientActivityLogs',
-  'DailyPaymentSettlements',
-  'DayExpenses',
+  'users',
+  'menu_items',
+  'orders',
+  'order_items',
+  'supply_items',
+  'daily_supply_orders',
+  'daily_supply_order_items',
+  'supply_order_logs',
+  'supply_verifications',
+  'daily_closing_stock',
+  'staff_operation_logs',
+  'client_activity_logs',
+  'daily_payment_settlements',
+  'day_expenses',
 ];
 
 // Credential material must never be committed to git history, even hashed.
 const REDACTED_COLUMNS: Record<string, string[]> = {
-  Users: ['pin_hash'],
+  users: ['pin_hash'],
 };
 
 async function main() {
@@ -39,14 +39,17 @@ async function main() {
   const workbook = new ExcelJS.Workbook();
 
   for (const table of TABLES) {
-    const result = await pool.request().query(`SELECT * FROM ${table};`);
+    // Table names come from the list above, never from user input.
+    const result = await pool.query(`SELECT * FROM ${table};`);
     const redacted = REDACTED_COLUMNS[table] ?? [];
-    const columns = Object.keys(result.recordset.columns).filter((col) => !redacted.includes(col));
+    // pg reports the column list on the result itself, which keeps the sheet
+    // headers correct even for a table that returned no rows.
+    const columns = result.fields.map((field) => field.name).filter((col) => !redacted.includes(col));
 
     const sheet = workbook.addWorksheet(table);
     sheet.columns = columns.map((col) => ({ header: col, key: col }));
 
-    for (const row of result.recordset as Record<string, unknown>[]) {
+    for (const row of result.rows as Record<string, unknown>[]) {
       const rowData: Record<string, unknown> = {};
       for (const col of columns) {
         const value = row[col];
@@ -55,7 +58,7 @@ async function main() {
       sheet.addRow(rowData);
     }
 
-    console.log(`Exported ${result.recordset.length} row(s) from ${table}`);
+    console.log(`Exported ${result.rows.length} row(s) from ${table}`);
   }
 
   await workbook.xlsx.writeFile(outFile);

@@ -1,75 +1,82 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export async function getSummary(date: string, endDate?: string) {
-  const pool = await getPool();
-  const isRange = endDate && endDate !== date;
+  const isRange = Boolean(endDate && endDate !== date);
+  // A range binds both ends; a single day binds only the one parameter, so the
+  // placeholder list has to match what the predicate below actually uses.
+  const params = isRange ? [date, endDate] : [date];
+  const dateFilter = isRange ? 'BETWEEN $1 AND $2' : '= $1';
 
-  const statsRequest = pool.request();
-  statsRequest.input('orderDate', sql.Date, date);
-  if (isRange) statsRequest.input('endDate', sql.Date, endDate);
-
-  const statsResult = await statsRequest.query(
+  const statsRows = await query<{
+    totalorders: string;
+    totalrevenue: number;
+    pendingamount: number;
+    cashtotal: number;
+    upitotal: number;
+  }>(
     `SELECT
       COUNT(*) AS totalOrders,
-      ISNULL(SUM(total_amount), 0) AS totalRevenue,
-      ISNULL(SUM(CASE WHEN payment_method = 'pending' THEN total_amount ELSE 0 END), 0) AS pendingAmount,
-      ISNULL(SUM(cash_amount), 0) AS cashTotal,
-      ISNULL(SUM(upi_amount), 0) AS upiTotal
-     FROM Orders WHERE order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'}`,
+      COALESCE(SUM(total_amount), 0) AS totalRevenue,
+      COALESCE(SUM(CASE WHEN payment_method = 'pending' THEN total_amount ELSE 0 END), 0) AS pendingAmount,
+      COALESCE(SUM(cash_amount), 0) AS cashTotal,
+      COALESCE(SUM(upi_amount), 0) AS upiTotal
+     FROM orders WHERE order_date ${dateFilter}`,
+    params,
   );
 
-  const breakdownRequest = pool.request();
-  breakdownRequest.input('orderDate', sql.Date, date);
-  if (isRange) breakdownRequest.input('endDate', sql.Date, endDate);
-
-  const breakdownResult = await breakdownRequest.query(
+  const breakdownRows = await query<{
+    item_name: string;
+    totalquantity: string;
+    totalrevenue: number;
+  }>(
     `SELECT oi.item_name, SUM(oi.quantity) AS totalQuantity, SUM(oi.line_total) AS totalRevenue
-     FROM OrderItems oi
-     JOIN Orders o ON oi.order_id = o.id
-     WHERE o.order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'}
+     FROM order_items oi
+     JOIN orders o ON oi.order_id = o.id
+     WHERE o.order_date ${dateFilter}
      GROUP BY oi.item_name
      ORDER BY totalQuantity DESC`,
+    params,
   );
 
-  const stats = statsResult.recordset[0];
+  const stats = statsRows[0];
 
   return {
     date,
     endDate: endDate || null,
-    totalOrders: stats.totalOrders,
-    totalRevenue: stats.totalRevenue,
-    pendingAmount: stats.pendingAmount,
-    cashTotal: stats.cashTotal,
-    upiTotal: stats.upiTotal,
-    itemBreakdown: breakdownResult.recordset.map((row: any) => ({
+    // COUNT and SUM over an integer column return BIGINT, which pg gives back
+    // as a string unless it is narrowed here.
+    totalOrders: Number(stats.totalorders),
+    totalRevenue: stats.totalrevenue,
+    pendingAmount: stats.pendingamount,
+    cashTotal: stats.cashtotal,
+    upiTotal: stats.upitotal,
+    itemBreakdown: breakdownRows.map((row) => ({
       itemName: row.item_name,
-      totalQuantity: row.totalQuantity,
-      totalRevenue: row.totalRevenue,
+      totalQuantity: Number(row.totalquantity),
+      totalRevenue: row.totalrevenue,
     })),
   };
 }
 
 export async function getAdminOrders(date: string, endDate?: string) {
-  const pool = await getPool();
-  const isRange = endDate && endDate !== date;
-  const request = pool.request();
-  request.input('orderDate', sql.Date, date);
-  if (isRange) request.input('endDate', sql.Date, endDate);
+  const isRange = Boolean(endDate && endDate !== date);
+  const params = isRange ? [date, endDate] : [date];
+  const dateFilter = isRange ? 'BETWEEN $1 AND $2' : '= $1';
 
-  const rows = await request.query(
+  const rows = await query<any>(
     `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
             o.total_amount, o.cash_amount, o.upi_amount, o.comment,
             i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
-     FROM Orders o
-     LEFT JOIN OrderItems i ON i.order_id = o.id
-     WHERE o.order_date ${isRange ? 'BETWEEN @orderDate AND @endDate' : '= @orderDate'}
+     FROM orders o
+     LEFT JOIN order_items i ON i.order_id = o.id
+     WHERE o.order_date ${dateFilter}
      ORDER BY o.id DESC, i.id`,
+    params,
   );
 
   const orderMap = new Map<number, any>();
-  for (const row of rows.recordset) {
+  for (const row of rows) {
     let order = orderMap.get(row.id);
     if (!order) {
       order = {

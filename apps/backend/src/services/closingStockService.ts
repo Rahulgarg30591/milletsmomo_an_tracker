@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 
 export interface ClosingStockItem {
   supplyItemId: number;
@@ -20,49 +19,32 @@ export interface ClosingStock {
   isSubmitted: boolean;
 }
 
-export async function getClosingStock(date: string): Promise<ClosingStock | null> {
-  const pool = await getPool();
+interface StockRow {
+  supply_item_id: number;
+  packets_left: number;
+  pieces_left: number;
+  wastage_pieces: number;
+  has_conflict: boolean;
+  conflict_reason: string | null;
+}
 
-  // Check if there's a supply order for this date
-  const orderReq = pool.request();
-  orderReq.input('orderDate', sql.Date, date);
-  const orderResult = await orderReq.query(
-    `SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate`,
-  );
+interface RecordedStock {
+  packetsLeft: number;
+  piecesLeft: number;
+  wastagePieces: number;
+  hasConflict: boolean;
+  conflictReason: string | null;
+}
 
-  // No supply order today: fall back to active momo_packet supply items so
-  // closing stock can still be recorded against yesterday's leftovers.
-  if (orderResult.recordset.length === 0) {
-    return getClosingStockFallback(date);
-  }
-
-  const orderId = orderResult.recordset[0].id;
-
-  // Get supply items from the order
-  const itemsReq = pool.request();
-  itemsReq.input('orderId', sql.Int, orderId);
-  const itemsResult = await itemsReq.query(
-    `SELECT doi.supply_item_id, si.display_name, si.category, si.pieces_per
-     FROM DailySupplyOrderItems doi
-     JOIN SupplyItems si ON doi.supply_item_id = si.id
-     WHERE doi.order_id = @orderId
-     ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
-  );
-
-  if (itemsResult.recordset.length === 0) {
-    return null;
-  }
-
-  // Get any existing closing stock
-  const stockReq = pool.request();
-  stockReq.input('orderDate', sql.Date, date);
-  const stockResult = await stockReq.query(
+async function getRecordedStock(date: string): Promise<Map<number, RecordedStock>> {
+  const rows = await query<StockRow>(
     `SELECT supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason
-     FROM DailyClosingStock WHERE order_date = @orderDate`,
+     FROM daily_closing_stock WHERE order_date = $1`,
+    [date],
   );
 
-  const stockMap = new Map<number, { packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }>();
-  for (const row of stockResult.recordset) {
+  const stockMap = new Map<number, RecordedStock>();
+  for (const row of rows) {
     stockMap.set(row.supply_item_id, {
       packetsLeft: row.packets_left,
       piecesLeft: row.pieces_left,
@@ -71,27 +53,80 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
       conflictReason: row.conflict_reason,
     });
   }
+  return stockMap;
+}
 
-  const items: ClosingStockItem[] = itemsResult.recordset.map((row: any) => {
-    const s = stockMap.get(row.supply_item_id);
-    return {
-      supplyItemId: row.supply_item_id,
-      displayName: row.display_name,
-      category: row.category,
-      piecesPer: row.pieces_per,
-      packetsLeft: s ? s.packetsLeft : 0,
-      piecesLeft: s ? s.piecesLeft : 0,
-      wastagePieces: s ? s.wastagePieces : 0,
-      hasConflict: s ? s.hasConflict : false,
-      conflictReason: s ? s.conflictReason : null,
-      totalPiecesLeft: (s ? s.packetsLeft : 0) * row.pieces_per + (s ? s.piecesLeft : 0),
-    };
-  });
+function toClosingStockItem(
+  supplyItemId: number,
+  displayName: string,
+  category: string,
+  piecesPer: number,
+  recorded: RecordedStock | undefined,
+): ClosingStockItem {
+  return {
+    supplyItemId,
+    displayName,
+    category,
+    piecesPer,
+    packetsLeft: recorded ? recorded.packetsLeft : 0,
+    piecesLeft: recorded ? recorded.piecesLeft : 0,
+    wastagePieces: recorded ? recorded.wastagePieces : 0,
+    hasConflict: recorded ? recorded.hasConflict : false,
+    conflictReason: recorded ? recorded.conflictReason : null,
+    totalPiecesLeft: (recorded ? recorded.packetsLeft : 0) * piecesPer + (recorded ? recorded.piecesLeft : 0),
+  };
+}
+
+export async function getClosingStock(date: string): Promise<ClosingStock | null> {
+  // Check if there's a supply order for this date
+  const orderRows = await query<{ id: number }>(
+    `SELECT id FROM daily_supply_orders WHERE order_date = $1`,
+    [date],
+  );
+
+  // No supply order today: fall back to active momo_packet supply items so
+  // closing stock can still be recorded against yesterday's leftovers.
+  if (orderRows.length === 0) {
+    return getClosingStockFallback(date);
+  }
+
+  const orderId = orderRows[0].id;
+
+  // Get supply items from the order
+  const itemRows = await query<{
+    supply_item_id: number;
+    display_name: string;
+    category: string;
+    pieces_per: number;
+  }>(
+    `SELECT doi.supply_item_id, si.display_name, si.category, si.pieces_per
+     FROM daily_supply_order_items doi
+     JOIN supply_items si ON doi.supply_item_id = si.id
+     WHERE doi.order_id = $1
+     ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
+    [orderId],
+  );
+
+  if (itemRows.length === 0) {
+    return null;
+  }
+
+  const stockMap = await getRecordedStock(date);
+
+  const items = itemRows.map((row) =>
+    toClosingStockItem(
+      row.supply_item_id,
+      row.display_name,
+      row.category,
+      row.pieces_per,
+      stockMap.get(row.supply_item_id),
+    ),
+  );
 
   return {
     orderDate: date,
     items,
-    isSubmitted: stockResult.recordset.length > 0,
+    isSubmitted: stockMap.size > 0,
   };
 }
 
@@ -100,40 +135,27 @@ export async function createClosingStock(
   items: { supplyItemId: number; packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }[],
   reportedBy: number,
 ): Promise<ClosingStock> {
-  const pool = await getPool();
-
-  const transaction = pool.transaction();
-  await transaction.begin();
-
-  try {
+  await withTransaction(async (client) => {
     // Delete existing closing stock for this date
-    const deleteReq = transaction.request();
-    deleteReq.input('orderDate', sql.Date, orderDate);
-    await deleteReq.query(
-      `DELETE FROM DailyClosingStock WHERE order_date = @orderDate`,
-    );
+    await client.query('DELETE FROM daily_closing_stock WHERE order_date = $1', [orderDate]);
 
     for (const item of items) {
-      const itemReq = transaction.request();
-      itemReq.input('orderDate', sql.Date, orderDate);
-      itemReq.input('supplyItemId', sql.Int, item.supplyItemId);
-      itemReq.input('packetsLeft', sql.Int, item.packetsLeft);
-      itemReq.input('piecesLeft', sql.Int, item.piecesLeft);
-      itemReq.input('wastagePieces', sql.Int, item.wastagePieces);
-      itemReq.input('hasConflict', sql.Bit, item.hasConflict);
-      itemReq.input('conflictReason', sql.NVarChar, item.conflictReason);
-      itemReq.input('reportedBy', sql.Int, reportedBy);
-      await itemReq.query(
-        `INSERT INTO DailyClosingStock (order_date, supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason, reported_by)
-         VALUES (@orderDate, @supplyItemId, @packetsLeft, @piecesLeft, @wastagePieces, @hasConflict, @conflictReason, @reportedBy)`,
+      await client.query(
+        `INSERT INTO daily_closing_stock (order_date, supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason, reported_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          orderDate,
+          item.supplyItemId,
+          item.packetsLeft,
+          item.piecesLeft,
+          item.wastagePieces,
+          item.hasConflict,
+          item.conflictReason,
+          reportedBy,
+        ],
       );
     }
-
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  });
 
   return (await getClosingStock(orderDate))!;
 }
@@ -141,58 +163,32 @@ export async function createClosingStock(
 /**
  * Fallback when no supply order exists for a date (e.g. "No Supply Today").
  * Returns active momo_packet supply items as the basis for recording closing
- * stock, overlaid with any already-recorded DailyClosingStock rows for today.
+ * stock, overlaid with any already-recorded daily_closing_stock rows for today.
  * Supply contribution is implicitly 0; the frontend derives live stock from
  * yesterday's closing stock.
  */
 async function getClosingStockFallback(date: string): Promise<ClosingStock> {
-  const pool = await getPool();
-
-  const itemsReq = pool.request();
-  const itemsResult = await itemsReq.query(
+  const itemRows = await query<{
+    id: number;
+    display_name: string;
+    category: string;
+    pieces_per: number;
+  }>(
     `SELECT id, display_name, category, pieces_per
-     FROM SupplyItems
-     WHERE is_active = 1 AND category = 'momo_packet'
+     FROM supply_items
+     WHERE is_active = TRUE AND category = 'momo_packet'
      ORDER BY id`,
   );
 
-  const stockReq = pool.request();
-  stockReq.input('orderDate', sql.Date, date);
-  const stockResult = await stockReq.query(
-    `SELECT supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason
-     FROM DailyClosingStock WHERE order_date = @orderDate`,
+  const stockMap = await getRecordedStock(date);
+
+  const items = itemRows.map((row) =>
+    toClosingStockItem(row.id, row.display_name, row.category, row.pieces_per, stockMap.get(row.id)),
   );
-
-  const stockMap = new Map<number, { packetsLeft: number; piecesLeft: number; wastagePieces: number; hasConflict: boolean; conflictReason: string | null }>();
-  for (const row of stockResult.recordset) {
-    stockMap.set(row.supply_item_id, {
-      packetsLeft: row.packets_left,
-      piecesLeft: row.pieces_left,
-      wastagePieces: row.wastage_pieces,
-      hasConflict: row.has_conflict,
-      conflictReason: row.conflict_reason,
-    });
-  }
-
-  const items: ClosingStockItem[] = itemsResult.recordset.map((row: any) => {
-    const s = stockMap.get(row.id);
-    return {
-      supplyItemId: row.id,
-      displayName: row.display_name,
-      category: row.category,
-      piecesPer: row.pieces_per,
-      packetsLeft: s ? s.packetsLeft : 0,
-      piecesLeft: s ? s.piecesLeft : 0,
-      wastagePieces: s ? s.wastagePieces : 0,
-      hasConflict: s ? s.hasConflict : false,
-      conflictReason: s ? s.conflictReason : null,
-      totalPiecesLeft: (s ? s.packetsLeft : 0) * row.pieces_per + (s ? s.piecesLeft : 0),
-    };
-  });
 
   return {
     orderDate: date,
     items,
-    isSubmitted: stockResult.recordset.length > 0,
+    isSubmitted: stockMap.size > 0,
   };
 }

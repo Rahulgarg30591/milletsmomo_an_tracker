@@ -6,20 +6,18 @@ import { getPool, closePool } from '../src/db/pool.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbDir = path.resolve(__dirname, '../src/db');
 
-async function runSchema() {
+/**
+ * Runs a whole .sql file as one statement batch.
+ *
+ * pg only accepts multiple statements in a single query when no parameters are
+ * bound, which is the case for both of these files.
+ */
+async function runFile(fileName: string, label: string) {
   const pool = await getPool();
-  const sql = fs.readFileSync(path.join(dbDir, 'schema.sql'), 'utf-8');
-  console.log('Running schema.sql...');
-  await pool.request().query(sql);
-  console.log('Schema applied.');
-}
-
-async function runSeed() {
-  const pool = await getPool();
-  const sql = fs.readFileSync(path.join(dbDir, 'seed.sql'), 'utf-8');
-  console.log('Running seed.sql...');
-  await pool.request().query(sql);
-  console.log('Seed data inserted.');
+  const text = fs.readFileSync(path.join(dbDir, fileName), 'utf-8');
+  console.log(`Running ${fileName}...`);
+  await pool.query(text);
+  console.log(label);
 }
 
 async function main() {
@@ -27,10 +25,10 @@ async function main() {
 
   try {
     if (mode === 'seed') {
-      await runSeed();
+      await runFile('seed.sql', 'Seed data inserted.');
     } else {
-      await runSchema();
-      await runSeed();
+      await runFile('schema.sql', 'Schema applied.');
+      await runFile('seed.sql', 'Seed data inserted.');
     }
     console.log('Migration complete.');
   } finally {

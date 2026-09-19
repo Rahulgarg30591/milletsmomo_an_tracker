@@ -16,16 +16,6 @@ on:
         required: false
         default: false
         type: boolean
-      migration_type:
-        description: 'Which migration to run'
-        required: true
-        default: 'schema'
-        type: choice
-        options:
-          - schema
-          - staff-logs
-          - order-comment
-          - beverages
 
 jobs:
   migrate:
@@ -46,29 +36,11 @@ jobs:
 
       - name: Run migration
         env:
-          SQL_SERVER: ${{ secrets.SQL_SERVER }}
-          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-          SQL_USER: ${{ secrets.SQL_USER }}
-          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
-          SQL_PORT: '1433'
-          SQL_ENCRYPT: 'true'
-          SQL_TRUST_CERT: 'false'
-        run: |
-          case "${{ github.event.inputs.migration_type }}" in
-            schema) npm run prod:db:migrate ;;
-            staff-logs) npm run prod:db:migrate:staff-logs ;;
-            order-comment) npm run prod:db:migrate:order-comment ;;
-            beverages) npm run prod:db:migrate:beverages ;;
-          esac
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run prod:db:migrate
 
       - name: Run seed data
         if: ${{ github.event.inputs.run_seed == 'true' }}
         env:
-          SQL_SERVER: ${{ secrets.SQL_SERVER }}
-          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-          SQL_USER: ${{ secrets.SQL_USER }}
-          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
-          SQL_PORT: '1433'
-          SQL_ENCRYPT: 'true'
-          SQL_TRUST_CERT: 'false'
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run prod:db:seed

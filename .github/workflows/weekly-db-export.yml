@@ -27,13 +27,7 @@ jobs:
 
       - name: Export database to CSV
         env:
-          SQL_SERVER: ${{ secrets.SQL_SERVER }}
-          SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
-          SQL_USER: ${{ secrets.SQL_USER }}
-          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
-          SQL_PORT: '1433'
-          SQL_ENCRYPT: 'true'
-          SQL_TRUST_CERT: 'false'
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run prod:db:export
 
       - name: Commit and push CSV export

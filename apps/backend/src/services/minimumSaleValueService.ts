@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query } from '../db/pool.js';
 import { FULL_PRICES } from '../constants/menu.js';
 
 interface PacketFillingInfo {
@@ -44,37 +43,10 @@ export interface MinimumSaleValueResult {
  * @returns null if closing stock has not been submitted for the date.
  */
 export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValueResult | null> {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('date', sql.Date, date);
-
-  const result = await request.query(
-    `SELECT
-       si.id,
-       si.name,
-       si.pieces_per,
-       COALESCE(ydcs.packets_left, 0)  AS yestPackets,
-       COALESCE(ydcs.pieces_left, 0)   AS yestPieces,
-       COALESCE(sv.actual_qty, dsoi.quantity, 0) AS supplyQty,
-       COALESCE(tdcs.packets_left, 0)  AS todayPackets,
-       COALESCE(tdcs.pieces_left, 0)   AS todayPieces,
-       COALESCE(tdcs.wastage_pieces, 0) AS wastagePieces,
-       CASE WHEN tdcs.id IS NOT NULL THEN 1 ELSE 0 END AS hasClosingStock
-     FROM SupplyItems si
-     LEFT JOIN DailyClosingStock ydcs
-       ON ydcs.supply_item_id = si.id AND ydcs.order_date = DATEADD(day, -1, @date)
-     LEFT JOIN DailySupplyOrderItems dsoi
-       ON dsoi.supply_item_id = si.id
-       AND dsoi.order_id = (SELECT TOP 1 id FROM DailySupplyOrders WHERE order_date = @date)
-     LEFT JOIN SupplyVerifications sv
-       ON sv.supply_item_id = si.id AND sv.order_date = @date
-     LEFT JOIN DailyClosingStock tdcs
-       ON tdcs.supply_item_id = si.id AND tdcs.order_date = @date
-     WHERE si.category = 'momo_packet' AND si.is_active = 1
-     ORDER BY si.id`,
-  );
-
-  const rows = result.recordset as Array<{
+  // Column aliases are double-quoted because Postgres folds unquoted
+  // identifiers to lowercase, which would turn yestPackets into yestpackets
+  // and leave every field below undefined.
+  const rows = await query<{
     id: number;
     name: string;
     pieces_per: number;
@@ -85,7 +57,32 @@ export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValu
     todayPieces: number;
     wastagePieces: number;
     hasClosingStock: number;
-  }>;
+  }>(
+    `SELECT
+       si.id,
+       si.name,
+       si.pieces_per,
+       COALESCE(ydcs.packets_left, 0)  AS "yestPackets",
+       COALESCE(ydcs.pieces_left, 0)   AS "yestPieces",
+       COALESCE(sv.actual_qty, dsoi.quantity, 0) AS "supplyQty",
+       COALESCE(tdcs.packets_left, 0)  AS "todayPackets",
+       COALESCE(tdcs.pieces_left, 0)   AS "todayPieces",
+       COALESCE(tdcs.wastage_pieces, 0) AS "wastagePieces",
+       CASE WHEN tdcs.id IS NOT NULL THEN 1 ELSE 0 END AS "hasClosingStock"
+     FROM supply_items si
+     LEFT JOIN daily_closing_stock ydcs
+       ON ydcs.supply_item_id = si.id AND ydcs.order_date = $1::date - 1
+     LEFT JOIN daily_supply_order_items dsoi
+       ON dsoi.supply_item_id = si.id
+       AND dsoi.order_id = (SELECT id FROM daily_supply_orders WHERE order_date = $1 LIMIT 1)
+     LEFT JOIN supply_verifications sv
+       ON sv.supply_item_id = si.id AND sv.order_date = $1
+     LEFT JOIN daily_closing_stock tdcs
+       ON tdcs.supply_item_id = si.id AND tdcs.order_date = $1
+     WHERE si.category = 'momo_packet' AND si.is_active = TRUE
+     ORDER BY si.id`,
+    [date],
+  );
 
   const hasAnyClosing = rows.some((r) => r.hasClosingStock === 1);
   if (!hasAnyClosing) return null;

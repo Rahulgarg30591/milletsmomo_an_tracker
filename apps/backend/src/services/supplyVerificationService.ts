@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyVerificationItem {
@@ -22,25 +21,20 @@ export interface SupplyVerification {
 }
 
 export async function getVerification(date: string): Promise<SupplyVerification | null> {
-  const pool = await getPool();
-
   // First check if there's a supply order for this date
-  const orderReq = pool.request();
-  orderReq.input('orderDate', sql.Date, date);
-  const orderResult = await orderReq.query(
-    `SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate`,
+  const orderRows = await query<{ id: number }>(
+    `SELECT id FROM daily_supply_orders WHERE order_date = $1`,
+    [date],
   );
 
-  if (orderResult.recordset.length === 0) {
+  if (orderRows.length === 0) {
     // No supply order — check if admin marked "No Supply Today"
-    const noSupplyReq = pool.request();
-    noSupplyReq.input('orderDate', sql.Date, date);
-    noSupplyReq.input('operationType', sql.NVarChar, 'supply_order');
-    const noSupplyResult = await noSupplyReq.query(
-      `SELECT metadata FROM StaffOperationLogs
-       WHERE order_date = @orderDate AND operation_type = @operationType`,
+    const logRows = await query<{ metadata: string | null }>(
+      `SELECT metadata FROM staff_operation_logs
+       WHERE order_date = $1 AND operation_type = $2`,
+      [date, 'supply_order'],
     );
-    const noSupply = noSupplyResult.recordset.some((row: any) => {
+    const noSupply = logRows.some((row) => {
       try {
         return row.metadata ? JSON.parse(row.metadata)?.noSupply === true : false;
       } catch {
@@ -59,33 +53,31 @@ export async function getVerification(date: string): Promise<SupplyVerification 
     return null; // No supply order for this date
   }
 
-  const orderId = orderResult.recordset[0].id;
+  const orderId = orderRows[0].id;
 
   // Get expected items from the supply order
-  const expectedReq = pool.request();
-  expectedReq.input('orderId', sql.Int, orderId);
-  const expectedResult = await expectedReq.query(
+  const expectedRows = await query<any>(
     `SELECT doi.supply_item_id, doi.quantity, doi.unit_price, si.display_name, si.category, si.pieces_per
-     FROM DailySupplyOrderItems doi
-     JOIN SupplyItems si ON doi.supply_item_id = si.id
-     WHERE doi.order_id = @orderId
+     FROM daily_supply_order_items doi
+     JOIN supply_items si ON doi.supply_item_id = si.id
+     WHERE doi.order_id = $1
      ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
+    [orderId],
   );
 
-  if (expectedResult.recordset.length === 0) {
+  if (expectedRows.length === 0) {
     return null;
   }
 
   // Get any verifications
-  const verifyReq = pool.request();
-  verifyReq.input('orderDate', sql.Date, date);
-  const verifyResult = await verifyReq.query(
+  const verifyRows = await query<any>(
     `SELECT supply_item_id, expected_qty, actual_qty, has_conflict
-     FROM SupplyVerifications WHERE order_date = @orderDate`,
+     FROM supply_verifications WHERE order_date = $1`,
+    [date],
   );
 
   const verifyMap = new Map<number, { expectedQty: number; actualQty: number; hasConflict: boolean }>();
-  for (const row of verifyResult.recordset) {
+  for (const row of verifyRows) {
     verifyMap.set(row.supply_item_id, {
       expectedQty: row.expected_qty,
       actualQty: row.actual_qty,
@@ -93,7 +85,7 @@ export async function getVerification(date: string): Promise<SupplyVerification 
     });
   }
 
-  const items: SupplyVerificationItem[] = expectedResult.recordset.map((row: any) => {
+  const items: SupplyVerificationItem[] = expectedRows.map((row: any) => {
     const v = verifyMap.get(row.supply_item_id);
     return {
       supplyItemId: row.supply_item_id,
@@ -120,25 +112,32 @@ export async function getVerification(date: string): Promise<SupplyVerification 
 }
 
 export async function listVerifications(startDate: string, endDate: string): Promise<{ orderDate: string; isFullyVerified: boolean; conflictCount: number }[]> {
-  const pool = await getPool();
-  const req = pool.request();
-  req.input('startDate', sql.Date, startDate);
-  req.input('endDate', sql.Date, endDate);
-
-  const result = await req.query(
-    `SELECT order_date, COUNT(*) as total_items, SUM(CASE WHEN actual_qty IS NOT NULL THEN 1 ELSE 0 END) as verified_items, SUM(CASE WHEN has_conflict = 1 THEN 1 ELSE 0 END) as conflict_count
-     FROM SupplyVerifications
-     WHERE order_date BETWEEN @startDate AND @endDate
+  const rows = await query<{
+    order_date: string;
+    total_items: string;
+    verified_items: string;
+    conflict_count: string;
+  }>(
+    `SELECT order_date,
+            COUNT(*) as total_items,
+            SUM(CASE WHEN actual_qty IS NOT NULL THEN 1 ELSE 0 END) as verified_items,
+            SUM(CASE WHEN has_conflict THEN 1 ELSE 0 END) as conflict_count
+     FROM supply_verifications
+     WHERE order_date BETWEEN $1 AND $2
      GROUP BY order_date
      ORDER BY order_date DESC`,
+    [startDate, endDate],
   );
 
-  return result.recordset.map((row: any) => {
-    const date = row.order_date instanceof Date ? formatDate(row.order_date) : row.order_date;
+  return rows.map((row) => {
+    // COUNT and SUM return BIGINT, which pg gives back as strings; comparing
+    // them directly would compare text, not numbers.
+    const totalItems = Number(row.total_items);
+    const verifiedItems = Number(row.verified_items);
     return {
-      orderDate: date,
-      isFullyVerified: row.total_items > 0 && row.verified_items === row.total_items,
-      conflictCount: row.conflict_count || 0,
+      orderDate: formatDate(row.order_date),
+      isFullyVerified: totalItems > 0 && verifiedItems === totalItems,
+      conflictCount: Number(row.conflict_count) || 0,
     };
   });
 }
@@ -148,38 +147,25 @@ export async function createVerification(
   items: { supplyItemId: number; expectedQty: number; actualQty: number }[],
   reportedBy: number,
 ): Promise<SupplyVerification> {
-  const pool = await getPool();
-
-  const transaction = pool.transaction();
-  await transaction.begin();
-
-  try {
+  await withTransaction(async (client) => {
     // Delete existing verifications for this date
-    const deleteReq = transaction.request();
-    deleteReq.input('orderDate', sql.Date, orderDate);
-    await deleteReq.query(
-      `DELETE FROM SupplyVerifications WHERE order_date = @orderDate`,
-    );
+    await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [orderDate]);
 
     for (const item of items) {
-      const itemReq = transaction.request();
-      itemReq.input('orderDate', sql.Date, orderDate);
-      itemReq.input('supplyItemId', sql.Int, item.supplyItemId);
-      itemReq.input('expectedQty', sql.Int, item.expectedQty);
-      itemReq.input('actualQty', sql.Int, item.actualQty);
-      itemReq.input('hasConflict', sql.Bit, item.actualQty !== item.expectedQty);
-      itemReq.input('reportedBy', sql.Int, reportedBy);
-      await itemReq.query(
-        `INSERT INTO SupplyVerifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
-         VALUES (@orderDate, @supplyItemId, @expectedQty, @actualQty, @hasConflict, @reportedBy)`,
+      await client.query(
+        `INSERT INTO supply_verifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          orderDate,
+          item.supplyItemId,
+          item.expectedQty,
+          item.actualQty,
+          item.actualQty !== item.expectedQty,
+          reportedBy,
+        ],
       );
     }
-
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  });
 
   return (await getVerification(orderDate))!;
 }

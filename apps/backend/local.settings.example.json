@@ -4,13 +4,7 @@
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "AzureWebJobsStorage": "",
     "NODE_ENV": "development",
-    "SQL_SERVER": "localhost",
-    "SQL_DATABASE": "millets-momo-db",
-    "SQL_USER": "sa",
-    "SQL_PASSWORD": "MomoDev2024!",
-    "SQL_PORT": "1433",
-    "SQL_ENCRYPT": "false",
-    "SQL_TRUST_CERT": "true",
+    "DATABASE_URL": "postgresql://momo:MomoDev2024!@localhost:5432/millets_momo",
     "ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174"
   }
 }

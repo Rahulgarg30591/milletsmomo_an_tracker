@@ -1,30 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../src/db/pool.js', () => ({
-  getPool: vi.fn(),
+  query: vi.fn(),
 }));
 
-vi.mock('mssql', () => ({
-  default: {
-    Date: 'Date',
-    Int: 'Int',
-  },
-}));
-
-import { getPool } from '../../src/db/pool.js';
+import { query } from '../../src/db/pool.js';
 import { getMinimumSaleValue } from '../../src/services/minimumSaleValueService.js';
 
-const mockGetPool = getPool as unknown as ReturnType<typeof vi.fn>;
+const mockQuery = query as unknown as ReturnType<typeof vi.fn>;
 
-function mockPool(recordset: any[]) {
-  const request = {
-    input: vi.fn().mockReturnThis(),
-    query: vi.fn().mockResolvedValue({ recordset }),
-  };
-  mockGetPool.mockResolvedValue({
-    request: () => request,
-  } as any);
-  return request;
+function mockPool(rows: any[]) {
+  mockQuery.mockResolvedValue(rows);
+  return mockQuery;
 }
 
 const ROWS_FULL = [
