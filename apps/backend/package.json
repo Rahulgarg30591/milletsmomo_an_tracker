@@ -14,7 +14,9 @@
     "db:export": "tsx scripts/exportDatabase.ts",
     "db:weekly-cleanup": "tsx scripts/weeklyCleanup.ts",
     "db:seed": "tsx scripts/migrate.ts seed",
-    "generate-pin-hash": "tsx scripts/generatePinHash.ts"
+    "generate-pin-hash": "tsx scripts/generatePinHash.ts",
+    "test:int": "vitest run --config vitest.integration.config.ts",
+    "test:coverage": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.include=src/**"
   },
   "dependencies": {
     "@azure/functions": "^4.6.0",
@@ -36,6 +38,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.10",
     "@types/pg": "^8.23.1",
+    "@vitest/coverage-v8": "^3.2.7",
     "tsx": "^4.19.2",
     "vitest": "^3.0.8"
   }
