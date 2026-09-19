@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 
 export async function createClientLogs(
   req: Request,
@@ -14,32 +13,24 @@ export async function createClientLogs(
       return;
     }
 
-    const pool = await getPool();
-    const transaction = pool.transaction();
-    await transaction.begin();
-
-    try {
+    await withTransaction(async (client) => {
       for (const log of logs) {
-        const request = transaction.request();
-        request.input('userId', sql.Int, log.userId ?? null);
-        request.input('userRole', sql.VarChar, log.userRole ?? null);
-        request.input('logType', sql.VarChar, log.type);
-        request.input('page', sql.VarChar, log.page ?? null);
-        request.input('details', sql.NVarChar, log.details ?? null);
-        request.input('metadata', sql.NVarChar, log.metadata ? JSON.stringify(log.metadata) : null);
-        request.input('deviceInfo', sql.NVarChar, log.deviceInfo ?? null);
-        request.input('durationMs', sql.Int, log.durationMs ?? null);
-
-        await request.query(
-          `INSERT INTO ClientActivityLogs (user_id, user_role, log_type, page, details, metadata, device_info, duration_ms)
-           VALUES (@userId, @userRole, @logType, @page, @details, @metadata, @deviceInfo, @durationMs)`,
+        await client.query(
+          `INSERT INTO client_activity_logs (user_id, user_role, log_type, page, details, metadata, device_info, duration_ms)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            log.userId ?? null,
+            log.userRole ?? null,
+            log.type,
+            log.page ?? null,
+            log.details ?? null,
+            log.metadata ? JSON.stringify(log.metadata) : null,
+            log.deviceInfo ?? null,
+            log.durationMs ?? null,
+          ],
         );
       }
-      await transaction.commit();
-    } catch (err) {
-      await transaction.rollback();
-      throw err;
-    }
+    });
 
     res.status(201).json({ success: true, inserted: logs.length });
   } catch (err) {
@@ -57,31 +48,33 @@ export async function getClientLogs(
     const logType = req.query.type as string | undefined;
     const limit = parseInt(req.query.limit as string, 10) || 200;
 
-    const pool = await getPool();
-    const request = pool.request();
-
-    let query = `
+    let text = `
       SELECT id, user_id, user_role, log_type, page, details, metadata, device_info, duration_ms, created_at
-      FROM ClientActivityLogs
+      FROM client_activity_logs
       WHERE 1=1
     `;
 
+    const params: unknown[] = [];
+
     if (date) {
-      query += ` AND CAST(created_at AS DATE) = @date`;
-      request.input('date', sql.Date, date);
+      params.push(date);
+      // created_at is stored with its zone, so the cast has to name the zone the
+      // shop's day is measured in rather than trusting the session default.
+      text += ` AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = $${params.length}`;
     }
 
     if (logType) {
-      query += ` AND log_type = @logType`;
-      request.input('logType', sql.VarChar, logType);
+      params.push(logType);
+      text += ` AND log_type = $${params.length}`;
     }
 
-    query += ` ORDER BY created_at DESC`;
-    query += ` OFFSET 0 ROWS FETCH NEXT ${Math.min(limit, 500)} ROWS ONLY`;
+    text += ` ORDER BY created_at DESC`;
+    params.push(Math.min(limit, 500));
+    text += ` LIMIT $${params.length}`;
 
-    const result = await request.query(query);
+    const rows = await query<any>(text, params);
 
-    const logs = result.recordset.map((row: any) => {
+    const logs = rows.map((row) => {
       let metadata = null;
       try { metadata = row.metadata ? JSON.parse(row.metadata) : null; } catch { metadata = row.metadata; }
 

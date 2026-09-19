@@ -64,7 +64,7 @@ App
 - **Authorization**: `authMiddleware` sets `req.user`; `requireRole('admin')` guards admin routes
 - **Rate limiting**: `express-rate-limit` on `POST /api/auth/login` — 5 requests per 30 seconds per IP
 - **Validation**: All endpoint inputs validated with **Zod** schemas (`src/validators/`)
-- **Database**: Azure SQL via `mssql` driver; singleton connection pool (`db/pool.ts`). ALL queries use parameterized `request.input()` — no string interpolation.
+- **Database**: Supabase Postgres via the `pg` driver; singleton connection pool (`db/pool.ts`) against the shared transaction pooler. ALL queries use positional `$1` parameters — no string interpolation.
 
 ### Service Layer
 
@@ -96,23 +96,23 @@ App
 
 ## Database Schema
 
-4 tables in Azure SQL:
+4 core tables in Postgres (10 more cover supply, stock, settlements and logs):
 
 | Table | Purpose | Key Columns |
 |---|---|---|
-| `Users` | Staff/admin accounts | `id`, `username`, `role`, `pin_hash` (bcrypt), `display_name`, `is_active` |
-| `MenuItems` | Canonical menu catalog | `id`, `filling`, `preparation`, `display_name`, `full_price`, `half_price` |
-| `Orders` | Daily orders | `id` (BIGINT epoch-ms), `order_date`, `time_label`, `order_type`, `payment_method`, `is_completed`, `total_amount` |
-| `OrderItems` | Line items per order | `id`, `order_id` (FK→Orders, CASCADE), `menu_item_id`, `item_name`, `quantity`, `is_half`, `unit_price`, `line_total` |
+| `users` | Staff/admin accounts | `id`, `username`, `role`, `pin_hash` (bcrypt), `display_name`, `is_active` |
+| `menu_items` | Canonical menu catalog | `id`, `filling`, `preparation`, `display_name`, `full_price`, `half_price` |
+| `orders` | Daily orders | `id` (BIGINT epoch-ms), `order_date`, `time_label`, `order_type`, `payment_method`, `is_completed`, `total_amount` |
+| `order_items` | Line items per order | `id`, `order_id` (FK→orders, CASCADE), `menu_item_id`, `item_name`, `quantity`, `is_half`, `unit_price`, `line_total` |
 
-Indexes: `IX_Orders_OrderDate`, `IX_Orders_Completed`, `IX_OrderItems_OrderId`
+Indexes: `ix_orders_order_date`, `ix_orders_completed`, `ix_order_items_order_id`
 
 ## Security
 
 - No secrets in Git — `local.settings.json` gitignored, `local.settings.example.json` documents env vars
 - PINs stored as bcrypt hashes (cost factor 10)
 - HMAC-SHA256 token with 12h expiry; `authMiddleware` on all protected routes
-- All SQL uses parameterized queries (`request.input()`)
+- All SQL uses parameterized queries (positional `$1` placeholders)
 - `helmet()` sets security headers; CSP restricts to `'self'` + Azure SWA origin
 - JSON body limited to 50kb
 - `dangerouslySetInnerHTML` forbidden in ESLint rules

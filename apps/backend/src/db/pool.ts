@@ -1,4 +1,4 @@
-import sql from 'mssql';
+import { Pool, types as pgTypes, type PoolClient, type QueryResultRow } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -33,7 +33,7 @@ function loadEnvConfig() {
 }
 
 function loadLocalSettings() {
-  if (process.env.SQL_SERVER) return;
+  if (process.env.DATABASE_URL) return;
   const settingsPath = path.resolve(__dirname, '../../local.settings.json');
   if (!fs.existsSync(settingsPath)) return;
   const values = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')).Values || {};
@@ -49,146 +49,150 @@ if (process.env.NODE_ENV !== 'production') {
   loadLocalSettings();
 }
 
+/**
+ * pg hands back NUMERIC and BIGINT as strings, because either can exceed what a
+ * JS number holds exactly. Left alone, every money column would reach the API
+ * as "120.00" instead of 120 and every arithmetic on it would concatenate.
+ *
+ * Both are safe to narrow here: the widest money column is NUMERIC(10,2) and
+ * order ids are generated from a timestamp, so neither approaches 2^53.
+ */
+pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (value) => parseFloat(value));
+pgTypes.setTypeParser(pgTypes.builtins.INT8, (value) => parseInt(value, 10));
+
+/**
+ * DATE is kept as the raw 'YYYY-MM-DD' string rather than pg's default of a JS
+ * Date at *local* midnight. Every order_date in this app is a business day in
+ * IST; parsing it into a local Date and serialising it back through JSON
+ * shifts it to the previous day for anyone behind UTC.
+ */
+pgTypes.setTypeParser(pgTypes.builtins.DATE, (value) => value);
+
 function numFromEnv(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+const CONNECT_TIMEOUT_MS = numFromEnv('DB_CONNECT_TIMEOUT_MS', 15_000);
+const STATEMENT_TIMEOUT_MS = numFromEnv('DB_STATEMENT_TIMEOUT_MS', 20_000);
+
 /**
- * Azure SQL serverless/free tier auto-pauses when idle and a resume takes tens
- * of seconds, so the connect budget must be far larger than a normal TCP dial.
- *
- * The ceiling is Azure Static Web Apps, which cuts an HTTP response off at 45s.
- * `withDbRetry` may connect twice in one request, so these are sized so that
- * worst case stays under that. Waits longer than one request can cover are
- * absorbed by the client retrying (see `apps/frontend/src/api/authApi.ts`).
+ * Postgres SQLSTATE classes worth a retry rather than a 500: connection
+ * exceptions (08xxx), operator intervention such as a restart or an
+ * administrator dropping the backend (57Pxx), and deadlock (40P01).
  */
-const CONNECT_TIMEOUT_MS = numFromEnv('SQL_CONNECT_TIMEOUT_MS', 20_000);
-const REQUEST_TIMEOUT_MS = numFromEnv('SQL_REQUEST_TIMEOUT_MS', 20_000);
-
-const config: sql.config = {
-  server: process.env.SQL_SERVER || '',
-  database: process.env.SQL_DATABASE || '',
-  user: process.env.SQL_USER || '',
-  password: process.env.SQL_PASSWORD || '',
-  port: parseInt(process.env.SQL_PORT || '1433', 10),
-  requestTimeout: REQUEST_TIMEOUT_MS,
-  options: {
-    encrypt: process.env.SQL_ENCRYPT !== 'false',
-    trustServerCertificate: process.env.SQL_TRUST_CERT === 'true',
-    enableArithAbort: true,
-    // Takes precedence over config.connectionTimeout in mssql v11.
-    connectTimeout: CONNECT_TIMEOUT_MS,
-  },
-  pool: {
-    max: 5,
-    min: 0,
-    idleTimeoutMillis: 60_000,
-    acquireTimeoutMillis: CONNECT_TIMEOUT_MS,
-  },
-};
-
-/** Azure SQL error numbers documented as transient/retryable. */
-const TRANSIENT_SQL_NUMBERS = new Set([
-  4060, 40197, 40501, 40613, 49918, 49919, 49920, 10928, 10929, 11001, 1205, 233, 121, 64, 20,
+const TRANSIENT_SQL_STATES = new Set([
+  '08000', '08003', '08006', '08001', '08004', '08007', '08P01',
+  '57P01', '57P02', '57P03', '57P05',
+  '40001', '40P01',
+  '53300',
 ]);
 
-/** tedious/mssql driver-level codes raised for dropped or timed-out sockets. */
+/** Socket-level codes raised when the pooler or the network drops a connection. */
 const TRANSIENT_DRIVER_CODES = new Set([
-  'ETIMEOUT',
   'ETIMEDOUT',
-  'ESOCKET',
-  'ECONNCLOSED',
+  'ETIMEOUT',
   'ECONNRESET',
-  'ENOTOPEN',
-  'EPOOLCLOSED',
-  'ELOGIN',
+  'ECONNREFUSED',
+  'EPIPE',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ENETUNREACH',
 ]);
 
 /**
  * True when an error is worth retrying rather than surfacing to the user.
  *
- * Covers the Azure SQL serverless resume window (the database rejects or drops
- * connections while it wakes) and sockets frozen by the Functions host between
- * invocations. Walks `originalError` because mssql wraps driver errors.
+ * Supabase's transaction pooler recycles backends aggressively and the Azure
+ * Functions host freezes sockets between invocations, so a pool that looks
+ * healthy can still hand out a dead connection. Walks `originalError` and
+ * `cause` because both pg and Node wrap the underlying socket error.
  */
 export function isTransientDbError(err: unknown): boolean {
+  const seen = new Set<unknown>();
   let current: any = err;
   for (let depth = 0; current && depth < 5; depth++) {
-    if (typeof current.number === 'number' && TRANSIENT_SQL_NUMBERS.has(current.number)) {
-      return true;
+    if (seen.has(current)) break;
+    seen.add(current);
+    if (typeof current.code === 'string') {
+      if (TRANSIENT_SQL_STATES.has(current.code)) return true;
+      if (TRANSIENT_DRIVER_CODES.has(current.code)) return true;
     }
-    if (typeof current.code === 'string' && TRANSIENT_DRIVER_CODES.has(current.code)) {
-      return true;
-    }
-    current = current.originalError;
+    current = current.originalError ?? current.cause;
   }
   return false;
 }
 
-let pool: sql.ConnectionPool | null = null;
-let connecting: Promise<sql.ConnectionPool> | null = null;
-
-async function openPool(): Promise<sql.ConnectionPool> {
-  const candidate = new sql.ConnectionPool(config);
-  // Without a listener, a dropped socket becomes an unhandled 'error' event.
-  candidate.on('error', () => {
-    if (pool === candidate) pool = null;
-  });
-
+/**
+ * TLS settings for a connection string.
+ *
+ * Supabase terminates TLS at the pooler with a certificate that is not in
+ * Node's default trust store, which is what `sslmode=require` in their own
+ * connection strings amounts to; DB_SSL_STRICT=true verifies the chain
+ * properly once a CA bundle is available.
+ *
+ * A local Postgres container is built without SSL support and rejects the
+ * negotiation outright, so TLS has to be off for it rather than merely
+ * unverified. `sslmode=disable` in the URL forces that for any other host.
+ */
+function sslConfigFor(connectionString: string): boolean | { rejectUnauthorized: boolean } {
+  let host = '';
   try {
-    await candidate.connect();
-    return candidate;
-  } catch (err) {
-    await candidate.close().catch(() => {});
-    throw err;
+    const parsed = new URL(connectionString);
+    host = parsed.hostname;
+    if (parsed.searchParams.get('sslmode') === 'disable') return false;
+  } catch {
+    // Fall through to the secure default if the string is not a URL.
   }
+
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+  if (process.env.DB_SSL_STRICT === 'true') return true;
+  return { rejectUnauthorized: false };
 }
 
-/**
- * Returns a connected pool, opening one on first use.
- *
- * Concurrent callers share a single in-flight connect so a cold Functions
- * instance cannot open a burst of connections against a waking database.
- */
-export async function getPool(): Promise<sql.ConnectionPool> {
-  if (!config.server) {
-    throw new Error('Database not configured: SQL_SERVER environment variable is not set');
-  }
-  if (pool && pool.connected) {
-    return pool;
-  }
-  if (connecting) {
-    return connecting;
+let pool: Pool | null = null;
+
+function buildPool(): Pool {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('Database not configured: DATABASE_URL environment variable is not set');
   }
 
-  const attempt = openPool().then(
-    (opened) => {
-      pool = opened;
-      connecting = null;
-      return opened;
-    },
-    (err) => {
-      pool = null;
-      connecting = null;
-      throw err;
-    },
-  );
+  const created = new Pool({
+    connectionString,
+    ssl: sslConfigFor(connectionString),
+    // The transaction pooler multiplexes, so a large client-side pool buys
+    // nothing and just holds pooler slots that other Functions instances need.
+    max: numFromEnv('DB_POOL_MAX', 5),
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
+    statement_timeout: STATEMENT_TIMEOUT_MS,
+  });
 
-  connecting = attempt;
-  return attempt;
+  // Without a listener, an idle client dropped by the pooler becomes an
+  // unhandled 'error' event and takes the Functions worker down.
+  created.on('error', () => {
+    if (pool === created) pool = null;
+  });
+
+  return created;
+}
+
+/** Returns the process-wide pool, creating it on first use. */
+export async function getPool(): Promise<Pool> {
+  if (!pool) {
+    pool = buildPool();
+  }
+  return pool;
 }
 
 /**
  * Runs a pool operation, retrying once on a transient failure.
  *
- * A pool that looks connected can still hold a socket the Functions host froze
- * and the network dropped; the first query is what discovers it. Resetting the
- * pool and retrying turns that into a slow success instead of a 500.
+ * The first query is what discovers a connection the pooler already closed;
+ * discarding the pool and retrying turns that into a slow success, not a 500.
  */
-export async function withDbRetry<T>(
-  operation: (pool: sql.ConnectionPool) => Promise<T>,
-): Promise<T> {
+export async function withDbRetry<T>(operation: (pool: Pool) => Promise<T>): Promise<T> {
   try {
     return await operation(await getPool());
   } catch (err) {
@@ -198,11 +202,39 @@ export async function withDbRetry<T>(
   }
 }
 
+/**
+ * Runs `work` inside a transaction on a single dedicated client.
+ *
+ * Callers must use the client passed in; issuing a query against the pool
+ * instead would take a different connection and fall outside the transaction.
+ */
+export async function withTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await (await getPool()).connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Convenience wrapper returning just the rows, with retry. */
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  return withDbRetry(async (p) => (await p.query<T>(text, params as never[])).rows);
+}
+
 export async function closePool(): Promise<void> {
   const existing = pool;
   pool = null;
-  connecting = null;
   if (existing) {
-    await existing.close();
+    await existing.end();
   }
 }

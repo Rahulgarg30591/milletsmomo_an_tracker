@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyItem {
@@ -31,14 +30,15 @@ export interface SupplyOrder {
   items: SupplyOrderItem[];
 }
 
+const CATEGORY_ORDER = `CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`;
+
 export async function getSupplyItems(): Promise<SupplyItem[]> {
-  const pool = await getPool();
-  const result = await pool.request().query(
+  const rows = await query<any>(
     `SELECT id, name, category, unit_price, pieces_per, display_name
-     FROM SupplyItems WHERE is_active = 1 ORDER BY
+     FROM supply_items WHERE is_active = TRUE ORDER BY
      CASE category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, id`,
   );
-  return result.recordset.map((row: any) => ({
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     category: row.category,
@@ -48,29 +48,38 @@ export async function getSupplyItems(): Promise<SupplyItem[]> {
   }));
 }
 
-export async function getSupplyOrder(date: string): Promise<SupplyOrder | null> {
-  const pool = await getPool();
-  const orderReq = pool.request();
-  orderReq.input('orderDate', sql.Date, date);
-
-  const orderResult = await orderReq.query(
-    `SELECT id, order_date, total_cost, created_by, created_at
-     FROM DailySupplyOrders WHERE order_date = @orderDate`,
-  );
-
-  if (orderResult.recordset.length === 0) return null;
-
-  const order = orderResult.recordset[0];
-
-  const itemsReq = pool.request();
-  itemsReq.input('orderId', sql.Int, order.id);
-  const itemsResult = await itemsReq.query(
+async function getOrderItems(orderId: number): Promise<SupplyOrderItem[]> {
+  const rows = await query<any>(
     `SELECT doi.quantity, doi.unit_price, doi.line_total, si.id AS supply_item_id, si.name, si.category, si.pieces_per, si.display_name
-     FROM DailySupplyOrderItems doi
-     JOIN SupplyItems si ON doi.supply_item_id = si.id
-     WHERE doi.order_id = @orderId
-     ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
+     FROM daily_supply_order_items doi
+     JOIN supply_items si ON doi.supply_item_id = si.id
+     WHERE doi.order_id = $1
+     ORDER BY ${CATEGORY_ORDER}`,
+    [orderId],
   );
+
+  return rows.map((row) => ({
+    supplyItemId: row.supply_item_id,
+    name: row.name,
+    displayName: row.display_name,
+    category: row.category,
+    quantity: row.quantity,
+    unitPrice: row.unit_price,
+    lineTotal: row.line_total,
+    piecesPer: row.pieces_per,
+  }));
+}
+
+export async function getSupplyOrder(date: string): Promise<SupplyOrder | null> {
+  const orderRows = await query<any>(
+    `SELECT id, order_date, total_cost, created_by, created_at
+     FROM daily_supply_orders WHERE order_date = $1`,
+    [date],
+  );
+
+  if (orderRows.length === 0) return null;
+
+  const order = orderRows[0];
 
   return {
     id: order.id,
@@ -78,16 +87,7 @@ export async function getSupplyOrder(date: string): Promise<SupplyOrder | null> 
     totalCost: order.total_cost,
     createdBy: order.created_by,
     createdAt: order.created_at.toISOString(),
-    items: itemsResult.recordset.map((row: any) => ({
-      supplyItemId: row.supply_item_id,
-      name: row.name,
-      displayName: row.display_name,
-      category: row.category,
-      quantity: row.quantity,
-      unitPrice: row.unit_price,
-      lineTotal: row.line_total,
-      piecesPer: row.pieces_per,
-    })),
+    items: await getOrderItems(order.id),
   };
 }
 
@@ -97,31 +97,20 @@ export async function createSupplyOrder(
   createdBy: number,
   action: 'CREATE' | 'UPDATE' = 'CREATE',
 ): Promise<SupplyOrder> {
-  const pool = await getPool();
-
   const itemIds = items.map((i) => i.supplyItemId);
-  const priceReq = pool.request();
-  itemIds.forEach((id, idx) => {
-    priceReq.input(`id${idx}`, sql.Int, id);
-  });
-  const nameReq = pool.request();
-  itemIds.forEach((id, idx) => {
-    nameReq.input(`id${idx}`, sql.Int, id);
-  });
-  const nameResult = await nameReq.query(
-    `SELECT id, display_name FROM SupplyItems WHERE id IN (${itemIds.map((_, idx) => `@id${idx}`).join(', ')})`,
+
+  // Postgres takes the whole id list as one array parameter, so this no longer
+  // needs a placeholder built per id — and name and price come back together
+  // rather than in two separate round trips.
+  const lookupRows = await query<{ id: number; display_name: string; unit_price: number }>(
+    `SELECT id, display_name, unit_price FROM supply_items WHERE id = ANY($1::int[])`,
+    [itemIds],
   );
+
   const nameMap = new Map<number, string>();
-  for (const row of nameResult.recordset) {
-    nameMap.set(row.id, row.display_name);
-  }
-
-  const priceResult = await priceReq.query(
-    `SELECT id, unit_price FROM SupplyItems WHERE id IN (${itemIds.map((_, idx) => `@id${idx}`).join(', ')})`,
-  );
-
   const priceMap = new Map<number, number>();
-  for (const row of priceResult.recordset) {
+  for (const row of lookupRows) {
+    nameMap.set(row.id, row.display_name);
     priceMap.set(row.id, row.unit_price);
   }
 
@@ -137,53 +126,34 @@ export async function createSupplyOrder(
 
   const itemSummary = items.map((i) => `${nameMap.get(i.supplyItemId)}: ${i.quantity}`).join(', ');
 
-  const transaction = pool.transaction();
-  await transaction.begin();
-
-  try {
-    const orderReq = transaction.request();
-    orderReq.input('orderDate', sql.Date, orderDate);
-    orderReq.input('totalCost', sql.Decimal(10, 2), totalCost);
-    orderReq.input('createdBy', sql.Int, createdBy);
-
-    const orderResult = await orderReq.query(
-      `INSERT INTO DailySupplyOrders (order_date, total_cost, created_by)
-       VALUES (@orderDate, @totalCost, @createdBy);
-       SELECT SCOPE_IDENTITY() AS id;`,
+  await withTransaction(async (client) => {
+    // RETURNING replaces SCOPE_IDENTITY(): it hands back the generated id from
+    // the insert itself, with no second statement and no session state.
+    const inserted = await client.query<{ id: number }>(
+      `INSERT INTO daily_supply_orders (order_date, total_cost, created_by)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [orderDate, totalCost, createdBy],
     );
 
-    const orderId = orderResult.recordset[0].id;
+    const orderId = inserted.rows[0].id;
 
     for (const item of items) {
       const unitPrice = priceMap.get(item.supplyItemId)!;
       const lineTotal = unitPrice * item.quantity;
-      const itemReq = transaction.request();
-      itemReq.input('orderId', sql.Int, orderId);
-      itemReq.input('supplyItemId', sql.Int, item.supplyItemId);
-      itemReq.input('quantity', sql.Int, item.quantity);
-      itemReq.input('unitPrice', sql.Decimal(8, 2), unitPrice);
-      itemReq.input('lineTotal', sql.Decimal(10, 2), lineTotal);
-      await itemReq.query(
-        `INSERT INTO DailySupplyOrderItems (order_id, supply_item_id, quantity, unit_price, line_total)
-         VALUES (@orderId, @supplyItemId, @quantity, @unitPrice, @lineTotal)`,
+      await client.query(
+        `INSERT INTO daily_supply_order_items (order_id, supply_item_id, quantity, unit_price, line_total)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [orderId, item.supplyItemId, item.quantity, unitPrice, lineTotal],
       );
     }
 
-    const logReq = transaction.request();
-    logReq.input('orderDate', sql.Date, orderDate);
-    logReq.input('action', sql.NVarChar(10), action);
-    logReq.input('createdBy', sql.Int, createdBy);
-    logReq.input('itemSummary', sql.NVarChar(500), itemSummary);
-    await logReq.query(
-      `INSERT INTO SupplyOrderLogs (order_date, action, created_by, item_summary)
-       VALUES (@orderDate, @action, @createdBy, @itemSummary)`,
+    await client.query(
+      `INSERT INTO supply_order_logs (order_date, action, created_by, item_summary)
+       VALUES ($1, $2, $3, $4)`,
+      [orderDate, action, createdBy, itemSummary],
     );
-
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  });
 
   return (await getSupplyOrder(orderDate))!;
 }
@@ -193,67 +163,45 @@ export async function updateSupplyOrder(
   items: { supplyItemId: number; quantity: number }[],
   createdBy: number,
 ): Promise<SupplyOrder> {
-  const pool = await getPool();
-  const checkReq = pool.request();
-  checkReq.input('orderDate', sql.Date, date);
-  const existing = await checkReq.query(
-    `SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate`,
+  const existing = await query<{ id: number }>(
+    `SELECT id FROM daily_supply_orders WHERE order_date = $1`,
+    [date],
   );
 
-  if (existing.recordset.length > 0) {
-    const deleteReq = pool.request();
-    deleteReq.input('orderDate', sql.Date, date);
-    await deleteReq.query(
-      `DELETE FROM DailySupplyOrderItems WHERE order_id IN (SELECT id FROM DailySupplyOrders WHERE order_date = @orderDate);
-       DELETE FROM DailySupplyOrders WHERE order_date = @orderDate;
-       DELETE FROM SupplyVerifications WHERE order_date = @orderDate;`,
-    );
+  if (existing.length > 0) {
+    // The three deletes were one T-SQL batch; a transaction keeps them from
+    // half-applying and leaving an order without its items.
+    await withTransaction(async (client) => {
+      await client.query(
+        `DELETE FROM daily_supply_order_items WHERE order_id IN (SELECT id FROM daily_supply_orders WHERE order_date = $1)`,
+        [date],
+      );
+      await client.query('DELETE FROM daily_supply_orders WHERE order_date = $1', [date]);
+      await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [date]);
+    });
   }
 
   return createSupplyOrder(date, items, createdBy, 'UPDATE');
 }
 
 export async function listSupplyOrders(startDate: string, endDate: string): Promise<SupplyOrder[]> {
-  const pool = await getPool();
-  const req = pool.request();
-  req.input('startDate', sql.Date, startDate);
-  req.input('endDate', sql.Date, endDate);
-
-  const ordersResult = await req.query(
+  const orderRows = await query<any>(
     `SELECT id, order_date, total_cost, created_by, created_at
-     FROM DailySupplyOrders
-     WHERE order_date BETWEEN @startDate AND @endDate
+     FROM daily_supply_orders
+     WHERE order_date BETWEEN $1 AND $2
      ORDER BY order_date DESC`,
+    [startDate, endDate],
   );
 
   const orders: SupplyOrder[] = [];
-  for (const order of ordersResult.recordset) {
-    const itemsReq = pool.request();
-    itemsReq.input('orderId', sql.Int, order.id);
-    const itemsResult = await itemsReq.query(
-      `SELECT doi.quantity, doi.unit_price, doi.line_total, si.id AS supply_item_id, si.name, si.category, si.pieces_per, si.display_name
-       FROM DailySupplyOrderItems doi
-       JOIN SupplyItems si ON doi.supply_item_id = si.id
-       WHERE doi.order_id = @orderId
-       ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
-    );
-
+  for (const order of orderRows) {
     orders.push({
       id: order.id,
       orderDate: formatDate(order.order_date),
       totalCost: order.total_cost,
       createdBy: order.created_by,
       createdAt: order.created_at.toISOString(),
-      items: itemsResult.recordset.map((row: any) => ({
-        supplyItemId: row.supply_item_id,
-        name: row.name,
-        displayName: row.display_name,
-        category: row.category,
-        quantity: row.quantity,
-        unitPrice: row.unit_price,
-        lineTotal: row.line_total,
-        piecesPer: row.pieces_per,
-      })),
+      items: await getOrderItems(order.id),
     });
   }
 
@@ -271,19 +219,16 @@ export interface SupplyOrderLog {
 }
 
 export async function getSupplyOrderLogs(date: string): Promise<SupplyOrderLog[]> {
-  const pool = await getPool();
-  const req = pool.request();
-  req.input('orderDate', sql.Date, date);
-
-  const result = await req.query(
+  const rows = await query<any>(
     `SELECT l.id, l.order_date, l.action, l.created_by, l.created_at, l.item_summary, u.display_name
-     FROM SupplyOrderLogs l
-     JOIN Users u ON l.created_by = u.id
-     WHERE l.order_date = @orderDate
+     FROM supply_order_logs l
+     JOIN users u ON l.created_by = u.id
+     WHERE l.order_date = $1
      ORDER BY l.created_at DESC`,
+    [date],
   );
 
-  return result.recordset.map((row: any) => ({
+  return rows.map((row) => ({
     id: row.id,
     orderDate: formatDate(row.order_date),
     action: row.action,

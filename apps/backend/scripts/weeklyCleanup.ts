@@ -1,59 +1,49 @@
-import sql from 'mssql';
-import { getPool, closePool } from '../src/db/pool.js';
+import { withTransaction, closePool } from '../src/db/pool.js';
 
 async function main() {
-  const pool = await getPool();
-  const transaction = new sql.Transaction(pool);
-  await transaction.begin();
-
   try {
-    const sundayRow = await transaction.request().query(`
-      SELECT MAX(order_date) AS lastSunday
-      FROM DailyClosingStock
-      WHERE DATEDIFF(DAY, 0, order_date) % 7 = 6;
-    `);
-    const lastSunday: Date | null = sundayRow.recordset[0]?.lastSunday ?? null;
+    await withTransaction(async (client) => {
+      const sundayRow = await client.query<{ lastsunday: string | null }>(`
+        SELECT MAX(order_date) AS lastSunday
+        FROM daily_closing_stock
+        WHERE EXTRACT(DOW FROM order_date) = 0;
+      `);
+      const lastSunday = sundayRow.rows[0]?.lastsunday ?? null;
 
-    console.log('Deleting Orders (cascades to OrderItems)...');
-    await transaction.request().query('DELETE FROM Orders;');
+      console.log('Deleting orders (cascades to order_items)...');
+      await client.query('DELETE FROM orders;');
 
-    console.log('Deleting DailySupplyOrders (cascades to DailySupplyOrderItems)...');
-    await transaction.request().query('DELETE FROM DailySupplyOrders;');
+      console.log('Deleting daily_supply_orders (cascades to daily_supply_order_items)...');
+      await client.query('DELETE FROM daily_supply_orders;');
 
-    console.log('Deleting SupplyOrderLogs...');
-    await transaction.request().query('DELETE FROM SupplyOrderLogs;');
+      console.log('Deleting supply_order_logs...');
+      await client.query('DELETE FROM supply_order_logs;');
 
-    console.log('Deleting SupplyVerifications...');
-    await transaction.request().query('DELETE FROM SupplyVerifications;');
+      console.log('Deleting supply_verifications...');
+      await client.query('DELETE FROM supply_verifications;');
 
-    if (lastSunday) {
-      console.log(`Deleting DailyClosingStock, keeping ${lastSunday.toISOString().slice(0, 10)}...`);
-      await transaction
-        .request()
-        .input('lastSunday', sql.Date, lastSunday)
-        .query('DELETE FROM DailyClosingStock WHERE order_date <> @lastSunday;');
-    } else {
-      console.log('No prior Sunday found in DailyClosingStock — deleting all rows.');
-      await transaction.request().query('DELETE FROM DailyClosingStock;');
-    }
+      if (lastSunday) {
+        console.log(`Deleting daily_closing_stock, keeping ${lastSunday}...`);
+        await client.query('DELETE FROM daily_closing_stock WHERE order_date <> $1;', [lastSunday]);
+      } else {
+        console.log('No prior Sunday found in daily_closing_stock — deleting all rows.');
+        await client.query('DELETE FROM daily_closing_stock;');
+      }
 
-    console.log('Deleting StaffOperationLogs...');
-    await transaction.request().query('DELETE FROM StaffOperationLogs;');
+      console.log('Deleting staff_operation_logs...');
+      await client.query('DELETE FROM staff_operation_logs;');
 
-    console.log('Deleting ClientActivityLogs...');
-    await transaction.request().query('DELETE FROM ClientActivityLogs;');
+      console.log('Deleting client_activity_logs...');
+      await client.query('DELETE FROM client_activity_logs;');
 
-    console.log('Deleting DailyPaymentSettlements...');
-    await transaction.request().query('DELETE FROM DailyPaymentSettlements;');
+      console.log('Deleting daily_payment_settlements...');
+      await client.query('DELETE FROM daily_payment_settlements;');
 
-    console.log('Deleting DayExpenses...');
-    await transaction.request().query('DELETE FROM DayExpenses;');
+      console.log('Deleting day_expenses...');
+      await client.query('DELETE FROM day_expenses;');
+    });
 
-    await transaction.commit();
     console.log('Weekly cleanup complete.');
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
   } finally {
     await closePool();
   }

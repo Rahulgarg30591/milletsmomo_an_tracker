@@ -1,16 +1,24 @@
 services:
-  sqlserver:
-    image: mcr.microsoft.com/azure-sql-edge:latest
-    container_name: millets-momo-sql
+  postgres:
+    image: postgres:17-alpine
+    container_name: millets-momo-db
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "MomoDev2024!"
-      MSSQL_PID: "Developer"
+      POSTGRES_USER: momo
+      POSTGRES_PASSWORD: MomoDev2024!
+      # Created on first start, so there is no separate create-database step.
+      POSTGRES_DB: millets_momo
     ports:
-      - "1433:1433"
+      # Host port is overridable so the container can coexist with another
+      # local Postgres already holding 5432: MOMO_DB_PORT=5433 docker compose up -d
+      - "${MOMO_DB_PORT:-5432}:5432"
+    volumes:
+      - momo-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "MomoDev2024!" -C -Q "SELECT 1" || exit 1
+      test: ["CMD-SHELL", "pg_isready -U momo -d millets_momo"]
       interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 30s
+      start_period: 10s
+
+volumes:
+  momo-pgdata:

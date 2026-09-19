@@ -6,15 +6,16 @@
 |---|---|---|
 | Frontend | React 18 + MUI 6 + Vite PWA | Azure Static Web Apps |
 | Backend | Express 4 on Azure Functions v4 | Azure SWA Managed Functions |
-| Database | Azure SQL | Azure SQL Free tier |
+| Database | Postgres | Supabase Free tier |
 
-Both the static frontend and the managed API are hosted in a single **Azure Static Web Apps** resource.
+Both the static frontend and the managed API are hosted in a single **Azure Static Web Apps** resource. The database is **not** an Azure resource — it lives on Supabase and is reached over its shared transaction pooler.
 
 ---
 
 ## Prerequisites
 
-1. **Azure subscription** with access to Azure SQL Free tier
+1. **Azure subscription** (Static Web Apps Free tier is enough)
+1. **Supabase project** — free tier, for the Postgres database
 2. **GitHub account** for CI/CD
 3. **Azure CLI** installed (`az login` to authenticate)
 4. **Azure Functions Core Tools** v4 installed locally (`npm i -g azure-functions-core-tools@4`)
@@ -31,18 +32,13 @@ A Bicep template at `infra/main.bicep` provisions all required resources in one 
 | Resource | Type | Name pattern |
 |---|---|---|
 | Resource group | `Microsoft.Resources/resourceGroups` | `millets-momo-rg` (default) |
-| SQL Server | `Microsoft.Sql/servers` | `millets-momo-sql` |
-| SQL Database (Free) | `Microsoft.Sql/servers/databases` | `millets-momo-db` |
-| Firewall: Azure services | `Microsoft.Sql/servers/firewallRules` | `AllowAzureServices` |
-| Firewall: Dev IPs | `Microsoft.Sql/servers/firewallRules` | `AllowLocalDev` |
 | Static Web App (Free) | `Microsoft.Web/staticSites` | `millets-momo-swa` |
 | SWA App Settings | `Microsoft.Web/staticSites/configuredAppSettings` | env vars below |
 
 ### Required environment variables
 
 ```bash
-export SQL_ADMIN_USER="momoadmin"          # SQL admin username
-export SQL_ADMIN_PASSWORD="<strong-password>"  # SQL admin password (min 8 chars)
+export DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres"
 export MM_TOKEN_SECRET="<64-char-random-string>"  # HMAC token signing secret (optional; auto-generated if unset)
 export RG_NAME="millets-momo-rg"               # Optional: resource group name
 export LOCATION="centralindia"                 # Optional: Azure region
@@ -66,12 +62,11 @@ az deployment group create \
   --resource-group millets-momo-rg \
   --template-file infra/main.bicep \
   --parameters baseName=millets-momo \
-               sqlAdminUser="$SQL_ADMIN_USER" \
-               sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
+               databaseUrl="$DATABASE_URL" \
                tokenSecret="$MM_TOKEN_SECRET"
 ```
 
-The script outputs the SWA URL and SQL Server FQDN after deployment.
+The script outputs the SWA URL after deployment.
 
 ---
 
@@ -83,11 +78,7 @@ The Bicep template sets these automatically:
 
 | Key | Value |
 |---|---|
-| `SQL_SERVER` | `<server>.database.windows.net` (from Bicep output) |
-| `SQL_DATABASE` | `millets-momo-db` |
-| `SQL_USER` | `<admin-username>` (from parameter) |
-| `SQL_PASSWORD` | `<admin-password>` (from parameter) |
-| `SQL_ENCRYPT` | `true` |
+| `DATABASE_URL` | Supabase shared transaction pooler URI (from parameter) |
 | `MM_TOKEN_SECRET` | `<random-64-char-string>` (optional; app has a baked-in fallback) |
 | `ALLOWED_ORIGIN` | `https://<swa-hostname>` (auto-detected) |
 | `NODE_ENV` | `production` |
@@ -113,10 +104,7 @@ For the DB migration workflow, also add:
 
 | Secret | Value |
 |---|---|
-| `SQL_SERVER` | `<server>.database.windows.net` |
-| `SQL_DATABASE` | `millets-momo-db` |
-| `SQL_USER` | `<admin-username>` |
-| `SQL_PASSWORD` | `<admin-password>` |
+| `DATABASE_URL` | Supabase shared transaction pooler URI |
 
 ---
 
@@ -126,11 +114,7 @@ For the DB migration workflow, also add:
 
 ```bash
 # Set environment variables (or use local.settings.json)
-export SQL_SERVER="<server>.database.windows.net"
-export SQL_DATABASE="millets-momo-db"
-export SQL_USER="<admin-username>"
-export SQL_PASSWORD="<admin-password>"
-export SQL_ENCRYPT="true"
+export DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres"
 
 # Generate PIN hashes
 npm run generate-pin-hash -- 1234   # staff PIN
@@ -150,7 +134,7 @@ Then run the migration:
 npm run db:migrate
 ```
 
-This executes `schema.sql` (creates tables and indexes) followed by `seed.sql` (inserts 24 menu items + 2 users).
+This executes `schema.sql` (creates tables and indexes) followed by `seed.sql` (inserts 30 menu items, 3 users and 8 supply items, then realigns the identity sequences).
 
 ### Option B: GitHub Actions migration (for production updates)
 
@@ -233,7 +217,7 @@ The Vite dev server proxies `/api/*` to `http://localhost:7071` (configured in `
 - [ ] Menu items load from `/api/menu`
 - [ ] Orders can be created and viewed
 - [ ] Admin dashboard shows summary data
-- [ ] Azure SQL connection works (check Function app logs for pool errors)
+- [ ] Supabase connection works (check Function app logs for pool errors)
 - [ ] CORS allows the SWA origin
 
 ### Lighthouse Audit
@@ -248,16 +232,17 @@ Run Lighthouse in Chrome DevTools:
 
 ## Troubleshooting
 
-### Azure SQL Free Tier
+### Cannot connect to Supabase
 
-The Free tier must be explicitly selected in the Azure Portal — it is not the default. If you see pricing errors, navigate to your SQL database → Configure pricing tier → select **Free (F1)**. The Bicep template defaults to `Free` / `Free` SKU.
+Use the **shared** transaction pooler (port 6543), shown in the Supabase dashboard under Connect → Transaction pooler. The direct connection and the dedicated pooler are IPv6-only, and Azure Functions has no IPv6 egress, so they fail to connect without the paid dedicated-IPv4 add-on.
+
+If the password contains `@`, `#`, `/` or other reserved characters, percent-encode it inside the URI.
 
 ### provisioning via Bicep fails
 
 - Ensure `az bicep install` is run first
-- Verify the Azure subscription has the `Microsoft.Sql` and `Microsoft.Web` resource providers registered:
+- Verify the Azure subscription has the `Microsoft.Web` resource provider registered:
   ```bash
-  az provider register --namespace Microsoft.Sql
   az provider register --namespace Microsoft.Web
   ```
 
@@ -268,8 +253,8 @@ Ensure `ALLOWED_ORIGIN` in app settings matches your SWA URL exactly (including 
 ### Function App Startup Errors
 
 Check application logs in the Azure Portal → Static Web App → Functions → Logs. Common issues:
-- Missing database connection env vars
-- Database firewall blocking Azure services (ensure `AllowAzureServices` firewall rule exists)
+- Missing `DATABASE_URL` app setting
+- Using the IPv6-only direct connection instead of the shared pooler
 
 ### PWA Not Installable
 
@@ -282,7 +267,7 @@ Verify that `/icons/icon-192.png`, `/icons/icon-512.png`, and `/icons/maskable-5
 - **Never commit** `local.settings.json` or `.env` files (they are gitignored)
 - **Change default PINs** before deploying to production
 - **Use a strong `MM_TOKEN_SECRET`** (64+ random characters) in production for a stronger token signing secret
-- **Enable Azure SQL firewall** — only allow Azure services and your dev IP
+- **Rotate the Supabase database password** if it has ever been pasted outside a secret store
 - **Review CSP headers** set by `helmet()` — add Azure SWA origin if needed
 - **Store deployment token** in GitHub Secrets, never in code
-- **Restrict `AllowLocalDev` firewall rule** to your IP in production (edit Bicep params)
+- **Restrict database access** under Supabase → Settings → Database → Network restrictions if you need an IP allowlist

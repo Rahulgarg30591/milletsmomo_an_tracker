@@ -14,23 +14,22 @@ fi
 RG_NAME="${RG_NAME:-millets-momo-rg}"
 LOCATION="${LOCATION:-centralindia}"
 BASE_NAME="${BASE_NAME:-millets-momo}"
-SQL_ADMIN_USER="${SQL_ADMIN_USER:-momoadmin}"
-SQL_ADMIN_PASSWORD="${SQL_ADMIN_PASSWORD:-}"
-SQL_DB_NAME="${SQL_DB_NAME:-${BASE_NAME}-db}"
+DATABASE_URL="${DATABASE_URL:-}"
 MM_TOKEN_SECRET="${MM_TOKEN_SECRET:-}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-}"
 REPO_URL="${REPO_URL:-}"
 REPOSITORY_TOKEN="${REPOSITORY_TOKEN:-}"
 BRANCH="${BRANCH:-main}"
-CLIENT_IP="${CLIENT_IP:-}"
 
 DEPLOYMENT_NAME="${BASE_NAME}-$(date +%Y%m%d%H%M%S)"
 
-# --- Auto-generate secrets if not provided ---
-if [[ -z "$SQL_ADMIN_PASSWORD" ]]; then
-  echo "SQL_ADMIN_PASSWORD not set. Auto-generating..."
-  SQL_ADMIN_PASSWORD=$(openssl rand -base64 20 | tr -d '/+=')
-  echo "Generated SQL_ADMIN_PASSWORD (save this!): $SQL_ADMIN_PASSWORD"
+# The database lives on Supabase, so there is nothing to provision for it and
+# no admin password to generate — only a connection string to pass through.
+if [[ -z "$DATABASE_URL" ]]; then
+  echo "DATABASE_URL is not set." >&2
+  echo "Copy it from Supabase → Connect → Transaction pooler (shared, port 6543)" >&2
+  echo "and put it in infra/.env as DATABASE_URL=postgresql://..." >&2
+  exit 1
 fi
 
 if [[ -z "$MM_TOKEN_SECRET" ]]; then
@@ -44,18 +43,6 @@ if [[ -z "$REPOSITORY_TOKEN" ]]; then
   echo "Set it to a GitHub PAT with repo access if you want auto-deploys." >&2
 fi
 
-# --- Auto-detect client IP ---
-if [[ -z "$CLIENT_IP" ]]; then
-  echo "Auto-detecting client IP..."
-  CLIENT_IP=$(curl -s https://checkip.amazonaws.com 2>/dev/null || echo "")
-  if [[ -z "$CLIENT_IP" ]]; then
-    echo "Warning: Could not detect client IP. SQL firewall rule will not be created." >&2
-    echo "Set CLIENT_IP manually in .env if you need local dev access to the database." >&2
-  else
-    echo "Detected client IP: $CLIENT_IP"
-  fi
-fi
-
 # --- Persist generated values to .env for future runs ---
 ENV_FILE="$SCRIPT_DIR/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -64,15 +51,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
 RG_NAME=$RG_NAME
 LOCATION=$LOCATION
 BASE_NAME=$BASE_NAME
-SQL_ADMIN_USER=$SQL_ADMIN_USER
-SQL_ADMIN_PASSWORD=$SQL_ADMIN_PASSWORD
-SQL_DB_NAME=$SQL_DB_NAME
+DATABASE_URL=$DATABASE_URL
 MM_TOKEN_SECRET=$MM_TOKEN_SECRET
 ALLOWED_ORIGINS=$ALLOWED_ORIGINS
 REPO_URL=$REPO_URL
 REPOSITORY_TOKEN=$REPOSITORY_TOKEN
 BRANCH=$BRANCH
-CLIENT_IP=$CLIENT_IP
 EOF
   echo "Saved configuration to $ENV_FILE"
   echo "IMPORTANT: Add infra/.env to .gitignore! (It contains secrets.)"
@@ -83,11 +67,8 @@ echo "=== Deployment Configuration ==="
 echo "  Resource Group : $RG_NAME"
 echo "  Location       : $LOCATION"
 echo "  Base Name      : $BASE_NAME"
-echo "  SQL Server      : ${BASE_NAME}-sql"
-echo "  SQL Database    : $SQL_DB_NAME"
-echo "  SQL Admin User  : $SQL_ADMIN_USER"
-echo "  SWA App         : ${BASE_NAME}-swa"
-echo "  Client IP       : ${CLIENT_IP:-none}"
+echo "  SWA App        : ${BASE_NAME}-swa"
+echo "  Database       : Supabase (not provisioned by this script)"
 echo ""
 
 # --- Create resource group ---
@@ -103,15 +84,12 @@ DEPLOY_OUTPUT=$(az deployment group create \
   --parameters \
       baseName="$BASE_NAME" \
       location="$LOCATION" \
-      sqlAdminUser="$SQL_ADMIN_USER" \
-      sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
-      sqlDbName="$SQL_DB_NAME" \
+      databaseUrl="$DATABASE_URL" \
       tokenSecret="$MM_TOKEN_SECRET" \
       allowedOrigins="$ALLOWED_ORIGINS" \
       repoUrl="$REPO_URL" \
       repositoryToken="$REPOSITORY_TOKEN" \
       branch="$BRANCH" \
-      clientIp="$CLIENT_IP" \
   --query 'properties.outputs' \
   --output json)
 
@@ -120,43 +98,22 @@ echo "=== Deployment Outputs ==="
 echo "$DEPLOY_OUTPUT" | jq '.'
 
 SWA_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.swaDefaultUrl.value // empty')
-SQL_FQDN=$(echo "$DEPLOY_OUTPUT" | jq -r '.sqlServerFqdn.value // empty')
-SQL_DB_NAME_OUT=$(echo "$DEPLOY_OUTPUT" | jq -r '.sqlDatabaseName.value // empty')
 
 if [[ -n "$SWA_URL" ]]; then
   echo ""
   echo "SWA URL: $SWA_URL"
 fi
-if [[ -n "$SQL_FQDN" ]]; then
-  echo "SQL Server: $SQL_FQDN"
-  echo "SQL Database: $SQL_DB_NAME_OUT"
-fi
-
-# --- Update local.settings.json for local dev ---
-LOCAL_SETTINGS="$PROJECT_ROOT/apps/backend/local.settings.json"
-if [[ -f "$LOCAL_SETTINGS" ]] && [[ -n "$SQL_FQDN" ]]; then
-  echo ""
-  echo "Updating $LOCAL_SETTINGS with deployment values..."
-  TMP_SETTINGS=$(mktemp)
-  jq --arg server "$SQL_FQDN" \
-     --arg db "$SQL_DB_NAME_OUT" \
-     --arg user "$SQL_ADMIN_USER" \
-     --arg pass "$SQL_ADMIN_PASSWORD" \
-     '.Values.SQL_SERVER = $server | .Values.SQL_DATABASE = $db | .Values.SQL_USER = $user | .Values.SQL_PASSWORD = $pass | .Values.SQL_PORT = "1433" | .Values.SQL_ENCRYPT = "true" | .Values.SQL_TRUST_CERT = "false"' \
-     "$LOCAL_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$LOCAL_SETTINGS"
-  echo "Done. local.settings.json updated."
-fi
 
 echo ""
 echo "=== Next steps ==="
 echo "1. Run database migration (first time only):"
-echo "   npm run db:migrate"
+echo "   npm run prod:db:migrate"
 echo ""
 echo "2. Get SWA deployment token for GitHub Actions:"
 echo "   az staticwebapp secrets list --name ${BASE_NAME}-swa --resource-group $RG_NAME --query properties.apiKey -o tsv"
 echo ""
 echo "3. Add GitHub repo secrets (Settings → Secrets → Actions):"
 echo "   AZURE_STATIC_WEB_APPS_API_TOKEN  — from step 2"
-echo "   SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT, MM_TOKEN_SECRET"
+echo "   DATABASE_URL, MM_TOKEN_SECRET"
 echo ""
 echo "4. If using GitHub Actions CI/CD, set REPO_URL in infra/.env (owner/repo format)"

@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 import { formatTimeLabel } from '../utils/time.js';
 import { computeLineTotal, computeOrderTotal } from '../utils/pricing.js';
@@ -18,22 +17,19 @@ function findMenuItem(menuItemId: number) {
 }
 
 export async function getOrders(date: string) {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('orderDate', sql.Date, date);
-
-  const rows = await request.query(
+  const rows = await query<any>(
     `SELECT o.id, o.order_date, o.time_label, o.order_type, o.payment_method, o.is_completed,
             o.total_amount, o.cash_amount, o.upi_amount, o.comment,
             i.menu_item_id, i.item_name, i.quantity, i.is_half, i.unit_price, i.line_total
-     FROM Orders o
-     LEFT JOIN OrderItems i ON i.order_id = o.id
-     WHERE o.order_date = @orderDate
+     FROM orders o
+     LEFT JOIN order_items i ON i.order_id = o.id
+     WHERE o.order_date = $1
      ORDER BY o.id DESC, i.id`,
+    [date],
   );
 
   const orderMap = new Map<number, any>();
-  for (const row of rows.recordset) {
+  for (const row of rows) {
     let order = orderMap.get(row.id);
     if (!order) {
       order = {
@@ -78,7 +74,6 @@ export async function createOrder(
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   },
 ) {
-  const pool = await getPool();
   const id = Date.now();
   const timeLabel = formatTimeLabel(new Date());
   const totalAmount = computeOrderTotal(data.items);
@@ -95,51 +90,35 @@ export async function createOrder(
     upiAmount = data.upiAmount ?? 0;
   }
 
-  const transaction = pool.transaction();
-  await transaction.begin();
-
-  try {
-    const orderRequest = transaction.request();
-    orderRequest.input('id', sql.BigInt, id);
-    orderRequest.input('orderDate', sql.Date, data.orderDate);
-    orderRequest.input('timeLabel', sql.NVarChar, timeLabel);
-    orderRequest.input('orderType', sql.NVarChar, data.orderType);
-    orderRequest.input('paymentMethod', sql.NVarChar, data.paymentMethod);
-    orderRequest.input('totalAmount', sql.Decimal(8, 2), totalAmount);
-    orderRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
-    orderRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
-    orderRequest.input('createdBy', sql.Int, userId);
-    orderRequest.input('comment', sql.NVarChar(500), data.comment ?? null);
-
-    await orderRequest.query(
-      `INSERT INTO Orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by, comment)
-       VALUES (@id, @orderDate, @timeLabel, @orderType, @paymentMethod, 0, @totalAmount, @cashAmount, @upiAmount, @createdBy, @comment)`,
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO orders (id, order_date, time_label, order_type, payment_method, is_completed, total_amount, cash_amount, upi_amount, created_by, comment)
+       VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7, $8, $9, $10)`,
+      [
+        id,
+        data.orderDate,
+        timeLabel,
+        data.orderType,
+        data.paymentMethod,
+        totalAmount,
+        cashAmount,
+        upiAmount,
+        userId,
+        data.comment ?? null,
+      ],
     );
 
     for (const item of data.items) {
       const menuItem = findMenuItem(item.menuItemId);
       const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
 
-      const itemRequest = transaction.request();
-      itemRequest.input('orderId', sql.BigInt, id);
-      itemRequest.input('menuItemId', sql.Int, item.menuItemId);
-      itemRequest.input('itemName', sql.NVarChar, menuItem.displayName);
-      itemRequest.input('quantity', sql.Int, item.quantity);
-      itemRequest.input('isHalf', sql.Bit, item.isHalf ? 1 : 0);
-      itemRequest.input('unitPrice', sql.Decimal(6, 2), unitPrice);
-      itemRequest.input('lineTotal', sql.Decimal(8, 2), lineTotal);
-
-      await itemRequest.query(
-        `INSERT INTO OrderItems (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES (@orderId, @menuItemId, @itemName, @quantity, @isHalf, @unitPrice, @lineTotal)`,
+      await client.query(
+        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
       );
     }
-
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  });
 
   return {
     id,
@@ -171,18 +150,15 @@ export async function completeOrder(
   cashAmount?: number,
   upiAmount?: number,
 ) {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('id', sql.BigInt, id);
-
-  const check = await request.query(
-    'SELECT id, order_date, payment_method, is_completed, total_amount FROM Orders WHERE id = @id',
+  const check = await query<any>(
+    'SELECT id, order_date, payment_method, is_completed, total_amount FROM orders WHERE id = $1',
+    [id],
   );
-  if (check.recordset.length === 0) {
+  if (check.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
   }
 
-  const order = check.recordset[0];
+  const order = check[0];
   if (order.is_completed) {
     throw Object.assign(new Error('Order already completed'), { status: 400 });
   }
@@ -201,35 +177,32 @@ export async function completeOrder(
     : paymentMethod === 'split' ? (upiAmount ?? (Number(order.total_amount) - (cashAmount ?? 0)))
     : Number(order.upi_amount ?? 0);
 
-  const updateRequest = pool.request();
-  updateRequest.input('id', sql.BigInt, id);
-
   if (paymentMethod) {
-    updateRequest.input('paymentMethod', sql.NVarChar, paymentMethod);
-    let query = `UPDATE Orders SET is_completed = 1, completed_at = SYSUTCDATETIME(), payment_method = @paymentMethod`;
-    
+    // $1 is the id and $2 the payment method; any amount columns follow, so the
+    // placeholder numbers are assigned in the order the values are pushed.
+    const params: unknown[] = [id, paymentMethod];
+    let text = `UPDATE orders SET is_completed = TRUE, completed_at = NOW(), payment_method = $2`;
+
     if (paymentMethod === 'split') {
       const total = order.total_amount;
       const cash = cashAmount ?? 0;
       const upi = upiAmount ?? (total - cash);
-      updateRequest.input('cashAmount', sql.Decimal(8, 2), cash);
-      updateRequest.input('upiAmount', sql.Decimal(8, 2), upi);
-      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+      params.push(cash, upi);
+      text += `, cash_amount = $3, upi_amount = $4`;
     } else if (paymentMethod === 'cash') {
-      updateRequest.input('cashAmount', sql.Decimal(8, 2), order.total_amount);
-      updateRequest.input('upiAmount', sql.Decimal(8, 2), 0);
-      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+      params.push(order.total_amount, 0);
+      text += `, cash_amount = $3, upi_amount = $4`;
     } else if (paymentMethod === 'upi') {
-      updateRequest.input('cashAmount', sql.Decimal(8, 2), 0);
-      updateRequest.input('upiAmount', sql.Decimal(8, 2), order.total_amount);
-      query += `, cash_amount = @cashAmount, upi_amount = @upiAmount`;
+      params.push(0, order.total_amount);
+      text += `, cash_amount = $3, upi_amount = $4`;
     }
-    
-    query += ` WHERE id = @id`;
-    await updateRequest.query(query);
+
+    text += ` WHERE id = $1`;
+    await query(text, params);
   } else {
-    await updateRequest.query(
-      `UPDATE Orders SET is_completed = 1, completed_at = SYSUTCDATETIME() WHERE id = @id`,
+    await query(
+      `UPDATE orders SET is_completed = TRUE, completed_at = NOW() WHERE id = $1`,
+      [id],
     );
   }
 
@@ -245,17 +218,13 @@ export async function completeOrder(
 }
 
 export async function deleteOrder(id: number) {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('id', sql.BigInt, id);
-
-  const check = await request.query('SELECT id, order_date FROM Orders WHERE id = @id');
-  if (check.recordset.length === 0) {
+  const check = await query<any>('SELECT id, order_date FROM orders WHERE id = $1', [id]);
+  if (check.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
   }
 
-  const orderDate = formatDate(check.recordset[0].order_date);
-  await request.query('DELETE FROM Orders WHERE id = @id');
+  const orderDate = formatDate(check[0].order_date);
+  await query('DELETE FROM orders WHERE id = $1', [id]);
   return { deleted: true, id, orderDate };
 }
 
@@ -270,16 +239,14 @@ export async function updateOrder(
     items: { menuItemId: number; quantity: number; isHalf: boolean }[];
   },
 ) {
-  const pool = await getPool();
-  const checkRequest = pool.request();
-  checkRequest.input('id', sql.BigInt, id);
-  const check = await checkRequest.query(
-    'SELECT id, order_date, is_completed FROM Orders WHERE id = @id',
+  const check = await query<any>(
+    'SELECT id, order_date, is_completed FROM orders WHERE id = $1',
+    [id],
   );
-  if (check.recordset.length === 0) {
+  if (check.length === 0) {
     throw Object.assign(new Error('Order not found'), { status: 404 });
   }
-  const existing = check.recordset[0];
+  const existing = check[0];
   if (existing.is_completed) {
     throw Object.assign(new Error('Cannot edit a completed order'), { status: 400 });
   }
@@ -298,51 +265,25 @@ export async function updateOrder(
     upiAmount = data.upiAmount ?? 0;
   }
 
-  const transaction = pool.transaction();
-  await transaction.begin();
-
-  try {
-    const updateRequest = transaction.request();
-    updateRequest.input('id', sql.BigInt, id);
-    updateRequest.input('orderType', sql.NVarChar, data.orderType);
-    updateRequest.input('paymentMethod', sql.NVarChar, data.paymentMethod);
-    updateRequest.input('totalAmount', sql.Decimal(8, 2), totalAmount);
-    updateRequest.input('cashAmount', sql.Decimal(8, 2), cashAmount);
-    updateRequest.input('upiAmount', sql.Decimal(8, 2), upiAmount);
-    updateRequest.input('comment', sql.NVarChar(500), data.comment ?? null);
-
-    await updateRequest.query(
-      `UPDATE Orders SET order_type = @orderType, payment_method = @paymentMethod, total_amount = @totalAmount, cash_amount = @cashAmount, upi_amount = @upiAmount, comment = @comment WHERE id = @id`,
+  await withTransaction(async (client) => {
+    await client.query(
+      `UPDATE orders SET order_type = $2, payment_method = $3, total_amount = $4, cash_amount = $5, upi_amount = $6, comment = $7 WHERE id = $1`,
+      [id, data.orderType, data.paymentMethod, totalAmount, cashAmount, upiAmount, data.comment ?? null],
     );
 
-    const deleteItemsRequest = transaction.request();
-    deleteItemsRequest.input('orderId', sql.BigInt, id);
-    await deleteItemsRequest.query('DELETE FROM OrderItems WHERE order_id = @orderId');
+    await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
 
     for (const item of data.items) {
       const menuItem = findMenuItem(item.menuItemId);
       const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
 
-      const itemRequest = transaction.request();
-      itemRequest.input('orderId', sql.BigInt, id);
-      itemRequest.input('menuItemId', sql.Int, item.menuItemId);
-      itemRequest.input('itemName', sql.NVarChar, menuItem.displayName);
-      itemRequest.input('quantity', sql.Int, item.quantity);
-      itemRequest.input('isHalf', sql.Bit, item.isHalf ? 1 : 0);
-      itemRequest.input('unitPrice', sql.Decimal(6, 2), unitPrice);
-      itemRequest.input('lineTotal', sql.Decimal(8, 2), lineTotal);
-
-      await itemRequest.query(
-        `INSERT INTO OrderItems (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES (@orderId, @menuItemId, @itemName, @quantity, @isHalf, @unitPrice, @lineTotal)`,
+      await client.query(
+        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
       );
     }
-
-    await transaction.commit();
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  });
 
   return {
     id,

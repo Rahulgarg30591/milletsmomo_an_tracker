@@ -1,5 +1,4 @@
-import sql from 'mssql';
-import { getPool } from '../db/pool.js';
+import { query, withTransaction } from '../db/pool.js';
 
 export interface ExpenseItem {
   id: number;
@@ -14,16 +13,14 @@ export interface DayExpenses {
 }
 
 export async function getDayExpenses(date: string): Promise<DayExpenses> {
-  const pool = await getPool();
-  const request = pool.request();
-  request.input('orderDate', sql.Date, date);
-  const result = await request.query(
+  const rows = await query<{ id: number; description: string; amount: number }>(
     `SELECT id, order_date, description, amount
-     FROM DayExpenses
-     WHERE order_date = @orderDate
+     FROM day_expenses
+     WHERE order_date = $1
      ORDER BY id`,
+    [date],
   );
-  const items: ExpenseItem[] = result.recordset.map((row: any) => ({
+  const items: ExpenseItem[] = rows.map((row) => ({
     id: row.id,
     description: row.description,
     amount: row.amount,
@@ -37,35 +34,17 @@ export async function saveDayExpenses(
   items: { description: string; amount: number }[],
   userId: number,
 ): Promise<DayExpenses> {
-  const pool = await getPool();
-  const transaction = pool.transaction();
-  await transaction.begin();
-  try {
-    const delReq = transaction.request();
-    delReq.input('orderDate', sql.Date, orderDate);
-    await delReq.query(`DELETE FROM DayExpenses WHERE order_date = @orderDate`);
+  await withTransaction(async (client) => {
+    await client.query('DELETE FROM day_expenses WHERE order_date = $1', [orderDate]);
 
     for (const item of items) {
-      const insReq = transaction.request();
-      insReq.input('orderDate', sql.Date, orderDate);
-      insReq.input('description', sql.NVarChar(200), item.description);
-      insReq.input('amount', sql.Decimal(10, 2), item.amount);
-      insReq.input('createdBy', sql.Int, userId);
-      await insReq.query(
-        `INSERT INTO DayExpenses (order_date, description, amount, created_by)
-         VALUES (@orderDate, @description, @amount, @createdBy)`,
+      await client.query(
+        `INSERT INTO day_expenses (order_date, description, amount, created_by)
+         VALUES ($1, $2, $3, $4)`,
+        [orderDate, item.description, item.amount, userId],
       );
     }
-
-    await transaction.commit();
-  } catch (err) {
-    try {
-      await transaction.rollback();
-    } catch {
-      // Transaction may already be aborted server-side; the original err below is what matters.
-    }
-    throw err;
-  }
+  });
 
   return getDayExpenses(orderDate);
 }
