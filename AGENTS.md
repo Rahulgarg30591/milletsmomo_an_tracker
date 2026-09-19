@@ -2,7 +2,7 @@
 
 ## State
 
-Monorepo — `package.json` with `npm workspaces`: `apps/frontend`, `apps/backend`, `packages/shared`. CommonJS root, each workspace has its own `tsconfig.json` (strict mode). Target: a PWA order-tracking app for a momo shop, deployed on Azure Static Web Apps + Azure Functions + Azure SQL (Free tier). License: ISC.
+Monorepo — `package.json` with `npm workspaces`: `apps/frontend`, `apps/backend`, `packages/shared`. CommonJS root, each workspace has its own `tsconfig.json` (strict mode). Target: a PWA order-tracking app for a momo shop, deployed on Azure Static Web Apps + Azure Functions, with the database on Supabase Postgres (Free tier). License: ISC.
 
 ## Commands
 
@@ -54,7 +54,7 @@ Run in a single workspace: `npm run <cmd> --workspace=<workspace>`.
 
 ## Conventions
 
-- **Database**: Azure SQL via `mssql`. ALL queries use `request.input()` parameterized placeholders — string interpolation into SQL is forbidden.
+- **Database**: Supabase Postgres via `pg`, over the shared transaction pooler (port 6543). ALL queries use positional `$1` placeholders — string interpolation into SQL is forbidden. Tables and columns are `snake_case`; unquoted identifiers are folded to lowercase by Postgres.
 - **Auth**: PINs stored as bcrypt hashes (cost 10). Login returns an HMAC-SHA256 signed token (12h expiry, static baked-in secret overridable via `MM_TOKEN_SECRET`). `authMiddleware` verifies on every protected route; `requireRole('admin')` guards `/api/admin/*`.
 - **Middleware stack**: `helmet()` → `cors()` → `express.json({limit:'50kb'})` → rate-limit on `/api/auth/login` (5/min) → request logging (no bodies/headers) → routes → `errorHandler`.
 - **Validation**: Every endpoint validates input with zod schemas in `apps/backend/src/validators/`.
@@ -68,7 +68,7 @@ Run in a single workspace: `npm run <cmd> --workspace=<workspace>`.
 GitHub Actions (`.github/workflows/azure-deploy.yml`) uses `Azure/static-web-apps-deploy`:
 - `app_location: "apps/frontend"`, `api_location: "apps/backend"`, `output_location: "dist"`
 - PRs → staging; merge to `main` → production.
-- Azure SQL Free offer tier must be explicitly selected in Portal (not default).
+- The database is not provisioned by Bicep. Azure hosts only the Static Web App; Supabase hosts Postgres.
 
 ## Build order (from PRD)
 
