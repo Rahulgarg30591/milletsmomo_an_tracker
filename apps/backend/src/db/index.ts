@@ -1,1 +1,1 @@
-export { getPool, closePool, query, withDbRetry, withTransaction, isTransientDbError } from './pool.js';
+export { getPool, closePool, query, queryOnce, withDbRetry, withTransaction, isTransientDbError } from './pool.js';

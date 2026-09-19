@@ -223,12 +223,34 @@ export async function withTransaction<T>(work: (client: PoolClient) => Promise<T
   }
 }
 
-/** Convenience wrapper returning just the rows, with retry. */
+/**
+ * Runs a statement and returns its rows, retrying once on a transient failure.
+ *
+ * The retry makes this unsafe for a statement that must not run twice: a
+ * connection can drop after the server commits but before the acknowledgement
+ * arrives, and the replay would insert a second row. Reads, UPDATEs and
+ * DELETEs here are all idempotent; anything that is not should use
+ * {@link queryOnce} or run inside {@link withTransaction}.
+ */
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
   return withDbRetry(async (p) => (await p.query<T>(text, params as never[])).rows);
+}
+
+/**
+ * Runs a statement exactly once, with no retry.
+ *
+ * For a non-idempotent write that is not already inside a transaction, where
+ * a duplicate row is worse than a failed request.
+ */
+export async function queryOnce<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const p = await getPool();
+  return (await p.query<T>(text, params as never[])).rows;
 }
 
 export async function closePool(): Promise<void> {

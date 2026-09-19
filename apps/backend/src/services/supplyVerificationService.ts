@@ -114,9 +114,9 @@ export async function getVerification(date: string): Promise<SupplyVerification 
 export async function listVerifications(startDate: string, endDate: string): Promise<{ orderDate: string; isFullyVerified: boolean; conflictCount: number }[]> {
   const rows = await query<{
     order_date: string;
-    total_items: string;
-    verified_items: string;
-    conflict_count: string;
+    total_items: number;
+    verified_items: number;
+    conflict_count: number;
   }>(
     `SELECT order_date,
             COUNT(*) as total_items,
@@ -129,17 +129,11 @@ export async function listVerifications(startDate: string, endDate: string): Pro
     [startDate, endDate],
   );
 
-  return rows.map((row) => {
-    // COUNT and SUM return BIGINT, which pg gives back as strings; comparing
-    // them directly would compare text, not numbers.
-    const totalItems = Number(row.total_items);
-    const verifiedItems = Number(row.verified_items);
-    return {
-      orderDate: formatDate(row.order_date),
-      isFullyVerified: totalItems > 0 && verifiedItems === totalItems,
-      conflictCount: Number(row.conflict_count) || 0,
-    };
-  });
+  return rows.map((row) => ({
+    orderDate: formatDate(row.order_date),
+    isFullyVerified: row.total_items > 0 && row.verified_items === row.total_items,
+    conflictCount: row.conflict_count ?? 0,
+  }));
 }
 
 export async function createVerification(

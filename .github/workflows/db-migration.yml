@@ -16,6 +16,11 @@ on:
         required: false
         default: false
         type: boolean
+      confirm:
+        description: 'schema.sql DROPS every table. Type DROP AND RECREATE to proceed.'
+        required: true
+        default: ''
+        type: string
 
 jobs:
   migrate:
@@ -23,6 +28,19 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     name: Run Schema Migration
     steps:
+      # schema.sql begins with DROP TABLE on all 14 tables, so a mis-click here
+      # destroys production. Nothing is checked out until the phrase matches.
+      - name: Require explicit confirmation
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "DROP AND RECREATE" ]; then
+            echo "::error::Refusing to run. This workflow drops every table and recreates it from schema.sql."
+            echo "::error::Re-run and type exactly: DROP AND RECREATE"
+            exit 1
+          fi
+          echo "Confirmation accepted."
+
       - uses: actions/checkout@v5
 
       - name: Setup Node.js

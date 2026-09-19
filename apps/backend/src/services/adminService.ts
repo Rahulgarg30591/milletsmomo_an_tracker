@@ -9,7 +9,7 @@ export async function getSummary(date: string, endDate?: string) {
   const dateFilter = isRange ? 'BETWEEN $1 AND $2' : '= $1';
 
   const statsRows = await query<{
-    totalorders: string;
+    totalorders: number;
     totalrevenue: number;
     pendingamount: number;
     cashtotal: number;
@@ -27,7 +27,7 @@ export async function getSummary(date: string, endDate?: string) {
 
   const breakdownRows = await query<{
     item_name: string;
-    totalquantity: string;
+    totalquantity: number;
     totalrevenue: number;
   }>(
     `SELECT oi.item_name, SUM(oi.quantity) AS totalQuantity, SUM(oi.line_total) AS totalRevenue
@@ -44,16 +44,14 @@ export async function getSummary(date: string, endDate?: string) {
   return {
     date,
     endDate: endDate || null,
-    // COUNT and SUM over an integer column return BIGINT, which pg gives back
-    // as a string unless it is narrowed here.
-    totalOrders: Number(stats.totalorders),
+    totalOrders: stats.totalorders,
     totalRevenue: stats.totalrevenue,
     pendingAmount: stats.pendingamount,
     cashTotal: stats.cashtotal,
     upiTotal: stats.upitotal,
     itemBreakdown: breakdownRows.map((row) => ({
       itemName: row.item_name,
-      totalQuantity: Number(row.totalquantity),
+      totalQuantity: row.totalquantity,
       totalRevenue: row.totalrevenue,
     })),
   };
