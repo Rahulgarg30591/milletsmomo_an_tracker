@@ -8,7 +8,8 @@ export async function getSummary(date: string, endDate?: string) {
   const params = isRange ? [date, endDate] : [date];
   const dateFilter = isRange ? 'BETWEEN $1 AND $2' : '= $1';
 
-  const statsRows = await query<{
+  // The two queries are independent, so they are issued together.
+  const statsPromise = query<{
     totalorders: number;
     totalrevenue: number;
     pendingamount: number;
@@ -25,7 +26,7 @@ export async function getSummary(date: string, endDate?: string) {
     params,
   );
 
-  const breakdownRows = await query<{
+  const breakdownPromise = query<{
     item_name: string;
     totalquantity: number;
     totalrevenue: number;
@@ -39,6 +40,7 @@ export async function getSummary(date: string, endDate?: string) {
     params,
   );
 
+  const [statsRows, breakdownRows] = await Promise.all([statsPromise, breakdownPromise]);
   const stats = statsRows[0];
 
   return {

@@ -1,4 +1,5 @@
-import { query, withTransaction } from '../db/pool.js';
+import type { PoolClient } from 'pg';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 import { formatTimeLabel } from '../utils/time.js';
 import { computeLineTotal, computeOrderTotal } from '../utils/pricing.js';
@@ -14,6 +15,34 @@ function findMenuItem(menuItemId: number) {
     });
   }
   return item;
+}
+
+/**
+ * Writes an order's line items as a single multi-row INSERT.
+ *
+ * One statement per item cost a network round trip each, which is the bulk of
+ * the time spent placing an order with more than a couple of lines.
+ */
+async function insertOrderItems(
+  client: PoolClient,
+  orderId: number,
+  items: { menuItemId: number; quantity: number; isHalf: boolean }[],
+): Promise<void> {
+  if (items.length === 0) return;
+
+  const { text, params } = bulkValues(
+    items.map((item) => {
+      const menuItem = findMenuItem(item.menuItemId);
+      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
+      return [orderId, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal];
+    }),
+  );
+
+  await client.query(
+    `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
+     VALUES ${text}`,
+    params,
+  );
 }
 
 export async function getOrders(date: string) {
@@ -108,16 +137,7 @@ export async function createOrder(
       ],
     );
 
-    for (const item of data.items) {
-      const menuItem = findMenuItem(item.menuItemId);
-      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
-
-      await client.query(
-        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
-      );
-    }
+    await insertOrderItems(client, id, data.items);
   });
 
   return {
@@ -277,16 +297,7 @@ export async function updateOrder(
 
     await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
 
-    for (const item of data.items) {
-      const menuItem = findMenuItem(item.menuItemId);
-      const { unitPrice, lineTotal } = computeLineTotal(item.menuItemId, item.quantity, item.isHalf);
-
-      await client.query(
-        `INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, is_half, unit_price, line_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, item.menuItemId, menuItem.displayName, item.quantity, item.isHalf, unitPrice, lineTotal],
-      );
-    }
+    await insertOrderItems(client, id, data.items);
   });
 
   return {

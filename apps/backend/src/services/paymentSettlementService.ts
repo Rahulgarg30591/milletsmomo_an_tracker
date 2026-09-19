@@ -78,8 +78,11 @@ export async function getSettlement(date: string): Promise<DailyPaymentSettlemen
 }
 
 export async function getSettlementSummary(date: string): Promise<SettlementSummary> {
-  const expected = await getExpectedAmounts(date);
-  const settlement = await getSettlement(date);
+  // Independent queries, so they go out together rather than back to back.
+  const [expected, settlement] = await Promise.all([
+    getExpectedAmounts(date),
+    getSettlement(date),
+  ]);
 
   return {
     orderDate: date,

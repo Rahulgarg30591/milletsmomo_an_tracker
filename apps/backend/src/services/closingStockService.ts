@@ -1,4 +1,4 @@
-import { query, withTransaction } from '../db/pool.js';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 
 export interface ClosingStockItem {
   supplyItemId: number;
@@ -139,11 +139,9 @@ export async function createClosingStock(
     // Delete existing closing stock for this date
     await client.query('DELETE FROM daily_closing_stock WHERE order_date = $1', [orderDate]);
 
-    for (const item of items) {
-      await client.query(
-        `INSERT INTO daily_closing_stock (order_date, supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason, reported_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
+    if (items.length > 0) {
+      const { text, params } = bulkValues(
+        items.map((item) => [
           orderDate,
           item.supplyItemId,
           item.packetsLeft,
@@ -152,7 +150,12 @@ export async function createClosingStock(
           item.hasConflict,
           item.conflictReason,
           reportedBy,
-        ],
+        ]),
+      );
+      await client.query(
+        `INSERT INTO daily_closing_stock (order_date, supply_item_id, packets_left, pieces_left, wastage_pieces, has_conflict, conflict_reason, reported_by)
+         VALUES ${text}`,
+        params,
       );
     }
   });

@@ -1,4 +1,4 @@
-import { query, withTransaction } from '../db/pool.js';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyVerificationItem {
@@ -145,18 +145,21 @@ export async function createVerification(
     // Delete existing verifications for this date
     await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [orderDate]);
 
-    for (const item of items) {
-      await client.query(
-        `INSERT INTO supply_verifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
+    if (items.length > 0) {
+      const { text, params } = bulkValues(
+        items.map((item) => [
           orderDate,
           item.supplyItemId,
           item.expectedQty,
           item.actualQty,
           item.actualQty !== item.expectedQty,
           reportedBy,
-        ],
+        ]),
+      );
+      await client.query(
+        `INSERT INTO supply_verifications (order_date, supply_item_id, expected_qty, actual_qty, has_conflict, reported_by)
+         VALUES ${text}`,
+        params,
       );
     }
   });
