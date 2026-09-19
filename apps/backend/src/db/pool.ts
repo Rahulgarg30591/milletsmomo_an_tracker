@@ -123,6 +123,33 @@ export function isTransientDbError(err: unknown): boolean {
   return false;
 }
 
+/**
+ * TLS settings for a connection string.
+ *
+ * Supabase terminates TLS at the pooler with a certificate that is not in
+ * Node's default trust store, which is what `sslmode=require` in their own
+ * connection strings amounts to; DB_SSL_STRICT=true verifies the chain
+ * properly once a CA bundle is available.
+ *
+ * A local Postgres container is built without SSL support and rejects the
+ * negotiation outright, so TLS has to be off for it rather than merely
+ * unverified. `sslmode=disable` in the URL forces that for any other host.
+ */
+function sslConfigFor(connectionString: string): boolean | { rejectUnauthorized: boolean } {
+  let host = '';
+  try {
+    const parsed = new URL(connectionString);
+    host = parsed.hostname;
+    if (parsed.searchParams.get('sslmode') === 'disable') return false;
+  } catch {
+    // Fall through to the secure default if the string is not a URL.
+  }
+
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+  if (process.env.DB_SSL_STRICT === 'true') return true;
+  return { rejectUnauthorized: false };
+}
+
 let pool: Pool | null = null;
 
 function buildPool(): Pool {
@@ -133,11 +160,7 @@ function buildPool(): Pool {
 
   const created = new Pool({
     connectionString,
-    // Supabase terminates TLS at the pooler with a certificate that is not in
-    // Node's default trust store, which is what `sslmode=require` in their own
-    // connection strings amounts to. Set DB_SSL_STRICT=true once a CA bundle is
-    // supplied to verify the chain properly.
-    ssl: process.env.DB_SSL_STRICT === 'true' ? true : { rejectUnauthorized: false },
+    ssl: sslConfigFor(connectionString),
     // The transaction pooler multiplexes, so a large client-side pool buys
     // nothing and just holds pooler slots that other Functions instances need.
     max: numFromEnv('DB_POOL_MAX', 5),

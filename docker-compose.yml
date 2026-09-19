@@ -8,7 +8,9 @@ services:
       # Created on first start, so there is no separate create-database step.
       POSTGRES_DB: millets_momo
     ports:
-      - "5432:5432"
+      # Host port is overridable so the container can coexist with another
+      # local Postgres already holding 5432: MOMO_DB_PORT=5433 docker compose up -d
+      - "${MOMO_DB_PORT:-5432}:5432"
     volumes:
       - momo-pgdata:/var/lib/postgresql/data
     healthcheck:
