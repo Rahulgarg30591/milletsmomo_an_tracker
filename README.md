@@ -101,9 +101,24 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 | Command | What it does |
 |---|---|
-| `npm test` | Run all tests across workspaces |
+| `npm test` | Unit tests across workspaces. Needs nothing running |
+| `npm run test:int` | Backend against a real Postgres. Needs the Docker database |
+| `npm run test:e2e` | Browser tests against the built app. Needs the Docker database |
+| `npm run test:e2e:ui` | The same, in Playwright's interactive runner |
+| `npm run test:all` | All three, in order |
 | `npm run typecheck` | TypeScript check all workspaces |
 | `npm run lint` | ESLint all `.ts` and `.tsx` files |
+
+The integration and browser tests each build their own database
+(`millets_momo_test` and `millets_momo_e2e`) from `schema.sql` and `seed.sql`,
+so they never touch your development data. If your Postgres is on a port other
+than 5432, pass it through:
+
+```bash
+MOMO_DB_PORT=5433 npm run test:int
+```
+
+They are deliberately not wired into CI — they are for use during development.
 
 ### Production
 

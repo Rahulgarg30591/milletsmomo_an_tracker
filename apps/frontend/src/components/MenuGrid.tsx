@@ -87,6 +87,18 @@ const MenuCellBase = ({
             borderColor: isActive ? colors.activeBorder : colors.border,
           },
         }}
+        // Announced as a control, the way BeverageGrid already does it.
+        // Without this the momo tiles are the primary way to build an order
+        // and a screen reader sees only static text.
+        role="button"
+        tabIndex={0}
+        aria-label={isActive ? `${item.displayName}, ${quantity} selected` : `Add ${item.displayName}`}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          if ((e.target as HTMLElement).closest('button')) return;
+          e.preventDefault();
+          if (!isActive) onAdd(item);
+        }}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('button')) return;
           if (!isActive) {
