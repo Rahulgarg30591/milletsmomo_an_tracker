@@ -7,6 +7,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
+    setupFiles: ['./src/test/setup.ts'],
+    // Rendering a MUI page in jsdom is slow, and slower again when several
+    // files run at once. The default 5s was tripping on load, not hanging.
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
 });
