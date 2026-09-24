@@ -77,34 +77,43 @@ function toClosingStockItem(
   };
 }
 
+/**
+ * Items to count at closing for a date, overlaid with any count already taken.
+ *
+ * The list is the union of:
+ *   - every active momo packet, so a type left out of today's supply order
+ *     (or a day with no order at all) can still be counted;
+ *   - every item on today's supply order, which is how sauces and dips appear;
+ *   - every item with packets or pieces left over from yesterday's count;
+ *   - every item already counted today, so a recorded row never disappears.
+ *
+ * @returns null when there is nothing to count.
+ */
 export async function getClosingStock(date: string): Promise<ClosingStock | null> {
-  // Check if there's a supply order for this date
-  const orderRows = await query<{ id: number }>(
-    `SELECT id FROM daily_supply_orders WHERE order_date = $1`,
-    [date],
-  );
-
-  // No supply order today: fall back to active momo_packet supply items so
-  // closing stock can still be recorded against yesterday's leftovers.
-  if (orderRows.length === 0) {
-    return getClosingStockFallback(date);
-  }
-
-  const orderId = orderRows[0].id;
-
-  // Get supply items from the order
   const itemRows = await query<{
-    supply_item_id: number;
+    id: number;
     display_name: string;
     category: string;
     pieces_per: number;
   }>(
-    `SELECT doi.supply_item_id, si.display_name, si.category, si.pieces_per
-     FROM daily_supply_order_items doi
-     JOIN supply_items si ON doi.supply_item_id = si.id
-     WHERE doi.order_id = $1
+    `SELECT si.id, si.display_name, si.category, si.pieces_per
+     FROM supply_items si
+     WHERE (si.category = 'momo_packet' AND si.is_active = TRUE)
+        OR si.id IN (
+          SELECT doi.supply_item_id
+          FROM daily_supply_order_items doi
+          JOIN daily_supply_orders dso ON doi.order_id = dso.id
+          WHERE dso.order_date = $1
+        )
+        OR si.id IN (
+          SELECT supply_item_id FROM daily_closing_stock
+          WHERE order_date = $1::date - 1 AND (packets_left > 0 OR pieces_left > 0)
+        )
+        OR si.id IN (
+          SELECT supply_item_id FROM daily_closing_stock WHERE order_date = $1
+        )
      ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
-    [orderId],
+    [date],
   );
 
   if (itemRows.length === 0) {
@@ -114,13 +123,7 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
   const stockMap = await getRecordedStock(date);
 
   const items = itemRows.map((row) =>
-    toClosingStockItem(
-      row.supply_item_id,
-      row.display_name,
-      row.category,
-      row.pieces_per,
-      stockMap.get(row.supply_item_id),
-    ),
+    toClosingStockItem(row.id, row.display_name, row.category, row.pieces_per, stockMap.get(row.id)),
   );
 
   return {
@@ -161,37 +164,4 @@ export async function createClosingStock(
   });
 
   return (await getClosingStock(orderDate))!;
-}
-
-/**
- * Fallback when no supply order exists for a date (e.g. "No Supply Today").
- * Returns active momo_packet supply items as the basis for recording closing
- * stock, overlaid with any already-recorded daily_closing_stock rows for today.
- * Supply contribution is implicitly 0; the frontend derives live stock from
- * yesterday's closing stock.
- */
-async function getClosingStockFallback(date: string): Promise<ClosingStock> {
-  const itemRows = await query<{
-    id: number;
-    display_name: string;
-    category: string;
-    pieces_per: number;
-  }>(
-    `SELECT id, display_name, category, pieces_per
-     FROM supply_items
-     WHERE is_active = TRUE AND category = 'momo_packet'
-     ORDER BY id`,
-  );
-
-  const stockMap = await getRecordedStock(date);
-
-  const items = itemRows.map((row) =>
-    toClosingStockItem(row.id, row.display_name, row.category, row.pieces_per, stockMap.get(row.id)),
-  );
-
-  return {
-    orderDate: date,
-    items,
-    isSubmitted: stockMap.size > 0,
-  };
 }

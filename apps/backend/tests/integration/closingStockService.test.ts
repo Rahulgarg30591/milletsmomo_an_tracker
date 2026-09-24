@@ -6,19 +6,23 @@ import { createSupplyOrder } from '../../src/services/supplyService.js';
 const DAY = '2026-08-01';
 const ADMIN = 3;
 const STAFF = 1;
+const YESTERDAY = '2026-07-31';
 const VEG_PACKET = 1;      // 24 pieces per packet
+const PANEER_PACKET = 2;
+const CHEESE_CORN_PACKET = 3;
 const RED_SAUCE = 4;
 
 describe('closingStockService against a real database', () => {
   describe('with a supply order for the day', () => {
-    it('lists the ordered items awaiting a count', async () => {
+    it('lists every momo packet plus the ordered sauces, awaiting a count', async () => {
       await createSupplyOrder(DAY, [
         { supplyItemId: VEG_PACKET, quantity: 3 },
         { supplyItemId: RED_SAUCE, quantity: 1 },
       ], ADMIN);
 
       const stock = await getClosingStock(DAY);
-      expect(stock?.items).toHaveLength(2);
+      expect(stock?.items.map((i) => i.supplyItemId))
+        .toEqual([VEG_PACKET, PANEER_PACKET, CHEESE_CORN_PACKET, RED_SAUCE]);
       expect(stock?.isSubmitted).toBe(false);
     });
 
@@ -94,6 +98,43 @@ describe('closingStockService against a real database', () => {
         wastagePieces: 0, hasConflict: false, conflictReason: null,
       }], STAFF);
       expect(saved.isSubmitted).toBe(true);
+    });
+  });
+
+  describe('with a partial supply order', () => {
+    const noCount = { piecesLeft: 0, wastagePieces: 0, hasConflict: false, conflictReason: null };
+
+    it('keeps a packet type left out of the order so its leftovers are counted', async () => {
+      await createClosingStock(YESTERDAY, [
+        { ...noCount, supplyItemId: PANEER_PACKET, packetsLeft: 2 },
+      ], STAFF);
+      await createSupplyOrder(DAY, [{ supplyItemId: VEG_PACKET, quantity: 3 }], ADMIN);
+
+      const stock = await getClosingStock(DAY);
+      const ids = stock!.items.map((i) => i.supplyItemId);
+      expect(ids).toContain(VEG_PACKET);
+      expect(ids).toContain(PANEER_PACKET);
+      expect(ids).toContain(CHEESE_CORN_PACKET);
+    });
+
+    it('still lists the momo packets when only sauces were ordered', async () => {
+      await createSupplyOrder(DAY, [{ supplyItemId: RED_SAUCE, quantity: 2 }], ADMIN);
+
+      const stock = await getClosingStock(DAY);
+      const momo = stock!.items.filter((i) => i.category === 'momo_packet');
+      expect(momo.map((i) => i.supplyItemId)).toEqual([VEG_PACKET, PANEER_PACKET, CHEESE_CORN_PACKET]);
+      expect(stock!.items.some((i) => i.supplyItemId === RED_SAUCE)).toBe(true);
+    });
+
+    it('records and returns a count for a type that was not ordered', async () => {
+      await createSupplyOrder(DAY, [{ supplyItemId: VEG_PACKET, quantity: 3 }], ADMIN);
+      const saved = await createClosingStock(DAY, [
+        { ...noCount, supplyItemId: VEG_PACKET, packetsLeft: 1 },
+        { ...noCount, supplyItemId: PANEER_PACKET, packetsLeft: 1 },
+      ], STAFF);
+
+      const paneer = saved.items.find((i) => i.supplyItemId === PANEER_PACKET)!;
+      expect(paneer.packetsLeft).toBe(1);
     });
   });
 });

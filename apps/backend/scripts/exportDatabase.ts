@@ -22,6 +22,7 @@ const TABLES = [
   'client_activity_logs',
   'daily_payment_settlements',
   'day_expenses',
+  'cylinder_refills',
 ];
 
 // Credential material must never be committed to git history, even hashed.

@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
@@ -194,19 +195,90 @@ export async function updateSupplyOrder(
   );
 
   if (existing.length > 0) {
-    // The three deletes were one T-SQL batch; a transaction keeps them from
-    // half-applying and leaving an order without its items.
-    await withTransaction(async (client) => {
-      await client.query(
-        `DELETE FROM daily_supply_order_items WHERE order_id IN (SELECT id FROM daily_supply_orders WHERE order_date = $1)`,
-        [date],
-      );
-      await client.query('DELETE FROM daily_supply_orders WHERE order_date = $1', [date]);
-      await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [date]);
-    });
+    // A transaction keeps the deletes from half-applying and leaving an order
+    // without its items.
+    await withTransaction((client) => deleteSupplyOrderRows(client, date));
   }
 
   return createSupplyOrder(date, items, createdBy, 'UPDATE');
+}
+
+/** Remove a day's supply order, its items and any verification of it. */
+async function deleteSupplyOrderRows(client: PoolClient, date: string): Promise<void> {
+  await client.query(
+    `DELETE FROM daily_supply_order_items WHERE order_id IN (SELECT id FROM daily_supply_orders WHERE order_date = $1)`,
+    [date],
+  );
+  await client.query('DELETE FROM daily_supply_orders WHERE order_date = $1', [date]);
+  await client.query('DELETE FROM supply_verifications WHERE order_date = $1', [date]);
+}
+
+/**
+ * Whether a date is marked "No Supply Today".
+ *
+ * Only the latest supply_order log counts, and only while no supply order
+ * exists: an order placed after the mark supersedes it, and a mark placed
+ * after an order cancels that order.
+ */
+export async function isMarkedNoSupply(date: string): Promise<boolean> {
+  const orderRows = await query<{ id: number }>(
+    `SELECT id FROM daily_supply_orders WHERE order_date = $1`,
+    [date],
+  );
+  if (orderRows.length > 0) return false;
+
+  const logRows = await query<{ metadata: string | null }>(
+    `SELECT metadata FROM staff_operation_logs
+     WHERE order_date = $1 AND operation_type = $2
+     ORDER BY created_at DESC, id DESC
+     LIMIT 1`,
+    [date, 'supply_order'],
+  );
+  if (logRows.length === 0 || !logRows[0].metadata) return false;
+  try {
+    return JSON.parse(logRows[0].metadata)?.noSupply === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mark a date "No Supply Today", cancelling any supply order placed for it
+ * (the supply never arrived). The order, its items and its verification are
+ * deleted and the mark is logged in one transaction, so supply for the day
+ * counts as zero everywhere: live stock, closing stock and the minimum sale
+ * value all fall back to yesterday's leftovers.
+ *
+ * @returns the cancelled order, or null if none existed.
+ */
+export async function markNoSupply(date: string, markedBy: number): Promise<SupplyOrder | null> {
+  const cancelled = await getSupplyOrder(date);
+
+  const details = cancelled
+    ? `Marked as No Supply Today (cancelled supply order of ₹${Number(cancelled.totalCost).toFixed(2)})`
+    : 'Marked as No Supply Today';
+  const metadata = {
+    noSupply: true,
+    orderDate: date,
+    ...(cancelled && {
+      cancelledOrder: {
+        supplyOrderId: cancelled.id,
+        totalCost: Number(cancelled.totalCost),
+        items: cancelled.items.map((i) => ({ supplyItemId: i.supplyItemId, quantity: i.quantity })),
+      },
+    }),
+  };
+
+  await withTransaction(async (client) => {
+    await deleteSupplyOrderRows(client, date);
+    await client.query(
+      `INSERT INTO staff_operation_logs (order_date, operation_type, created_by, details, metadata)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [date, 'supply_order', markedBy, details, JSON.stringify(metadata)],
+    );
+  });
+
+  return cancelled;
 }
 
 export async function listSupplyOrders(startDate: string, endDate: string): Promise<SupplyOrder[]> {

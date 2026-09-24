@@ -278,6 +278,80 @@ User is not an admin.
 
 ---
 
+## Cylinders
+
+Gas cylinder refills. Each refill is saved on its own (not with the day's other
+expenses) and kept by the weekly cleanup, so admin can review them by month.
+Every add, edit and delete writes a `cylinder_refill` staff operation log; an
+edit's log keeps the values before the change.
+
+Brands: `HP` (Hindustan Petroleum), `BP` (Bharat Petroleum), `INDANE`.
+
+### GET `/api/cylinders?date=YYYY-MM-DD`
+
+The day's refills, oldest first. Any signed-in user.
+
+```json
+{
+  "date": "2026-09-24",
+  "refills": [
+    { "id": 1, "refillDate": "2026-09-24", "brand": "HP", "amount": 950, "source": "Gupta Gas Agency", "createdBy": 1, "createdByName": "Cart Staff", "createdAt": "2026-09-24T10:49:00.000Z", "updatedByName": null, "updatedAt": null }
+  ]
+}
+```
+
+### POST `/api/cylinders`
+
+```json
+{ "refillDate": "2026-09-24", "brand": "INDANE", "amount": 905, "source": "Gupta Gas Agency" }
+```
+
+`amount` must be above 0 and at most 20000. `source` (where the cylinder came
+from) is optional, at most 100 characters, and trimmed; blank means not
+recorded. Responds `201` with the refill.
+
+### PUT `/api/cylinders/:id`
+
+Corrects a refill. Body is `{ brand, amount, source }` with the same rules; the
+date and who first logged it do not change, and `updatedByName`/`updatedAt` are
+set. Responds `200` with the refill, or `404`.
+
+### GET `/api/cylinders/sources`
+
+Sources used before, most recently used first (up to 20), for suggestions.
+
+```json
+{ "sources": ["Gupta Gas Agency", "Sharma Traders"] }
+```
+
+### DELETE `/api/cylinders/:id`
+
+Removes a refill logged by mistake. Responds `200` with the removed refill, or `404`.
+
+### GET `/api/admin/cylinders?month=YYYY-MM`
+
+Admin only. The month's refills, newest first, with totals per brand and per
+source (sources differing only in case are grouped; `null` is not recorded).
+
+```json
+{
+  "month": "2026-09",
+  "refills": [],
+  "byBrand": [
+    { "brand": "HP", "count": 1, "totalAmount": 950 },
+    { "brand": "BP", "count": 0, "totalAmount": 0 },
+    { "brand": "INDANE", "count": 0, "totalAmount": 0 }
+  ],
+  "bySource": [
+    { "source": "Gupta Gas Agency", "count": 1, "totalAmount": 950 }
+  ],
+  "count": 1,
+  "totalAmount": 950
+}
+```
+
+---
+
 ## Health
 
 ### GET `/api/health`

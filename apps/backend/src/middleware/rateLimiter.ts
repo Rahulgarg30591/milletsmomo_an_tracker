@@ -25,7 +25,9 @@ export const loginLimiter = rateLimit({
 
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  // Overridable so the browser suite, which drives every page from one
+  // address in a couple of minutes, is not throttled mid-run.
+  max: Number(process.env.MM_GLOBAL_RATE_LIMIT) || 200,
   message: { error: 'Too many requests. Please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,

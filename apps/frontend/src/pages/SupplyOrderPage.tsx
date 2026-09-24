@@ -24,13 +24,14 @@ export default function SupplyOrderPage() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
+  const [confirmNoSupply, setConfirmNoSupply] = useState(false);
 
   const { data: items = [] } = useQuery({
     queryKey: ['supplyItems'],
     queryFn: getSupplyItems,
   });
 
-  const { data: existingOrder } = useQuery({
+  const { data: existingOrder, isLoading: orderLoading } = useQuery({
     queryKey: ['supplyOrder', date],
     queryFn: () => getSupplyOrder(date),
   });
@@ -54,7 +55,7 @@ export default function SupplyOrderPage() {
   });
 
   // No-supply flag for selected date
-  const { data: noSupplyData } = useQuery({
+  const { data: noSupplyData, isLoading: noSupplyLoading } = useQuery({
     queryKey: ['noSupply', date],
     queryFn: () => getNoSupply(date),
     enabled: !!date,
@@ -207,11 +208,22 @@ export default function SupplyOrderPage() {
 
   const noSupplyMutation = useMutation({
     mutationFn: () => markNoSupply(date),
-    onSuccess: () => {
+    onSuccess: (res) => {
       vibrate(haptics.success);
-      setToast({ message: 'Marked as No Supply Today', type: 'success' });
+      setToast({
+        message: res.cancelledOrderId ? 'Supply order cancelled — No Supply Today' : 'Marked as No Supply Today',
+        type: 'success',
+      });
+      setQuantities({});
+      setConfirmNoSupply(false);
+      // Supply for the day is now zero: everything derived from it is stale.
       qc.invalidateQueries({ queryKey: ['noSupply', date] });
-      qc.invalidateQueries({ queryKey: ['staffLogs', date, 'supply_order'] });
+      qc.invalidateQueries({ queryKey: ['supplyOrder', date] });
+      qc.invalidateQueries({ queryKey: ['supplyOrders'] });
+      qc.invalidateQueries({ queryKey: ['supplyLogs', date] });
+      qc.invalidateQueries({ queryKey: ['supplyVerification', date] });
+      qc.invalidateQueries({ queryKey: ['closingStock', date] });
+      qc.invalidateQueries({ queryKey: ['staffLogs', date] });
       navigate('/admin');
     },
     onError: (err: any) => {
@@ -222,8 +234,9 @@ export default function SupplyOrderPage() {
 
   const handleNoSupply = () => {
     vibrate(haptics.light);
+    // An order that never arrived gets cancelled; confirm before discarding it.
     if (existingOrder?.id) {
-      setToast({ message: 'A supply order already exists for this date.', type: 'error' });
+      setConfirmNoSupply(true);
       return;
     }
     noSupplyMutation.mutate();
@@ -609,7 +622,9 @@ export default function SupplyOrderPage() {
           fullWidth
           variant={noSupply ? 'contained' : 'outlined'}
           size="large"
-          disabled={noSupply || noSupplyMutation.isPending || !!existingOrder?.id}
+          // Wait for the order to load: clicking earlier would skip the confirm
+          // and cancel an order the admin never saw.
+          disabled={noSupply || noSupplyMutation.isPending || orderLoading || noSupplyLoading}
           onClick={handleNoSupply}
           startIcon={<Ban size={18} />}
           sx={{
@@ -755,6 +770,32 @@ export default function SupplyOrderPage() {
           </DialogActions>
         </Dialog>
       )}
+
+      <Dialog open={confirmNoSupply} onClose={() => setConfirmNoSupply(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Supply didn{"\u2019"}t arrive?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+            This cancels the supply order for {formatDateLabel(date)}
+            {existingOrder?.totalCost ? ` (\u20B9${Number(existingOrder.totalCost).toFixed(2)})` : ''} and
+            clears its verification. Supply for the day becomes zero, so live stock, closing stock and the
+            minimum sale value use only yesterday{"\u2019"}s leftovers.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmNoSupply(false)} sx={{ textTransform: 'none', fontWeight: 700 }}>
+            Keep Order
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={noSupplyMutation.isPending}
+            onClick={() => noSupplyMutation.mutate()}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            {noSupplyMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

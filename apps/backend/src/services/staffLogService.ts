@@ -11,6 +11,7 @@ export type StaffOperationType =
   | 'supply_order'
   | 'payment_settlement'
   | 'expense_save'
+  | 'cylinder_refill'
   | 'login';
 
 export interface StaffOperationLog {

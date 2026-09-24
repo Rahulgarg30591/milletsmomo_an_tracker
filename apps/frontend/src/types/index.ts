@@ -109,6 +109,8 @@ export interface CreateSupplyOrderRequest {
 export interface NoSupplyResponse {
   orderDate: string;
   noSupply: boolean;
+  /** Set by POST when marking cancelled an existing supply order. */
+  cancelledOrderId?: number | null;
 }
 
 export interface SupplyOrderLog {
@@ -172,7 +174,7 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'login';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'cylinder_refill' | 'login';
   createdBy: number;
   createdAt: string;
   details: string;
@@ -199,4 +201,35 @@ export interface DayExpenses {
 export interface SaveExpensesRequest {
   orderDate: string;
   items: { description: string; amount: number }[];
+}
+
+export type CylinderBrand = 'HP' | 'BP' | 'INDANE';
+
+export interface CylinderRefill {
+  id: number;
+  refillDate: string;
+  brand: CylinderBrand;
+  amount: number;
+  /** Where the cylinder came from; null if not recorded. */
+  source: string | null;
+  createdBy: number;
+  createdByName: string;
+  createdAt: string;
+  updatedByName: string | null;
+  updatedAt: string | null;
+}
+
+export interface CylinderRefillInput {
+  brand: CylinderBrand;
+  amount: number;
+  source: string | null;
+}
+
+export interface CylinderMonthReport {
+  month: string;
+  refills: CylinderRefill[];
+  byBrand: { brand: CylinderBrand; count: number; totalAmount: number }[];
+  bySource: { source: string | null; count: number; totalAmount: number }[];
+  count: number;
+  totalAmount: number;
 }
