@@ -135,4 +135,11 @@ describe('cylinders API', () => {
     expect(res.status).toBe(200);
     expect(res.body.sources).toEqual(['Gupta Gas']);
   });
+
+  it('says why a price was refused', async () => {
+    const res = await request(app).post('/api/cylinders').set(await authHeader('staff'))
+      .send({ refillDate: DATE, brand: 'HP', amount: 905905 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Amount looks too high');
+  });
 });

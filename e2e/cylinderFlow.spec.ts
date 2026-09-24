@@ -101,4 +101,19 @@ test.describe('cylinder refills', () => {
     await page.getByLabel('Taken from (optional)').fill('Sha');
     await expect(page.getByRole('option', { name: 'Sharma Traders' })).toBeVisible();
   });
+
+  test('typing a price replaces the remembered one instead of adding to it', async ({ page }) => {
+    await signIn(page, 'staff');
+    await page.goto(`/day/${today()}/expenses`);
+    await page.evaluate(() => localStorage.setItem('mm_cylinder_last_price', JSON.stringify({ INDANE: 905 })));
+
+    await page.getByRole('button', { name: 'Cylinder', exact: true }).click();
+    await page.getByRole('radio', { name: /Indane/ }).click();
+    const price = page.getByLabel('Price (₹)');
+    await expect(price).toHaveValue('905');
+    // Tap then type, as staff do; fill() would hide the bug by clearing first.
+    await price.click();
+    await page.keyboard.type('910');
+    await expect(price).toHaveValue('910');
+  });
 });

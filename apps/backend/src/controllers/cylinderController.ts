@@ -72,7 +72,8 @@ export async function addRefill(req: Request, res: Response, next: NextFunction)
     res.status(201).json(refill);
   } catch (err: any) {
     if (err.name === 'ZodError') {
-      res.status(400).json({ error: 'Invalid input', details: err.errors });
+      // The first message ("Amount looks too high") tells staff what to fix.
+      res.status(400).json({ error: err.errors?.[0]?.message ?? 'Invalid input', details: err.errors });
       return;
     }
     next(err);
@@ -93,7 +94,8 @@ export async function updateRefill(req: Request, res: Response, next: NextFuncti
     res.json(result.after);
   } catch (err: any) {
     if (err.name === 'ZodError') {
-      res.status(400).json({ error: 'Invalid input', details: err.errors });
+      // The first message ("Amount looks too high") tells staff what to fix.
+      res.status(400).json({ error: err.errors?.[0]?.message ?? 'Invalid input', details: err.errors });
       return;
     }
     next(err);

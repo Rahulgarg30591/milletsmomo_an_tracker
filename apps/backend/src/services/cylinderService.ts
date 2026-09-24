@@ -1,4 +1,5 @@
 import { query, queryOnce } from '../db/pool.js';
+import { normalizeText } from '../utils/text.js';
 
 export const CYLINDER_BRANDS = ['HP', 'BP', 'INDANE'] as const;
 export type CylinderBrand = (typeof CYLINDER_BRANDS)[number];
@@ -64,11 +65,7 @@ const SELECT_REFILLS = `
   JOIN users u ON cr.created_by = u.id
   LEFT JOIN users uu ON cr.updated_by = uu.id`;
 
-/** Trims and collapses spaces so "Gupta  Gas " and "Gupta Gas" are one source. */
-export function normalizeSource(source: string | null | undefined): string | null {
-  const cleaned = (source ?? '').replace(/\s+/g, ' ').trim();
-  return cleaned === '' ? null : cleaned;
-}
+export const normalizeSource = normalizeText;
 
 function toRefill(row: RefillRow): CylinderRefill {
   return {
