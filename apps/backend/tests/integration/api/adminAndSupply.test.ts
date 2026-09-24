@@ -107,6 +107,29 @@ describe('supply API', () => {
     expect(res.status).toBe(201);
     expect(res.body.isSubmitted).toBe(true);
   });
+
+  it('marks no supply over an existing order, cancelling it', async () => {
+    const auth = await authHeader();
+    await request(app).post('/api/admin/supply/order').set(auth)
+      .send({ orderDate: DATE, items: [{ supplyItemId: VEG_PACKET, quantity: 3 }] });
+
+    const res = await request(app).post('/api/admin/supply/no-supply').set(auth).send({ orderDate: DATE });
+    expect(res.status).toBe(201);
+    expect(res.body.cancelledOrderId).toEqual(expect.any(Number));
+
+    const order = await request(app).get(`/api/admin/supply/order?date=${DATE}`).set(auth);
+    expect(order.body.items).toEqual([]);
+    const flag = await request(app).get(`/api/admin/supply/no-supply?date=${DATE}`).set(auth);
+    expect(flag.body.noSupply).toBe(true);
+  });
+
+  it('does not log no supply twice', async () => {
+    const auth = await authHeader();
+    await request(app).post('/api/admin/supply/no-supply').set(auth).send({ orderDate: DATE });
+    const again = await request(app).post('/api/admin/supply/no-supply').set(auth).send({ orderDate: DATE });
+    expect(again.status).toBe(200);
+    expect(again.body.cancelledOrderId).toBeNull();
+  });
 });
 
 describe('expenses API', () => {

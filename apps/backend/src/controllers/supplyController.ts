@@ -151,19 +151,16 @@ export async function markNoSupply(
     const { orderDate } = noSupplySchema.parse(req.body);
     const userId = req.user!.id;
 
-    const existing = await supplyService.getSupplyOrder(orderDate);
-    if (existing) {
-      res.status(400).json({ error: 'A supply order already exists for this date. Delete or update it instead.' });
+    // Already marked and nothing to cancel: don't log the mark twice.
+    if (await supplyService.isMarkedNoSupply(orderDate)) {
+      res.json({ orderDate, noSupply: true, cancelledOrderId: null });
       return;
     }
 
-    const details = 'Marked as No Supply Today';
-    await staffLogService.createLog(orderDate, 'supply_order', userId, details, {
-      noSupply: true,
-      orderDate,
-    });
+    // An existing order means the supply never arrived; marking cancels it.
+    const cancelled = await supplyService.markNoSupply(orderDate, userId);
 
-    res.status(201).json({ orderDate, noSupply: true });
+    res.status(201).json({ orderDate, noSupply: true, cancelledOrderId: cancelled?.id ?? null });
   } catch (err: any) {
     if (err.name === 'ZodError') {
       res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
@@ -180,8 +177,7 @@ export async function getNoSupply(
 ): Promise<void> {
   try {
     const { date } = getSupplyOrderSchema.parse(req.query);
-    const logs = await staffLogService.getLogs(date, 'supply_order', 50);
-    const noSupply = logs.some((l) => l.metadata?.noSupply === true);
+    const noSupply = await supplyService.isMarkedNoSupply(date);
     res.json({ orderDate: date, noSupply });
   } catch (err: any) {
     if (err.name === 'ZodError') {

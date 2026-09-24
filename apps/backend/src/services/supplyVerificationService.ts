@@ -1,5 +1,6 @@
 import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
+import { isMarkedNoSupply } from './supplyService.js';
 
 export interface SupplyVerificationItem {
   supplyItemId: number;
@@ -29,18 +30,7 @@ export async function getVerification(date: string): Promise<SupplyVerification 
 
   if (orderRows.length === 0) {
     // No supply order — check if admin marked "No Supply Today"
-    const logRows = await query<{ metadata: string | null }>(
-      `SELECT metadata FROM staff_operation_logs
-       WHERE order_date = $1 AND operation_type = $2`,
-      [date, 'supply_order'],
-    );
-    const noSupply = logRows.some((row) => {
-      try {
-        return row.metadata ? JSON.parse(row.metadata)?.noSupply === true : false;
-      } catch {
-        return false;
-      }
-    });
+    const noSupply = await isMarkedNoSupply(date);
     if (noSupply) {
       return {
         orderDate: date,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getMinimumSaleValue } from '../../src/services/minimumSaleValueService.js';
-import { createSupplyOrder } from '../../src/services/supplyService.js';
+import { createSupplyOrder, markNoSupply } from '../../src/services/supplyService.js';
 import { createClosingStock } from '../../src/services/closingStockService.js';
 import { createVerification } from '../../src/services/supplyVerificationService.js';
 
@@ -91,5 +91,17 @@ describe('minimumSaleValueService against a real database', () => {
     const veg = (await getMinimumSaleValue(TODAY))!.fillings.find((f) => f.filling === 'Veg')!;
     expect(veg.closingPieces).toBe(6);
     expect(veg.consumedPieces).toBe(18);
+  });
+
+  it('counts only yesterday\'s leftovers when the supply order was cancelled', async () => {
+    await createClosingStock(YESTERDAY, [stock(VEG_PACKET, 1, 0)], STAFF);
+    await createSupplyOrder(TODAY, [{ supplyItemId: VEG_PACKET, quantity: 2 }], ADMIN);
+    await createVerification(TODAY, [{ supplyItemId: VEG_PACKET, expectedQty: 2, actualQty: 2 }], STAFF);
+    await markNoSupply(TODAY, ADMIN);
+    await createClosingStock(TODAY, [stock(VEG_PACKET, 0, 6)], STAFF);
+
+    const veg = (await getMinimumSaleValue(TODAY))!.fillings.find((f) => f.filling === 'Veg')!;
+    expect(veg.openingPieces).toBe(1 * PIECES_PER);
+    expect(veg.consumedPieces).toBe(PIECES_PER - 6);
   });
 });

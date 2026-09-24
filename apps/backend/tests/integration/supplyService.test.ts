@@ -7,7 +7,11 @@ import {
   updateSupplyOrder,
   listSupplyOrders,
   getSupplyOrderLogs,
+  isMarkedNoSupply,
+  markNoSupply,
 } from '../../src/services/supplyService.js';
+import { createVerification, getVerification } from '../../src/services/supplyVerificationService.js';
+import { createLog } from '../../src/services/staffLogService.js';
 
 const DAY = '2026-06-01';
 const DAY_2 = '2026-06-02';
@@ -172,6 +176,57 @@ describe('supplyService against a real database', () => {
 
     it('is empty for a day with no supply activity', async () => {
       expect(await getSupplyOrderLogs(DAY)).toEqual([]);
+    });
+  });
+
+  describe('markNoSupply', () => {
+    it('marks a day with no order', async () => {
+      expect(await markNoSupply(DAY, ADMIN)).toBeNull();
+      expect(await isMarkedNoSupply(DAY)).toBe(true);
+    });
+
+    it('cancels an order whose supply never came, and its verification', async () => {
+      const order = await createSupplyOrder(DAY, [
+        { supplyItemId: VEG_PACKET, quantity: 3 },
+        { supplyItemId: RED_SAUCE, quantity: 1 },
+      ], ADMIN);
+      await createVerification(DAY, [{ supplyItemId: VEG_PACKET, expectedQty: 3, actualQty: 3 }], ADMIN);
+
+      const cancelled = await markNoSupply(DAY, ADMIN);
+
+      expect(cancelled?.id).toBe(order.id);
+      expect(await getSupplyOrder(DAY)).toBeNull();
+      const verifications = await query<{ n: number }>(
+        'SELECT count(*)::int n FROM supply_verifications WHERE order_date = $1', [DAY],
+      );
+      expect(verifications[0].n).toBe(0);
+      expect(await isMarkedNoSupply(DAY)).toBe(true);
+      expect((await getVerification(DAY))?.noSupply).toBe(true);
+    });
+
+    it('logs what was cancelled', async () => {
+      await createSupplyOrder(DAY, [{ supplyItemId: VEG_PACKET, quantity: 3 }], ADMIN);
+      await markNoSupply(DAY, ADMIN);
+
+      const rows = await query<{ metadata: string }>(
+        `SELECT metadata FROM staff_operation_logs
+         WHERE order_date = $1 AND operation_type = 'supply_order'
+         ORDER BY id DESC LIMIT 1`,
+        [DAY],
+      );
+      const meta = JSON.parse(rows[0].metadata);
+      expect(meta.noSupply).toBe(true);
+      expect(meta.cancelledOrder.items).toEqual([{ supplyItemId: VEG_PACKET, quantity: 3 }]);
+    });
+
+    it('is superseded by an order placed after it', async () => {
+      await markNoSupply(DAY, ADMIN);
+      await createSupplyOrder(DAY, [{ supplyItemId: VEG_PACKET, quantity: 1 }], ADMIN);
+      // The order controller logs every save; the order itself is what counts.
+      await createLog(DAY, 'supply_order', ADMIN, 'Supply order created', { action: 'create' });
+
+      expect(await isMarkedNoSupply(DAY)).toBe(false);
+      expect((await getVerification(DAY))?.noSupply).toBe(false);
     });
   });
 });

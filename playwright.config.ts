@@ -31,7 +31,7 @@ export default defineConfig({
     {
       // The database is built first; the health check the runner waits on
       // cannot pass until it exists.
-      command: `npx tsx e2e/prepareDb.ts && npx cross-env NODE_ENV=test PORT=${BACKEND_PORT} DATABASE_URL="${E2E_DATABASE_URL}" ALLOWED_ORIGINS="${FRONTEND}" npx tsx apps/backend/src/dev-server.ts`,
+      command: `npx tsx e2e/prepareDb.ts && npx cross-env NODE_ENV=test PORT=${BACKEND_PORT} DATABASE_URL="${E2E_DATABASE_URL}" ALLOWED_ORIGINS="${FRONTEND}" MM_GLOBAL_RATE_LIMIT=5000 npx tsx apps/backend/src/dev-server.ts`,
       url: `http://localhost:${BACKEND_PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

@@ -109,6 +109,8 @@ export interface CreateSupplyOrderRequest {
 export interface NoSupplyResponse {
   orderDate: string;
   noSupply: boolean;
+  /** Set by POST when marking cancelled an existing supply order. */
+  cancelledOrderId?: number | null;
 }
 
 export interface SupplyOrderLog {
