@@ -1,33 +1,21 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, IconButton, TextField, useTheme } from '@mui/material';
-import { ArrowLeft, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, Typography, Paper, useTheme } from '@mui/material';
+import { ArrowLeft, Flame } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getCylinderMonthReport } from '../api/cylinderApi';
-import { getToday, formatDateLabel } from '../utils/dateUtils';
+import { formatDateLabel } from '../utils/dateUtils';
+import MonthPicker, { monthLabel, useMonthParam } from '../components/MonthPicker';
 import { brandInfo, formatRupees } from '../utils/cylinder';
 import { trackPageView } from '../utils/tracking';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
-
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return d.toISOString().slice(0, 7);
-}
-
-function monthLabel(month: string): string {
-  const [y, m] = month.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-}
 
 /** Cylinder refills for a month: when, which brand, and what they cost. */
 export default function AdminCylindersPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const currentMonth = getToday().slice(0, 7);
-  const month = /^\d{4}-\d{2}$/.test(searchParams.get('month') || '') ? searchParams.get('month')! : currentMonth;
+  const [month, setMonth, currentMonth] = useMonthParam();
 
   const { data: report, isLoading, isError } = useQuery({
     queryKey: ['cylinderMonth', month],
@@ -39,7 +27,6 @@ export default function AdminCylindersPage() {
     trackPageView('admin_cylinders', `Viewed cylinder refills for ${month}`);
   }, [month]);
 
-  const setMonth = (m: string) => setSearchParams({ month: m });
   const cardBorder = `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : theme.palette.divider}`;
 
   return (
@@ -59,27 +46,7 @@ export default function AdminCylindersPage() {
           </Typography>
         </Box>
 
-        {/* Month picker */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <IconButton aria-label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>
-            <ChevronLeft size={20} />
-          </IconButton>
-          <TextField
-            type="month"
-            size="small"
-            value={month}
-            onChange={(e) => e.target.value && setMonth(e.target.value)}
-            inputProps={{ 'aria-label': 'Month', max: currentMonth }}
-            sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-          />
-          <IconButton
-            aria-label="Next month"
-            disabled={month >= currentMonth}
-            onClick={() => setMonth(shiftMonth(month, 1))}
-          >
-            <ChevronRight size={20} />
-          </IconButton>
-        </Box>
+        <MonthPicker month={month} currentMonth={currentMonth} onChange={setMonth} />
 
         {isLoading ? (
           <SkeletonLoader count={3} height={72} />

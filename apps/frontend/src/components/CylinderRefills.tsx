@@ -251,6 +251,9 @@ export default function CylinderRefills({ date, refills, addOpen, onAddClose, on
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputProps={{ inputMode: 'decimal', min: 0, step: 'any' }}
+            // A prefilled last price is selected on tap, so typing replaces it
+            // rather than appending (905 then 905 became 905905).
+            onFocus={(e) => e.target.select()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && canSave) saveMutation.mutate();
             }}

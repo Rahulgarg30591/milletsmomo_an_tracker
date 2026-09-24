@@ -17,6 +17,9 @@ export interface ClosingStock {
   orderDate: string;
   items: ClosingStockItem[];
   isSubmitted: boolean;
+  /** Who recorded the count and when; null until it is recorded. */
+  recordedByName: string | null;
+  recordedAt: string | null;
 }
 
 interface StockRow {
@@ -54,6 +57,20 @@ async function getRecordedStock(date: string): Promise<Map<number, RecordedStock
     });
   }
   return stockMap;
+}
+
+/** A count is saved in one go, so any of its rows says who recorded it. */
+async function getRecordedBy(date: string): Promise<{ display_name: string; created_at: Date } | null> {
+  const rows = await query<{ display_name: string; created_at: Date }>(
+    `SELECT u.display_name, dcs.created_at
+     FROM daily_closing_stock dcs
+     JOIN users u ON dcs.reported_by = u.id
+     WHERE dcs.order_date = $1
+     ORDER BY dcs.created_at DESC
+     LIMIT 1`,
+    [date],
+  );
+  return rows[0] ?? null;
 }
 
 function toClosingStockItem(
@@ -120,7 +137,7 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
     return null;
   }
 
-  const stockMap = await getRecordedStock(date);
+  const [stockMap, recorded] = await Promise.all([getRecordedStock(date), getRecordedBy(date)]);
 
   const items = itemRows.map((row) =>
     toClosingStockItem(row.id, row.display_name, row.category, row.pieces_per, stockMap.get(row.id)),
@@ -130,6 +147,8 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
     orderDate: date,
     items,
     isSubmitted: stockMap.size > 0,
+    recordedByName: recorded?.display_name ?? null,
+    recordedAt: recorded ? recorded.created_at.toISOString() : null,
   };
 }
 

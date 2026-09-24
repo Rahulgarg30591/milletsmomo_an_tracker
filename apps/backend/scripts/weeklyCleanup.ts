@@ -42,7 +42,8 @@ async function main() {
       console.log('Deleting day_expenses...');
       await client.query('DELETE FROM day_expenses;');
 
-      // cylinder_refills is deliberately kept: admin reviews refills by month.
+      // cylinder_refills, staff_leaves and staff_takeaways are deliberately
+      // kept: admin reviews them by month.
     });
 
     console.log('Weekly cleanup complete.');

@@ -27,6 +27,9 @@ const PaymentSettlementPage = lazy(() => import('./pages/PaymentSettlementPage')
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage'));
 const AdminExpensesPage = lazy(() => import('./pages/AdminExpensesPage'));
 const AdminCylindersPage = lazy(() => import('./pages/AdminCylindersPage'));
+const AdminLeavesPage = lazy(() => import('./pages/AdminLeavesPage'));
+const AdminTakeawaysPage = lazy(() => import('./pages/AdminTakeawaysPage'));
+const AdminClosingStockPage = lazy(() => import('./pages/AdminClosingStockPage'));
 
 export default function App() {
   const { mode } = useThemeMode();
@@ -57,6 +60,9 @@ export default function App() {
                 <Route path="/day/:date/expenses" element={<ProtectedRoute requiredRole="staff"><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/admin/expenses" element={<ProtectedRoute requiredRole="admin"><AdminExpensesPage /></ProtectedRoute>} />
                 <Route path="/admin/cylinders" element={<ProtectedRoute requiredRole="admin"><AdminCylindersPage /></ProtectedRoute>} />
+                <Route path="/admin/leaves" element={<ProtectedRoute requiredRole="admin"><AdminLeavesPage /></ProtectedRoute>} />
+                <Route path="/admin/takeaways" element={<ProtectedRoute requiredRole="admin"><AdminTakeawaysPage /></ProtectedRoute>} />
+                <Route path="/admin/closing-stock" element={<ProtectedRoute requiredRole="admin"><AdminClosingStockPage /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
               </Routes>
             </Suspense>

@@ -17,6 +17,8 @@ export interface MinimumSaleValueFilling {
   openingPieces: number;
   closingPieces: number;
   wastagePieces: number;
+  /** Momos taken by staff (staff takeaways): gone from stock, not sold. */
+  staffTakeawayPieces: number;
   consumedPieces: number;
   plates: number;
   basePrice: number;
@@ -36,7 +38,8 @@ export interface MinimumSaleValueResult {
  *   opening  = yesterday's closing pieces + today's verified supply pieces
  *   closing  = today's closing stock pieces
  *   wastage  = wastage pieces recorded at closing
- *   consumed = opening - closing - wastage   (momos actually sold)
+ *   staff    = pieces taken by staff (staff takeaways), not sold
+ *   consumed = opening - closing - wastage - staff   (momos actually sold)
  *   plates   = consumed / 6                   (can be decimal)
  *   minValue = plates × basePrice             (Steam full-plate price per filling)
  *
@@ -87,6 +90,8 @@ export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValu
   const hasAnyClosing = rows.some((r) => r.hasClosingStock === 1);
   if (!hasAnyClosing) return null;
 
+  const staffPieces = await getStaffTakeawayPiecesByFilling(date);
+
   const fillings: MinimumSaleValueFilling[] = [];
   let totalMinimumSaleValue = 0;
 
@@ -98,7 +103,8 @@ export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValu
     const openingPieces = row.yestPackets * piecesPer + row.yestPieces + row.supplyQty * piecesPer;
     const closingPieces = row.todayPackets * piecesPer + row.todayPieces;
     const wastagePieces = row.wastagePieces;
-    const consumedPieces = Math.max(0, openingPieces - closingPieces - wastagePieces);
+    const staffTakeawayPieces = staffPieces.get(info.filling) ?? 0;
+    const consumedPieces = Math.max(0, openingPieces - closingPieces - wastagePieces - staffTakeawayPieces);
     const plates = consumedPieces / 6;
     const minValue = Math.round(plates * info.basePrice * 100) / 100;
 
@@ -107,6 +113,7 @@ export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValu
       openingPieces,
       closingPieces,
       wastagePieces,
+      staffTakeawayPieces,
       consumedPieces,
       plates: Math.round(plates * 100) / 100,
       basePrice: info.basePrice,
@@ -121,4 +128,29 @@ export async function getMinimumSaleValue(date: string): Promise<MinimumSaleValu
     fillings,
     totalMinimumSaleValue: Math.round(totalMinimumSaleValue * 100) / 100,
   };
+}
+
+/**
+ * Momo pieces taken by staff on a date, per filling. A platter holds all three
+ * fillings, so its pieces are split three ways, as the stock screens do.
+ */
+async function getStaffTakeawayPiecesByFilling(date: string): Promise<Map<string, number>> {
+  const rows = await query<{ filling: string; quantity: number }>(
+    `SELECT mi.filling, i.quantity
+     FROM staff_takeaway_items i
+     JOIN staff_takeaways st ON i.takeaway_id = st.id
+     JOIN menu_items mi ON i.menu_item_id = mi.id
+     WHERE st.takeaway_date = $1 AND mi.preparation <> 'Beverages'`,
+    [date],
+  );
+  const pieces = new Map<string, number>();
+  const add = (filling: string, n: number) => pieces.set(filling, (pieces.get(filling) ?? 0) + n);
+  for (const row of rows) {
+    if (row.filling === 'Platter') {
+      for (const f of ['Veg', 'Paneer', 'Cheese Corn']) add(f, Math.round(row.quantity / 3));
+    } else {
+      add(row.filling, row.quantity);
+    }
+  }
+  return pieces;
 }

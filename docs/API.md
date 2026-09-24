@@ -352,6 +352,60 @@ source (sources differing only in case are grouped; `null` is not recorded).
 
 ---
 
+## Staff
+
+Staff share one login, so a staff member is identified by the name typed in.
+
+### Staff takeaways: `/api/admin/takeaways`
+
+Admin only. Momos a staff member took, priced at **25% off** the menu and kept
+as an amount that person owes. A takeaway is not an order and never reaches
+revenue, settlement or the admin summary, but its momos count against stock:
+the stock screens read them and the minimum sale value subtracts them. The
+discount is stored on each takeaway, so changing it later does not rewrite
+history. Every add, edit and delete writes a `staff_takeaway` staff log.
+
+- `POST` records one. `quantity` is momo pieces, as on orders (6 a full plate, 3 a half). Momos only; beverages are refused.
+
+  ```json
+  { "staffName": "Ramesh", "takeawayDate": "2026-09-24", "note": null,
+    "items": [{ "menuItemId": 1, "quantity": 6, "isHalf": false }] }
+  ```
+
+  Responds `201`:
+
+  ```json
+  { "id": 1, "staffName": "Ramesh", "takeawayDate": "2026-09-24", "note": null,
+    "items": [{ "menuItemId": 1, "itemName": "Veg Steam", "quantity": 6, "isHalf": false, "menuPrice": 89, "lineTotal": 66.75 }],
+    "pieces": 6, "menuValue": 89, "discountPct": 25, "amountOwed": 66.75,
+    "createdByName": "Owner", "createdAt": "...", "updatedByName": null, "updatedAt": null }
+  ```
+
+- `PUT /:id` with the same body corrects and reprices it: `200` or `404`.
+- `DELETE /:id`: `200` with the removed takeaway, or `404`.
+- `GET ?month=YYYY-MM`: `{ month, takeaways[], byStaff: [{ staffName, count, pieces, menuValue, amountOwed }], count, pieces, menuValue, amountOwed, discountPct }`, newest first, people who owe most first.
+
+### GET `/api/staff/takeaway-items?date=YYYY-MM-DD`
+
+Any signed-in user. The day's takeaway items as `{ date, items: [{ menuItemId, quantity }] }`,
+so the staff stock screens count momos that left stock without being sold.
+
+### GET `/api/staff/names`
+
+Names used before in leaves or takeaways, most recent first, for suggestions.
+Any signed-in user.
+
+### Leaves: `/api/admin/leaves`
+
+Admin only. Each add, edit and delete writes a `staff_leave` staff log.
+
+- `GET ?month=YYYY-MM`: `{ month, leaves[], byStaff: [{ staffName, count }], count }`, newest first.
+- `POST` `{ "staffName": "Ramesh", "leaveDate": "2026-09-24", "reason": "Fever" }`: `reason` is optional (up to 200 characters). Responds `201`, or `409` if that person is already marked absent that day (names compared ignoring case).
+- `PUT /:id` with the same body: `200`, `404` or `409`.
+- `DELETE /:id`: `200` with the removed leave, or `404`.
+
+---
+
 ## Health
 
 ### GET `/api/health`
