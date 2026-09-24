@@ -14,7 +14,7 @@ export async function resetData(): Promise<void> {
   await client.connect();
   try {
     await client.query(`TRUNCATE
-      client_activity_logs, staff_operation_logs, day_expenses,
+      client_activity_logs, staff_operation_logs, day_expenses, cylinder_refills,
       daily_payment_settlements, daily_closing_stock, supply_verifications,
       supply_order_logs, daily_supply_order_items, daily_supply_orders,
       order_items, orders

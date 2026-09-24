@@ -26,6 +26,7 @@ const StockPage = lazy(() => import('./pages/StockPage'));
 const PaymentSettlementPage = lazy(() => import('./pages/PaymentSettlementPage'));
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage'));
 const AdminExpensesPage = lazy(() => import('./pages/AdminExpensesPage'));
+const AdminCylindersPage = lazy(() => import('./pages/AdminCylindersPage'));
 
 export default function App() {
   const { mode } = useThemeMode();
@@ -55,6 +56,7 @@ export default function App() {
                 <Route path="/day/:date/stock" element={<ProtectedRoute requiredRole="staff"><StockPage /></ProtectedRoute>} />
                 <Route path="/day/:date/expenses" element={<ProtectedRoute requiredRole="staff"><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/admin/expenses" element={<ProtectedRoute requiredRole="admin"><AdminExpensesPage /></ProtectedRoute>} />
+                <Route path="/admin/cylinders" element={<ProtectedRoute requiredRole="admin"><AdminCylindersPage /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
               </Routes>
             </Suspense>

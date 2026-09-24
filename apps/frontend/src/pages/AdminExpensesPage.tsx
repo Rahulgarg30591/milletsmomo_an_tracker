@@ -13,11 +13,13 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-import { ArrowLeft, Plus, Trash2, Save, ClipboardCopy, FlaskConical, Droplets } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ClipboardCopy, FlaskConical, Droplets, Flame } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDayExpenses, saveDayExpenses } from '../api/expenseApi';
 import { getToday, formatDateLabel } from '../utils/dateUtils';
 import Toast from '../components/Toast';
+import CylinderRefills, { useCylinderRefills } from '../components/CylinderRefills';
+import { brandInfo } from '../utils/cylinder';
 import { vibrate, haptics } from '../theme/tokens';
 import type { ExpenseItem } from '../types';
 
@@ -74,7 +76,11 @@ export default function AdminExpensesPage() {
   const [expenses, setExpenses] = useState<LocalExpense[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
+  const [cylinderOpen, setCylinderOpen] = useState(false);
   const idCounter = useRef(0);
+
+  const { data: refills = [] } = useCylinderRefills(date);
+  const cylinderTotal = refills.reduce((sum, r) => sum + r.amount, 0);
 
   const { data: existingData, isLoading } = useQuery({
     queryKey: ['dayExpenses', date],
@@ -97,7 +103,7 @@ export default function AdminExpensesPage() {
     }
   }, [existingData, isLoading, date]);
 
-  const total = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const total = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) + cylinderTotal;
 
   const handleDateChange = useCallback(
     (newDate: string) => {
@@ -148,9 +154,12 @@ export default function AdminExpensesPage() {
     valid.forEach((e, i) => {
       lines.push(`${i + 1}. ${e.description.trim()} \u20B9${parseFloat(e.amount)}`);
     });
+    refills.forEach((r, i) => {
+      lines.push(`${valid.length + i + 1}. Cylinder (${[brandInfo(r.brand).short, r.source].filter(Boolean).join(', ')}) \u20B9${r.amount}`);
+    });
     lines.push(`Total: \u20B9${total.toFixed(2)}`);
     return lines.join('\n');
-  }, [expenses, date, total]);
+  }, [expenses, refills, date, total]);
 
   const handleCopy = useCallback(async () => {
     vibrate(haptics.light);
@@ -242,10 +251,38 @@ export default function AdminExpensesPage() {
               </Button>
             );
           })}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Flame size={16} />}
+            onClick={() => {
+              vibrate(haptics.light);
+              setCylinderOpen(true);
+            }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 2,
+              borderColor: isDark ? '#FB923C' : '#EA580C',
+              color: isDark ? '#FB923C' : '#EA580C',
+              background: isDark ? 'rgba(234,88,12,0.08)' : '#FFF7ED',
+              fontSize: { xs: '0.75rem', md: '0.85rem' },
+            }}
+          >
+            Cylinder
+          </Button>
         </Box>
 
+        <CylinderRefills
+          date={date}
+          refills={refills}
+          addOpen={cylinderOpen}
+          onAddClose={() => setCylinderOpen(false)}
+          onToast={setToast}
+        />
+
         {/* Expense list */}
-        {expenses.length === 0 && !isLoading ? (
+        {expenses.length === 0 && refills.length === 0 && !isLoading ? (
           <Paper
             sx={{
               p: 3,
@@ -304,7 +341,7 @@ export default function AdminExpensesPage() {
                       outline: 'none',
                       py: 0.75,
                       '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                      '-moz-appearance': 'textfield',
+                      MozAppearance: 'textfield',
                     }}
                   />
                   <IconButton
@@ -370,7 +407,7 @@ export default function AdminExpensesPage() {
               variant="outlined"
               startIcon={<ClipboardCopy size={16} />}
               onClick={handleCopy}
-              disabled={expenses.length === 0}
+              disabled={expenses.length === 0 && refills.length === 0}
               sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
             >
               Copy

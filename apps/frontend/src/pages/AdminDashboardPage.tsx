@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions, Accordion, AccordionSummary, AccordionDetails, Divider } from '@mui/material';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet, ChevronDown } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet, ChevronDown, Flame } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { getAdminSummary, getAdminOrders, getMinimumSaleValue } from '../api/adminApi';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
@@ -739,7 +739,7 @@ export default function AdminDashboardPage() {
               Dashboard
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Button
               size="small"
               variant="outlined"
@@ -757,6 +757,15 @@ export default function AdminDashboardPage() {
               sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
             >
               Expenses
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Flame size={16} />}
+              onClick={() => navigate(`/admin/cylinders?month=${startDate.slice(0, 7)}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Cylinders
             </Button>
             <Button
               size="small"
