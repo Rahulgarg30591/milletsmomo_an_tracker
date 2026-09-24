@@ -12,6 +12,7 @@ import {
 import { getClosingStock, submitClosingStock } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getOrders } from '../api/ordersApi';
+import { useTakeawayItems } from '../hooks/useTakeawayItems';
 import { getMenu } from '../api/menuApi';
 import { addDays } from '../utils/dateUtils';
 import { trackPageView, trackClosingStockSubmit } from '../utils/tracking';
@@ -106,6 +107,8 @@ export default function ClosingStockPage() {
     enabled: !!targetDate,
   });
 
+  const takeawayItems = useTakeawayItems(targetDate);
+
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
     queryFn: getMenu,
@@ -170,7 +173,8 @@ export default function ClosingStockPage() {
       }
     }
 
-    const orders = ordersData?.orders || [];
+    // Staff takeaways left stock too, though they were not sold.
+    const orders = [...(ordersData?.orders || []), { items: takeawayItems }];
     const items: ExpectedStockItem[] = [];
 
     // Precompute consumed pieces per filling once (O(orders * orderItems))
@@ -215,7 +219,7 @@ export default function ClosingStockPage() {
     }
 
     return items;
-  }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
+  }, [supplyVerification, yesterdayClosing, ordersData, takeawayItems, menuData]);
 
   const expectedByItemId = useMemo(() => {
     const m = new Map<number, ExpectedStockItem>();

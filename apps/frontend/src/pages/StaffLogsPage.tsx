@@ -19,6 +19,8 @@ const staffTypeConfig: Record<string, { label: string; color: string; icon: stri
   payment_settlement: { label: 'Settlement', color: '#EC4899', icon: '💰' },
   expense_save: { label: 'Expenses', color: '#EC4899', icon: '💵' },
   cylinder_refill: { label: 'Cylinder', color: '#EA580C', icon: '🔥' },
+  staff_leave: { label: 'Leave', color: '#DC2626', icon: '🗓️' },
+  staff_takeaway: { label: 'Takeaway', color: '#B45309', icon: '🥡' },
   login: { label: 'Login', color: '#22C55E', icon: '🔑' },
 };
 

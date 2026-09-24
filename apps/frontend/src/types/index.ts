@@ -164,6 +164,9 @@ export interface ClosingStock {
   orderDate: string;
   items: ClosingStockItem[];
   isSubmitted: boolean;
+  /** Who recorded the count and when; null until it is recorded. */
+  recordedByName?: string | null;
+  recordedAt?: string | null;
 }
 
 export interface CreateClosingStockRequest {
@@ -174,7 +177,7 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'cylinder_refill' | 'login';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'cylinder_refill' | 'staff_leave' | 'staff_takeaway' | 'login';
   createdBy: number;
   createdAt: string;
   details: string;
@@ -233,3 +236,73 @@ export interface CylinderMonthReport {
   count: number;
   totalAmount: number;
 }
+
+export interface StaffLeave {
+  id: number;
+  staffName: string;
+  leaveDate: string;
+  reason: string | null;
+  createdByName: string;
+  createdAt: string;
+  updatedByName: string | null;
+  updatedAt: string | null;
+}
+
+export interface StaffLeaveInput {
+  staffName: string;
+  leaveDate: string;
+  reason: string | null;
+}
+
+export interface LeaveMonthReport {
+  month: string;
+  leaves: StaffLeave[];
+  byStaff: { staffName: string; count: number }[];
+  count: number;
+}
+
+export interface StaffTakeawayItem {
+  menuItemId: number;
+  itemName: string;
+  /** Momo pieces: 6 a full plate, 3 a half. */
+  quantity: number;
+  isHalf: boolean;
+  menuPrice: number;
+  /** Owed for the line, after the staff discount. */
+  lineTotal: number;
+}
+
+export interface StaffTakeaway {
+  id: number;
+  staffName: string;
+  takeawayDate: string;
+  note: string | null;
+  items: StaffTakeawayItem[];
+  pieces: number;
+  menuValue: number;
+  discountPct: number;
+  amountOwed: number;
+  createdByName: string;
+  createdAt: string;
+  updatedByName: string | null;
+  updatedAt: string | null;
+}
+
+export interface StaffTakeawayInput {
+  staffName: string;
+  takeawayDate: string;
+  note: string | null;
+  items: { menuItemId: number; quantity: number; isHalf: boolean }[];
+}
+
+export interface TakeawayMonthReport {
+  month: string;
+  takeaways: StaffTakeaway[];
+  byStaff: { staffName: string; count: number; pieces: number; menuValue: number; amountOwed: number }[];
+  count: number;
+  pieces: number;
+  menuValue: number;
+  amountOwed: number;
+  discountPct: number;
+}
+

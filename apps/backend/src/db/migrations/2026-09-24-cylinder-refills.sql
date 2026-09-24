@@ -24,11 +24,23 @@ ALTER TABLE cylinder_refills ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ  NU
 
 CREATE INDEX IF NOT EXISTS ix_cylinder_refills_date ON cylinder_refills(refill_date DESC);
 
-ALTER TABLE staff_operation_logs DROP CONSTRAINT IF EXISTS ck_staff_operation_logs_type;
-ALTER TABLE staff_operation_logs ADD CONSTRAINT ck_staff_operation_logs_type CHECK (operation_type IN (
+-- Allow cylinder_refill in the staff log.
+-- Rewritten only while 'cylinder_refill' is missing, so re-running this after a later
+-- migration cannot drop the log types that one added.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'ck_staff_operation_logs_type'
+      AND pg_get_constraintdef(oid) LIKE '%''cylinder_refill''%'
+  ) THEN
+    ALTER TABLE staff_operation_logs DROP CONSTRAINT IF EXISTS ck_staff_operation_logs_type;
+    ALTER TABLE staff_operation_logs ADD CONSTRAINT ck_staff_operation_logs_type CHECK (operation_type IN (
   'verification','closing_stock','order_create','order_update',
   'order_complete','order_delete','supply_order','payment_settlement',
   'expense_save','cylinder_refill','login'
 ));
+  END IF;
+END $$;
 
 COMMIT;

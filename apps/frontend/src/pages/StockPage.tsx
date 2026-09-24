@@ -6,6 +6,7 @@ import { ArrowLeft, Package, Layers, PieChart } from 'lucide-react';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
 import { getOrders } from '../api/ordersApi';
+import { useTakeawayItems } from '../hooks/useTakeawayItems';
 import { getMenu } from '../api/menuApi';
 import { getToday, addDays } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
@@ -51,6 +52,8 @@ export default function StockPage() {
     queryFn: () => getOrders(targetDate),
     enabled: !!targetDate,
   });
+
+  const takeawayItems = useTakeawayItems(targetDate);
 
   const { data: menuData } = useQuery({
     queryKey: ['menu'],
@@ -123,7 +126,8 @@ export default function StockPage() {
       }
     }
 
-    const orders = ordersData?.orders || [];
+    // Staff takeaways left stock too, though they were not sold.
+    const orders = [...(ordersData?.orders || []), { items: takeawayItems }];
 
     // Precompute consumed pieces per filling once (O(orders * orderItems))
     const consumedPerFilling = new Map<string, number>();
@@ -179,7 +183,7 @@ export default function StockPage() {
         isVerified: si.isVerified,
       };
     });
-  }, [supplyVerification, yesterdayClosing, ordersData, menuData]);
+  }, [supplyVerification, yesterdayClosing, ordersData, takeawayItems, menuData]);
 
   const { totalRemainingPackets, totalRemainingPieces, totalRemainingMomos } = useMemo(() => {
     let p = 0, pcs = 0, m = 0;

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions, Accordion, AccordionSummary, AccordionDetails, Divider } from '@mui/material';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet, ChevronDown, Flame } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, Download, TrendingUp, Package, Truck, List, Maximize2, X, Calculator, AlertTriangle, Wallet, ChevronDown, Flame, CalendarX2, UserRound } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { getAdminSummary, getAdminOrders, getMinimumSaleValue } from '../api/adminApi';
+import { useTakeawayItems } from '../hooks/useTakeawayItems';
+import { reconcileClosingStock } from '../utils/stockReconciliation';
 import { listSupplyOrders, getSupplyOrderLogs } from '../api/supplyApi';
 import { listSupplyVerifications, getSupplyVerification } from '../api/supplyVerificationApi';
 import { getClosingStock } from '../api/closingStockApi';
@@ -40,8 +42,6 @@ const MOMO_PREP_ORDER = ['Steam', 'Fry', 'Creamy', 'Creamy Fry', 'Nepalese Kothe
 // Category ordering for the breakdown charts and tables.
 const PREP_ORDER = [...MOMO_PREP_ORDER, BEVERAGE_CATEGORY];
 const FILL_ORDER = ['Veg', 'Paneer', 'Cheese Corn', 'Platter'];
-// A platter plate is made of 2 momos of each of these fillings.
-const PLATTER_FILLINGS = ['Veg', 'Paneer', 'Cheese Corn'];
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Steam': '#6B8E6B',
@@ -187,6 +187,11 @@ export default function AdminDashboardPage() {
   });
   const adminOrders = useDeferredValue(adminOrdersData?.orders || []);
 
+  // Momos staff took left stock without being sold, so the closing-stock
+  // check below counts that day's takeaways alongside the orders.
+  const takeawayItems = useTakeawayItems(startDate);
+  const staffTakeawayOrders = useMemo(() => [{ items: takeawayItems }], [takeawayItems]);
+
   useForegroundRefetch(refetchSummary);
   useForegroundRefetch(refetchOrders);
 
@@ -213,7 +218,9 @@ export default function AdminDashboardPage() {
   });
 
   const { data: yesterdayClosingStock } = useQuery({
-    queryKey: ['closingStockYesterday'],
+    // Keyed by date: a fixed key kept showing the first day's leftovers after
+    // switching to another day.
+    queryKey: ['closingStock', addDays(startDate, -1)],
     queryFn: () => getClosingStock(addDays(startDate, -1)),
     enabled: startDate === endDate,
   });
@@ -339,97 +346,18 @@ export default function AdminDashboardPage() {
       .filter((s) => s.totalQuantity > 0);
   }, [allItemsBreakdown]);
 
-  const conflictItems = useMemo(() => {
-    if (!closingStock?.items || closingStock.items.length === 0) return [];
-    const conflicts: {
-      supplyItemId: number;
-      displayName: string;
-      category: string;
-      piecesPer: number;
-      expectedPackets: number;
-      expectedPieces: number;
-      expectedTotalPieces: number;
-      actualPackets: number;
-      actualPieces: number;
-      actualTotalPieces: number;
-      difference: number;
-      hasConflict: boolean;
-      conflictReason: string | null;
-    }[] = [];
-
-    const menuMap = new Map<number, { id: number; filling: string; displayName: string }>((menuData?.items || []).map((mi: any) => [mi.id, mi]));
-
-    for (const item of closingStock.items) {
-      const piecesPer = item.piecesPer || 24;
-      const actualTotalPieces = item.packetsLeft * piecesPer + item.piecesLeft;
-
-      let expectedPackets = 0;
-      let expectedPieces = 0;
-      let expectedTotalPieces = 0;
-
-      const yestItem = yesterdayClosingStock?.items.find((i) => i.supplyItemId === item.supplyItemId);
-      const yestTotalPieces = yestItem ? yestItem.packetsLeft * piecesPer + yestItem.piecesLeft : 0;
-
-      const verItem = supplyVerificationDetail?.items.find((i) => i.supplyItemId === item.supplyItemId);
-      const supplyQty = verItem ? (verItem.actualQty ?? verItem.expectedQty) : 0;
-      const supplyTotalPieces = supplyQty * piecesPer;
-
-      const openingTotalPieces = yestTotalPieces + supplyTotalPieces;
-
-      // Supply display names are not spaced like menu fillings — the packet is
-      // "CheeseCorn Momo Packet" while the menu filling is "Cheese Corn" — so
-      // match loosely, as StockPage does. Comparing the strings directly left
-      // Cheese Corn matching nothing, so neither its own sales nor its share of
-      // a platter were ever deducted.
-      const filling = (item.category === 'sauce' || item.category === 'dip') ? ''
-        : /cheese\s*corn/i.test(item.displayName) ? 'Cheese Corn'
-        : /paneer/i.test(item.displayName) ? 'Paneer'
-        : /veg/i.test(item.displayName) ? 'Veg'
-        : '';
-
-      let consumedPieces = 0;
-      for (const order of adminOrders) {
-        for (const orderItem of order.items) {
-          const menuItem = menuMap.get(orderItem.menuItemId);
-          if (!menuItem) continue;
-          if (menuItem.filling === 'Platter') {
-            if (PLATTER_FILLINGS.includes(filling)) {
-              consumedPieces += Math.round(orderItem.quantity / 3);
-            }
-          } else if (menuItem.filling === filling) {
-            consumedPieces += orderItem.quantity;
-          }
-        }
-      }
-
-      expectedTotalPieces = Math.max(0, openingTotalPieces - consumedPieces);
-      expectedPackets = Math.floor(expectedTotalPieces / piecesPer);
-      expectedPieces = expectedTotalPieces % piecesPer;
-
-      const difference = actualTotalPieces - expectedTotalPieces;
-      const hasMismatch = Math.abs(difference) > 0;
-
-      if (hasMismatch || item.hasConflict) {
-        conflicts.push({
-          supplyItemId: item.supplyItemId,
-          displayName: item.displayName,
-          category: item.category,
-          piecesPer,
-          expectedPackets,
-          expectedPieces,
-          expectedTotalPieces,
-          actualPackets: item.packetsLeft,
-          actualPieces: item.piecesLeft,
-          actualTotalPieces,
-          difference,
-          hasConflict: item.hasConflict,
-          conflictReason: item.conflictReason,
-        });
-      }
-    }
-
-    return conflicts.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
-  }, [closingStock, yesterdayClosingStock, supplyVerificationDetail, adminOrders, menuData]);
+  const conflictItems = useMemo(
+    () => reconcileClosingStock({
+      closing: closingStock,
+      yesterday: yesterdayClosingStock,
+      verification: supplyVerificationDetail,
+      orders: [...adminOrders, ...staffTakeawayOrders],
+      menu: menuData?.items || [],
+    })
+      .filter((i) => i.difference !== 0 || i.hasConflict)
+      .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference)),
+    [closingStock, yesterdayClosingStock, supplyVerificationDetail, adminOrders, staffTakeawayOrders, menuData],
+  );
 
   const filteredOrders = useMemo(() => {
     if (filterPayment === 'all') return adminOrders;
@@ -752,6 +680,15 @@ export default function AdminDashboardPage() {
             <Button
               size="small"
               variant="outlined"
+              startIcon={<Package size={16} />}
+              onClick={() => navigate(`/admin/closing-stock?date=${startDate}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Closing Stock
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
               startIcon={<Wallet size={16} />}
               onClick={() => navigate(`/admin/expenses?date=${startDate}`)}
               sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
@@ -766,6 +703,24 @@ export default function AdminDashboardPage() {
               sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
             >
               Cylinders
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<CalendarX2 size={16} />}
+              onClick={() => navigate(`/admin/leaves?month=${startDate.slice(0, 7)}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Leaves
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UserRound size={16} />}
+              onClick={() => navigate(`/admin/takeaways?month=${startDate.slice(0, 7)}`)}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+            >
+              Takeaways
             </Button>
             <Button
               size="small"
@@ -1124,6 +1079,13 @@ export default function AdminDashboardPage() {
                       {conflictItems.length} item{conflictItems.length !== 1 ? 's' : ''} with mismatch
                     </Typography>
                   </Box>
+                  <Button
+                    size="small"
+                    onClick={() => navigate(`/admin/closing-stock?date=${startDate}`)}
+                    sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                  >
+                    View count
+                  </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                   {conflictItems.map((item, idx) => {

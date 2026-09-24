@@ -23,6 +23,9 @@ const TABLES = [
   'daily_payment_settlements',
   'day_expenses',
   'cylinder_refills',
+  'staff_leaves',
+  'staff_takeaways',
+  'staff_takeaway_items',
 ];
 
 // Credential material must never be committed to git history, even hashed.

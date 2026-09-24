@@ -12,7 +12,7 @@ export async function getClosingStock(
     const { date } = getClosingStockSchema.parse(req.query);
     const stock = await closingStockService.getClosingStock(date);
     if (!stock) {
-      res.json({ items: [], isSubmitted: false, orderDate: date });
+      res.json({ items: [], isSubmitted: false, orderDate: date, recordedByName: null, recordedAt: null });
       return;
     }
     res.json(stock);

@@ -24,6 +24,7 @@ describe('closingStockService against a real database', () => {
       expect(stock?.items.map((i) => i.supplyItemId))
         .toEqual([VEG_PACKET, PANEER_PACKET, CHEESE_CORN_PACKET, RED_SAUCE]);
       expect(stock?.isSubmitted).toBe(false);
+      expect(stock?.recordedByName).toBeNull();
     });
 
     it('records a count and reports the day as submitted', async () => {
@@ -34,6 +35,8 @@ describe('closingStockService against a real database', () => {
       }], STAFF);
 
       expect(saved.isSubmitted).toBe(true);
+      expect(saved.recordedByName).toEqual(expect.any(String));
+      expect(saved.recordedAt).toEqual(expect.any(String));
       expect(saved.items[0].packetsLeft).toBe(1);
       expect(saved.items[0].wastagePieces).toBe(2);
     });

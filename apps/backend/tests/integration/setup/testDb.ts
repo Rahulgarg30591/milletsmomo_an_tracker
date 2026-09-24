@@ -41,6 +41,9 @@ export async function withClient<T>(
 export const TRANSACTIONAL_TABLES = [
   'client_activity_logs',
   'staff_operation_logs',
+  'staff_takeaway_items',
+  'staff_takeaways',
+  'staff_leaves',
   'cylinder_refills',
   'day_expenses',
   'daily_payment_settlements',
