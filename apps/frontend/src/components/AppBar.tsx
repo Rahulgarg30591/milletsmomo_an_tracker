@@ -46,8 +46,10 @@ export default function AppBarComponent() {
     }
   };
 
+  // color="inherit": the theme paints the bar near-white in light mode, so
+  // MUI's default white text on a "primary" bar was invisible.
   return (
-    <AppBar position="sticky" elevation={0} sx={{ zIndex: 1200 }}>
+    <AppBar position="sticky" elevation={0} color="inherit" sx={{ zIndex: 1200 }}>
       <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: 56 }}>
         <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
@@ -74,6 +76,7 @@ export default function AppBarComponent() {
               fontWeight: 700,
               fontSize: '1.05rem',
               letterSpacing: '-0.3px',
+              color: 'text.primary',
               display: { xs: 'none', sm: 'block' },
             }}
           >
@@ -113,7 +116,10 @@ export default function AppBarComponent() {
                 fontSize: '0.75rem',
                 height: 24,
                 backgroundColor: auth.role === 'admin' ? 'rgba(251,191,36,0.12)' : 'rgba(27,107,58,0.12)',
-                color: auth.role === 'admin' ? '#FBBF24' : '#4ADE80',
+                // The bright shades suit the dark bar; light mode needs darker ones to read.
+                color: auth.role === 'admin'
+                  ? (mode === 'dark' ? '#FBBF24' : '#B45309')
+                  : (mode === 'dark' ? '#4ADE80' : '#1B6B3A'),
                 border: '1px solid',
                 borderColor: auth.role === 'admin' ? 'rgba(251,191,36,0.2)' : 'rgba(27,107,58,0.2)',
               }}
@@ -126,7 +132,8 @@ export default function AppBarComponent() {
                 toggleMode();
               }}
               size="small"
-              sx={{ color: 'text.secondary' }}
+              aria-label={mode === 'dark' ? 'Light mode' : 'Dark mode'}
+              sx={{ color: 'text.secondary', minWidth: 40, minHeight: 40 }}
             >
               {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </IconButton>
@@ -135,8 +142,11 @@ export default function AppBarComponent() {
             <IconButton
               onClick={handleLogout}
               size="small"
+              aria-label="Logout"
               sx={{
                 color: 'text.secondary',
+                minWidth: 40,
+                minHeight: 40,
                 '&:hover': { color: 'error.main' },
               }}
             >

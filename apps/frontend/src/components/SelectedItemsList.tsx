@@ -170,6 +170,7 @@ export default function SelectedItemsList() {
                 >
                   <IconButton
                     size="small"
+                    aria-label={`${item.quantity - s <= 0 ? 'Remove' : 'Decrease'} ${item.menuItem?.displayName ?? 'item'}`}
                     onClick={() => {
                       if (item.quantity - s <= 0) {
                         vibrate(haptics.light);
@@ -182,19 +183,19 @@ export default function SelectedItemsList() {
                       }
                     }}
                     sx={{
-                      width: { xs: 26, md: 30 },
-                      height: { xs: 26, md: 30 },
+                      width: { xs: 36, md: 32 },
+                      height: { xs: 36, md: 32 },
                       borderRadius: 0,
                       color: item.quantity - s <= 0 ? 'error.main' : 'text.secondary',
                       '&:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' },
                     }}
                   >
-                    {item.quantity - s <= 0 ? <Trash2 size={12} /> : <Minus size={12} />}
+                    {item.quantity - s <= 0 ? <Trash2 size={15} /> : <Minus size={15} />}
                   </IconButton>
                   <Box
                     sx={{
                       minWidth: { xs: 28, md: 34 },
-                      height: { xs: 26, md: 30 },
+                      height: { xs: 36, md: 32 },
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -207,27 +208,28 @@ export default function SelectedItemsList() {
                       <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', md: '0.8rem' }, color: 'text.primary', lineHeight: 1 }}>
                         {item.quantity}
                       </Typography>
-                      <Typography sx={{ fontSize: { xs: '0.45rem', md: '0.5rem' }, color: 'text.secondary', fontWeight: 600, lineHeight: 1 }}>
+                      <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.6rem' }, color: 'text.secondary', fontWeight: 600, lineHeight: 1 }}>
                         {sl}
                       </Typography>
                     </Box>
                   </Box>
                   <IconButton
                     size="small"
+                    aria-label={`Increase ${item.menuItem?.displayName ?? 'item'}`}
                     onClick={() => {
                       vibrate(haptics.light);
                       incrementByPlate(item.menuItemId);
                       trackQuantityChange('new_order', item.menuItem?.displayName || '', item.quantity + s, item.isHalf, { itemId: item.menuItemId, isCustom: item.isCustom });
                     }}
                     sx={{
-                      width: { xs: 26, md: 30 },
-                      height: { xs: 26, md: 30 },
+                      width: { xs: 36, md: 32 },
+                      height: { xs: 36, md: 32 },
                       borderRadius: 0,
                       color: 'primary.main',
                       '&:hover': { backgroundColor: isDark ? 'rgba(27,107,58,0.12)' : 'rgba(27,107,58,0.06)' },
                     }}
                   >
-                    <Plus size={12} />
+                    <Plus size={15} />
                   </IconButton>
                 </Box>
 

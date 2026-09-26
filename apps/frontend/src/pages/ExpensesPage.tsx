@@ -59,8 +59,13 @@ export default function ExpensesPage() {
     enabled: !!targetDate,
   });
 
+  // Fill the form from the server once per date. A later refetch (e.g. when a
+  // patchy connection comes back) must not overwrite what is being typed.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
+    if (seededFor.current === targetDate) return;
     if (existingData?.items) {
+      seededFor.current = targetDate;
       idCounter.current = 0;
       setExpenses(
         existingData.items.map((item: ExpenseItem) => ({
@@ -72,7 +77,7 @@ export default function ExpensesPage() {
     } else if (!isLoading) {
       setExpenses([]);
     }
-  }, [existingData, isLoading]);
+  }, [existingData, isLoading, targetDate]);
 
   const total = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) + cylinderTotal;
 

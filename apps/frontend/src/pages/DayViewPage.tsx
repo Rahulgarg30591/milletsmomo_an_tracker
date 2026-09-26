@@ -99,9 +99,10 @@ export default function DayViewPage() {
   const { auth } = useAuth();
   const hideRevenue = auth.pin === '5575';
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['orders', date],
     queryFn: () => getOrders(date!),
+    enabled: !!date,
     refetchInterval: 30000,
   });
 
@@ -763,6 +764,15 @@ export default function DayViewPage() {
 
           {isLoading && !data ? (
             <SkeletonLoader count={3} height={80} />
+          ) : isError && !data ? (
+            <Paper sx={{ textAlign: 'center', py: 3, px: 2, borderRadius: 1.5, border: '1px dashed', borderColor: 'error.main' }}>
+              <Typography sx={{ fontWeight: 600, color: 'text.primary', mb: 1 }}>
+                Couldn{'\u2019'}t load today{'\u2019'}s orders
+              </Typography>
+              <Button size="small" variant="outlined" onClick={() => refetch()} sx={{ textTransform: 'none', fontWeight: 700 }}>
+                Try again
+              </Button>
+            </Paper>
           ) : activeOrders.length === 0 && (
             <Paper
               sx={{

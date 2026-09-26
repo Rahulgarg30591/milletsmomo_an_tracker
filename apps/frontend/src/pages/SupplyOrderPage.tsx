@@ -45,6 +45,8 @@ export default function SupplyOrderPage() {
   const { data: items = [] } = useQuery({
     queryKey: ['supplyItems'],
     queryFn: getSupplyItems,
+    // The supply catalogue changes rarely; refetching it on every visit is waste.
+    staleTime: 60 * 60_000,
   });
 
   const { data: existingOrder, isLoading: orderLoading } = useQuery({
@@ -292,6 +294,7 @@ export default function SupplyOrderPage() {
               <Box
                 component="input"
                 type="number"
+                inputMode="numeric"
                 value={qty || ''}
                 placeholder="0"
                 onChange={(e) => setQty(item.id, e.target.value)}

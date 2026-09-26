@@ -202,6 +202,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                   <Box
                     component="input"
                     type="number"
+                    inputMode="decimal"
                     value={cashVal}
                     onChange={(e) => handleCashChange(e.target.value)}
                     sx={{
@@ -233,6 +234,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                   <Box
                     component="input"
                     type="number"
+                    inputMode="decimal"
                     value={upiVal}
                     onChange={(e) => handleUpiChange(e.target.value)}
                     sx={{

@@ -58,8 +58,13 @@ export default function AdminExpensesPage() {
     enabled: !!date,
   });
 
+  // Fill the form from the server once per date. A later refetch (e.g. when a
+  // patchy connection comes back) must not overwrite what is being typed.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
+    if (seededFor.current === date) return;
     if (existingData?.items) {
+      seededFor.current = date;
       idCounter.current = 0;
       setExpenses(
         existingData.items.map((item: ExpenseItem) => ({

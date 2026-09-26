@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Button, Typography, Paper, useTheme, TextField, Chip,
@@ -37,7 +37,13 @@ export default function PaymentSettlementPage() {
     trackPageView('payment_settlement', `Opened payment settlement for ${targetDate}`);
   }, [targetDate]);
 
+  // Fill the form from the server once per date. A later refetch (e.g. when a
+  // patchy connection comes back) must not overwrite what is being typed.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
+    // undefined while loading; wait for the answer before filling the form.
+    if (settlement === undefined || seededFor.current === targetDate) return;
+    seededFor.current = targetDate;
     if (settlement?.settlement) {
       setActualCash(String(settlement.settlement.actualCash));
       setActualUpi(String(settlement.settlement.actualUpi));
@@ -47,7 +53,7 @@ export default function PaymentSettlementPage() {
       setActualUpi('');
       setNotes('');
     }
-  }, [settlement]);
+  }, [settlement, targetDate]);
 
   const cashDiff = settlement ? parseFloat(actualCash || '0') - settlement.expectedCash : 0;
   const upiDiff = settlement ? parseFloat(actualUpi || '0') - settlement.expectedUpi : 0;
@@ -227,6 +233,7 @@ export default function PaymentSettlementPage() {
               <Box
                 component="input"
                 type="number"
+                inputMode="decimal"
                 value={actualCash}
                 placeholder="0"
                 onChange={(e) => setActualCash(e.target.value)}
@@ -278,6 +285,7 @@ export default function PaymentSettlementPage() {
               <Box
                 component="input"
                 type="number"
+                inputMode="decimal"
                 value={actualUpi}
                 placeholder="0"
                 onChange={(e) => setActualUpi(e.target.value)}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -90,8 +90,12 @@ export default function ClosingStockPage() {
     trackPageView('closing_stock', `Opened closing stock for ${targetDate}`);
   }, [targetDate]);
 
+  // Fill the form from the server once per date. A later refetch (e.g. when a
+  // patchy connection comes back) must not overwrite what is being typed.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
-    if (closingStock?.items) {
+    if (closingStock?.items && seededFor.current !== targetDate) {
+      seededFor.current = targetDate;
       const q: Record<number, { packets: number; pieces: number; wastage: number; hasConflict: boolean; conflictReason: string }> = {};
       closingStock.items.forEach((item) => {
         q[item.supplyItemId] = {
@@ -104,7 +108,7 @@ export default function ClosingStockPage() {
       });
       setClosingItems(q);
     }
-  }, [closingStock]);
+  }, [closingStock, targetDate]);
 
   const expectedStock = useMemo<ExpectedStockItem[]>(() => {
     const menuItems = (menuData?.items || []) as Array<{ id: number; filling: string; displayName: string }>;
@@ -571,6 +575,7 @@ export default function ClosingStockPage() {
                         <Box
                           component="input"
                           type="number"
+                          inputMode="numeric"
                           value={current.packets}
                           onChange={(e) => setPackets(item.supplyItemId, e.target.value)}
                           sx={{
@@ -614,6 +619,7 @@ export default function ClosingStockPage() {
                             <Box
                               component="input"
                               type="number"
+                              inputMode="numeric"
                               value={current.pieces}
                               onChange={(e) => setPieces(item.supplyItemId, e.target.value, item.piecesPer)}
                               sx={{
@@ -657,6 +663,7 @@ export default function ClosingStockPage() {
                         <Box
                           component="input"
                           type="number"
+                          inputMode="numeric"
                           value={current.wastage}
                           onChange={(e) => setWastage(item.supplyItemId, e.target.value)}
                           sx={{
