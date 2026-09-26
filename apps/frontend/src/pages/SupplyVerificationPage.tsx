@@ -218,6 +218,7 @@ export default function SupplyVerificationPage() {
                     <Box
                       component="input"
                       type="number"
+                      inputMode="numeric"
                       value={current}
                       onChange={(e) => setQty(item.supplyItemId, e.target.value)}
                       sx={{
