@@ -71,6 +71,31 @@ test.describe('admin closing stock', () => {
     await expect(page.getByTestId('closing-row').filter({ hasText: 'Paneer' }).getByTestId('closing-diff')).toHaveText('✓ match');
   });
 
+  test('copies the same summary staff copy', async ({ page, request, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const { staff } = await setUpDay(request);
+    await request.post('/api/supply/closing-stock', {
+      headers: staff,
+      data: { orderDate: today(), items: [count(1, 0, 10, { wastagePieces: 1 }), count(2, 1), count(3, 0)] },
+    });
+
+    await signIn(page, 'admin');
+    await page.goto('/admin/closing-stock');
+    await page.getByRole('button', { name: 'Copy Summary' }).click();
+    await expect(page.getByText('Closing stock copied to clipboard!')).toBeVisible();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('Left Over:\nVeg: 10 Pieces\nPaneer: 1 Packet\nCheese Corn: 0');
+    expect(copied).toContain('Wastage:\nVeg: 1 piece');
+  });
+
+  test('offers no copy before staff have counted', async ({ page, request }) => {
+    await setUpDay(request);
+    await signIn(page, 'admin');
+    await page.goto('/admin/closing-stock');
+    await expect(page.getByTestId('closing-status')).toContainText('Not recorded yet');
+    await expect(page.getByRole('button', { name: 'Copy Summary' })).toHaveCount(0);
+  });
+
   test('moves between days', async ({ page, request }) => {
     await setUpDay(request);
     await signIn(page, 'admin');
