@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
-import { query, queryOnce, withTransaction } from '../db/pool.js';
+import { bulkValues, query, queryOnce, withTransaction } from '../db/pool.js';
 import { normalizeText } from '../utils/text.js';
-import { computeLineTotal } from '../utils/pricing.js';
+import { computeLineTotal, roundMoney } from '../utils/pricing.js';
 import { buildMenu } from '../constants/menu.js';
 
 export interface StaffLeave {
@@ -111,10 +111,6 @@ function toLeave(row: LeaveRow): StaffLeave {
     updatedByName: row.updated_by_name,
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
   };
-}
-
-function roundMoney(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -323,13 +319,14 @@ function priceTakeaway(input: StaffTakeawayInput) {
 }
 
 async function insertItems(client: PoolClient, takeawayId: number, lines: ReturnType<typeof priceTakeaway>['lines']) {
-  for (const l of lines) {
-    await client.query(
-      `INSERT INTO staff_takeaway_items (takeaway_id, menu_item_id, item_name, quantity, is_half, menu_price, line_total)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [takeawayId, l.menuItemId, l.itemName, l.quantity, l.isHalf, l.menuPrice, l.lineTotal],
-    );
-  }
+  const { text, params } = bulkValues(
+    lines.map((l) => [takeawayId, l.menuItemId, l.itemName, l.quantity, l.isHalf, l.menuPrice, l.lineTotal]),
+  );
+  await client.query(
+    `INSERT INTO staff_takeaway_items (takeaway_id, menu_item_id, item_name, quantity, is_half, menu_price, line_total)
+     VALUES ${text}`,
+    params,
+  );
 }
 
 /** Record momos a staff member took, priced at the staff discount. */
