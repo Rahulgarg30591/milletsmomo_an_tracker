@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, IconButton, TextField, useTheme } from '@mui/material';
-import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Box, Button, Typography, Paper, IconButton, TextField, useTheme, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getClosingStock } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
@@ -12,6 +12,9 @@ import { reconcileClosingStock, type ReconciledItem } from '../utils/stockReconc
 import { addDays, formatDateLabel, getToday } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
+import Toast from '../components/Toast';
+import { buildClosingSummary, copyToClipboard } from '../utils/closingSummary';
+import { vibrate, haptics } from '../theme/tokens';
 
 function packs(packets: number, pieces: number): string {
   if (packets && pieces) return `${packets} pkt + ${pieces} pcs`;
@@ -84,6 +87,24 @@ export default function AdminClosingStockPage() {
     { left: 0, expected: 0, wastage: 0 },
   );
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
+
+  /** The same message staff copy from their closing-stock page. */
+  const handleCopy = async () => {
+    vibrate(haptics.light);
+    const text = buildClosingSummary(
+      date,
+      momos.map((r) => ({ displayName: r.displayName, packets: r.actualPackets, pieces: r.actualPieces, wastage: r.wastagePieces })),
+    );
+    if (await copyToClipboard(text)) {
+      vibrate(haptics.success);
+      setToast({ message: 'Closing stock copied to clipboard!', type: 'success' });
+    } else {
+      setClipboardFallback(text);
+    }
+  };
+
   const cardBorder = `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : theme.palette.divider}`;
   const ok = isDark ? '#4ADE80' : '#16A34A';
   const bad = isDark ? '#F87171' : '#DC2626';
@@ -154,6 +175,17 @@ export default function AdminClosingStockPage() {
                   ? `Recorded by ${closing?.recordedByName ?? 'staff'}${closing?.recordedAt ? ` · ${new Date(closing.recordedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : ''}`
                   : 'Staff record this from the day view. Expected figures below are what should be left now.'}
               </Typography>
+              {recorded && momos.length > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ClipboardCopy size={16} />}
+                  onClick={handleCopy}
+                  sx={{ mt: 1.25, textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                >
+                  Copy Summary
+                </Button>
+              )}
               {momos.length > 0 && (
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mt: 1.5, pt: 1.25, borderTop: 1, borderColor: 'divider' }}>
                   {[
@@ -249,6 +281,32 @@ export default function AdminClosingStockPage() {
           </>
         )}
       </Box>
+
+      {clipboardFallback && (
+        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
+          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Closing Stock</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
+              Clipboard copy failed. Select the text below and copy manually.
+            </Typography>
+            <TextField
+              multiline
+              fullWidth
+              rows={10}
+              value={clipboardFallback}
+              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>
   );
 }
