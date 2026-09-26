@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { query, withTransaction } from '../db/pool.js';
+import { bulkValues, query, withTransaction } from '../db/pool.js';
 import { formatDate } from '../utils/dateUtils.js';
 
 export interface SupplyItem {
@@ -164,15 +164,16 @@ export async function createSupplyOrder(
 
     const orderId = inserted.rows[0].id;
 
-    for (const item of items) {
+    // One statement for all items: a round trip per row costs ~30ms each.
+    const { text, params } = bulkValues(items.map((item) => {
       const unitPrice = priceMap.get(item.supplyItemId)!;
-      const lineTotal = unitPrice * item.quantity;
-      await client.query(
-        `INSERT INTO daily_supply_order_items (order_id, supply_item_id, quantity, unit_price, line_total)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [orderId, item.supplyItemId, item.quantity, unitPrice, lineTotal],
-      );
-    }
+      return [orderId, item.supplyItemId, item.quantity, unitPrice, unitPrice * item.quantity];
+    }));
+    await client.query(
+      `INSERT INTO daily_supply_order_items (order_id, supply_item_id, quantity, unit_price, line_total)
+       VALUES ${text}`,
+      params,
+    );
 
     await client.query(
       `INSERT INTO supply_order_logs (order_date, action, created_by, item_summary)

@@ -45,26 +45,26 @@ export async function getVerification(date: string): Promise<SupplyVerification 
 
   const orderId = orderRows[0].id;
 
-  // Get expected items from the supply order
-  const expectedRows = await query<any>(
+  // Expected items and any verifications are independent, so fetch together.
+  const [expectedRows, verifyRows] = await Promise.all([
+    query<any>(
     `SELECT doi.supply_item_id, doi.quantity, doi.unit_price, si.display_name, si.category, si.pieces_per
      FROM daily_supply_order_items doi
      JOIN supply_items si ON doi.supply_item_id = si.id
      WHERE doi.order_id = $1
      ORDER BY CASE si.category WHEN 'momo_packet' THEN 1 WHEN 'sauce' THEN 2 WHEN 'dip' THEN 3 END, si.id`,
     [orderId],
-  );
+    ),
+    query<any>(
+    `SELECT supply_item_id, expected_qty, actual_qty, has_conflict
+     FROM supply_verifications WHERE order_date = $1`,
+    [date],
+    ),
+  ]);
 
   if (expectedRows.length === 0) {
     return null;
   }
-
-  // Get any verifications
-  const verifyRows = await query<any>(
-    `SELECT supply_item_id, expected_qty, actual_qty, has_conflict
-     FROM supply_verifications WHERE order_date = $1`,
-    [date],
-  );
 
   const verifyMap = new Map<number, { expectedQty: number; actualQty: number; hasConflict: boolean }>();
   for (const row of verifyRows) {

@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+import { dateRegex, monthRegex } from './common.js';
 
 export const staffLeaveSchema = z.object({
   staffName: z.string().trim().min(1, 'Staff name is required').max(60, 'Staff name is too long'),
@@ -30,7 +29,7 @@ export const staffDateSchema = z.object({
 });
 
 export const staffMonthSchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month format (YYYY-MM)'),
+  month: z.string().regex(monthRegex, 'Invalid month format (YYYY-MM)'),
 });
 
 export const staffIdSchema = z.object({

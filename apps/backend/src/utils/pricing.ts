@@ -54,3 +54,8 @@ export function computeOrderTotal(
     return sum + lineTotal;
   }, 0);
 }
+
+/** Rounds rupees to paise, avoiding floating-point tails like 66.74999. */
+export function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
+}

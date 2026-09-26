@@ -1,5 +1,6 @@
 import { query, queryOnce } from '../db/pool.js';
 import { normalizeText } from '../utils/text.js';
+import { roundMoney } from '../utils/pricing.js';
 
 export const CYLINDER_BRANDS = ['HP', 'BP', 'INDANE'] as const;
 export type CylinderBrand = (typeof CYLINDER_BRANDS)[number];
@@ -64,8 +65,6 @@ const SELECT_REFILLS = `
   FROM cylinder_refills cr
   JOIN users u ON cr.created_by = u.id
   LEFT JOIN users uu ON cr.updated_by = uu.id`;
-
-export const normalizeSource = normalizeText;
 
 function toRefill(row: RefillRow): CylinderRefill {
   return {
@@ -148,7 +147,7 @@ export async function addRefill(
     `INSERT INTO cylinder_refills (refill_date, brand, amount, source, created_by)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id`,
-    [refillDate, brand, amount, normalizeSource(source), createdBy],
+    [refillDate, brand, amount, normalizeText(source), createdBy],
   );
   const rows = await query<RefillRow>(`${SELECT_REFILLS} WHERE cr.id = $1`, [inserted[0].id]);
   return toRefill(rows[0]);
@@ -172,7 +171,7 @@ export async function updateRefill(
     `UPDATE cylinder_refills
      SET brand = $2, amount = $3, source = $4, updated_by = $5, updated_at = NOW()
      WHERE id = $1`,
-    [id, brand, amount, normalizeSource(source), updatedBy],
+    [id, brand, amount, normalizeText(source), updatedBy],
   );
   const afterRows = await query<RefillRow>(`${SELECT_REFILLS} WHERE cr.id = $1`, [id]);
   return { before: toRefill(beforeRows[0]), after: toRefill(afterRows[0]) };
@@ -183,16 +182,18 @@ export async function updateRefill(
  * Spellings differing only in case count as one.
  */
 export async function getRecentSources(limit = 20): Promise<string[]> {
-  const rows = await query<{ source: string; created_at: Date }>(
-    `SELECT DISTINCT ON (lower(source)) source, created_at
-     FROM cylinder_refills
-     WHERE source IS NOT NULL
-     ORDER BY lower(source), created_at DESC`,
+  const rows = await query<{ source: string }>(
+    `SELECT source FROM (
+       SELECT DISTINCT ON (lower(source)) source, created_at
+       FROM cylinder_refills
+       WHERE source IS NOT NULL
+       ORDER BY lower(source), created_at DESC
+     ) latest
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit],
   );
-  return rows
-    .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-    .slice(0, limit)
-    .map((r) => r.source);
+  return rows.map((r) => r.source);
 }
 
 /**
@@ -207,6 +208,3 @@ export async function deleteRefill(id: number): Promise<CylinderRefill | null> {
   return toRefill(rows[0]);
 }
 
-function roundMoney(n: number): number {
-  return Math.round(n * 100) / 100;
-}
