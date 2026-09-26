@@ -1,6 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, useTheme, IconButton, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  useTheme,
+  IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
 import { ArrowLeft, Minus, Plus, Save, Truck, History, ChevronDown, CheckCircle2, AlertCircle, Package, AlertTriangle, Download, ClipboardCopy, Ban } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupplyItems, getSupplyOrder, getSupplyOrderLogs, saveSupplyOrder, getNoSupply, markNoSupply } from '../api/supplyApi';
@@ -11,6 +25,8 @@ import { getToday, addDays, formatDateLabel } from '../utils/dateUtils';
 import { exportSupplyToExcel } from '../utils/exportSupply';
 import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
+import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
+import { copyToClipboard } from '../utils/clipboard';
 import type { SupplyItem, SupplyOrderLog, StaffOperationLog } from '../types';
 
 export default function SupplyOrderPage() {
@@ -158,30 +174,6 @@ export default function SupplyOrderPage() {
     }
   };
 
-  const copyToClipboard = async (text: string): Promise<boolean> => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-    } catch {
-      // fall through to legacy fallback
-    }
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return ok;
-    } catch {
-      return false;
-    }
-  };
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -316,7 +308,7 @@ export default function SupplyOrderPage() {
                   color: 'inherit',
                   outline: 'none',
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
               <IconButton
@@ -731,45 +723,17 @@ export default function SupplyOrderPage() {
         )}
       </Box>
 
-      {clipboardFallback && (
-        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Order Text</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
-              Clipboard copy failed. Select the text below and copy manually.
-            </Typography>
-            <TextField
-              multiline
-              fullWidth
-              rows={6}
-              value={clipboardFallback}
-              variant="outlined"
-              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={async () => {
-                const ok = await copyToClipboard(clipboardFallback);
-                if (ok) {
-                  vibrate(haptics.success);
-                  setToast({ message: 'Order text copied to clipboard!', type: 'success' });
-                  setClipboardFallback(null);
-                } else {
-                  setToast({ message: 'Copy failed — select text manually', type: 'error' });
-                }
-              }}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              Retry Copy
-            </Button>
-            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <ClipboardFallbackDialog
+        text={clipboardFallback}
+        title="Copy Order Text"
+        onClose={() => setClipboardFallback(null)}
+        onCopied={() => {
+          vibrate(haptics.success);
+          setToast({ message: 'Order text copied to clipboard!', type: 'success' });
+          setClipboardFallback(null);
+        }}
+        onRetryFailed={() => setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' })}
+      />
 
       <Dialog open={confirmNoSupply} onClose={() => setConfirmNoSupply(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Supply didn{"\u2019"}t arrive?</DialogTitle>

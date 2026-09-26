@@ -8,10 +8,6 @@ import {
   useTheme,
   IconButton,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from '@mui/material';
 import { ArrowLeft, Plus, Trash2, Save, ClipboardCopy, FlaskConical, Droplets, Flame } from 'lucide-react';
 import { isAxiosError } from 'axios';
@@ -22,6 +18,9 @@ import Toast from '../components/Toast';
 import CylinderRefills, { useCylinderRefills } from '../components/CylinderRefills';
 import { brandInfo } from '../utils/cylinder';
 import { vibrate, haptics } from '../theme/tokens';
+import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
+import { copyToClipboard } from '../utils/clipboard';
+import { toDDMMYYYY } from '../utils/dateUtils';
 import type { ExpenseItem } from '../types';
 
 interface LocalExpense {
@@ -35,36 +34,7 @@ const PRESETS = [
   { label: 'Water', description: 'Water', amount: 40, icon: Droplets },
 ];
 
-function toDDMMYYYY(dateStr: string): string {
-  return dateStr.split('-').reverse().join('-');
-}
 
-function copyToClipboard(text: string): Promise<boolean> {
-  return (async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-    } catch {
-      // fall through
-    }
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return ok;
-    } catch {
-      return false;
-    }
-  })();
-}
 
 export default function ExpensesPage() {
   const theme = useTheme();
@@ -402,45 +372,17 @@ export default function ExpensesPage() {
       </Box>
 
       {/* Clipboard fallback dialog */}
-      {clipboardFallback && (
-        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Expenses</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
-              Clipboard copy failed. Select the text below and copy manually.
-            </Typography>
-            <TextField
-              multiline
-              fullWidth
-              rows={8}
-              value={clipboardFallback}
-              variant="outlined"
-              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={async () => {
-                const ok = await copyToClipboard(clipboardFallback);
-                if (ok) {
-                  vibrate(haptics.success);
-                  setToast({ message: 'Expenses copied to clipboard!', type: 'success' });
-                  setClipboardFallback(null);
-                } else {
-                  setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' });
-                }
-              }}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              Retry Copy
-            </Button>
-            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <ClipboardFallbackDialog
+        text={clipboardFallback}
+        title="Copy Expenses"
+        onClose={() => setClipboardFallback(null)}
+        onCopied={() => {
+          vibrate(haptics.success);
+          setToast({ message: 'Expenses copied to clipboard!', type: 'success' });
+          setClipboardFallback(null);
+        }}
+        onRetryFailed={() => setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' })}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

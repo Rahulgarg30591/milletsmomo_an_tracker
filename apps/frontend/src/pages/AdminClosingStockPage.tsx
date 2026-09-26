@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Button, Typography, Paper, IconButton, TextField, useTheme, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  IconButton,
+  TextField,
+  useTheme,
+} from '@mui/material';
 import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getClosingStock } from '../api/closingStockApi';
@@ -13,7 +21,9 @@ import { addDays, formatDateLabel, getToday } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import Toast from '../components/Toast';
-import { buildClosingSummary, copyToClipboard } from '../utils/closingSummary';
+import { buildClosingSummary } from '../utils/closingSummary';
+import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
+import { copyToClipboard } from '../utils/clipboard';
 import { vibrate, haptics } from '../theme/tokens';
 
 function packs(packets: number, pieces: number): string {
@@ -282,29 +292,17 @@ export default function AdminClosingStockPage() {
         )}
       </Box>
 
-      {clipboardFallback && (
-        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Closing Stock</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
-              Clipboard copy failed. Select the text below and copy manually.
-            </Typography>
-            <TextField
-              multiline
-              fullWidth
-              rows={10}
-              value={clipboardFallback}
-              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <ClipboardFallbackDialog
+        text={clipboardFallback}
+        title="Copy Closing Stock"
+        onClose={() => setClipboardFallback(null)}
+        onCopied={() => {
+          vibrate(haptics.success);
+          setToast({ message: 'Closing stock copied to clipboard!', type: 'success' });
+          setClipboardFallback(null);
+        }}
+        onRetryFailed={() => setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' })}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

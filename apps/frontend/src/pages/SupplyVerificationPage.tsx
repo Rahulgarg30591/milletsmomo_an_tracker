@@ -233,7 +233,7 @@ export default function SupplyVerificationPage() {
                         color: hasConflict ? '#DC2626' : 'inherit',
                         outline: 'none',
                         '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                        '-moz-appearance': 'textfield',
+                        MozAppearance: 'textfield',
                       }}
                     />
                     <IconButton

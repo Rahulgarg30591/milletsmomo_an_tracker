@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { Flame, Trash2, Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
+import { errorDetail } from '../utils/errors';
 import { getCylinderRefills, getCylinderSources, addCylinderRefill, updateCylinderRefill, deleteCylinderRefill } from '../api/cylinderApi';
 import { CYLINDER_BRANDS, brandInfo, getLastPrice, setLastPrice, formatRupees } from '../utils/cylinder';
 import { vibrate, haptics } from '../theme/tokens';
@@ -22,11 +22,6 @@ export function useCylinderRefills(date: string) {
   });
 }
 
-function errorDetail(error: unknown): string | undefined {
-  return isAxiosError(error) && typeof error.response?.data?.error === 'string'
-    ? error.response.data.error
-    : undefined;
-}
 
 interface CylinderRefillsProps {
   date: string;
