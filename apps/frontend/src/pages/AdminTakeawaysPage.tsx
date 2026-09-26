@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { ArrowLeft, UserRound, Plus, Minus, Pencil, Trash2, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
+import { errorDetail } from '../utils/errors';
 import { buildMenu, PREPARATIONS } from 'shared';
 import { getTakeawayMonth, addTakeaway, updateTakeaway, deleteTakeaway } from '../api/staffApi';
 import { formatDateLabel, getToday } from '../utils/dateUtils';
@@ -49,11 +49,6 @@ function owedOf(menuPrice: number): number {
   return Math.round(menuPrice * (100 - STAFF_DISCOUNT_PCT)) / 100;
 }
 
-function errorDetail(error: unknown): string | undefined {
-  return isAxiosError(error) && typeof error.response?.data?.error === 'string'
-    ? error.response.data.error
-    : undefined;
-}
 
 let lineKey = 0;
 const newLine = (): DraftLine => ({ key: lineKey++, menuItemId: MOMOS[0].id, half: false, plates: 1 });

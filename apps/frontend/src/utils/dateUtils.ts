@@ -27,14 +27,6 @@ export function formatCurrency(amount: number): string {
   return `\u20B9${amount}`;
 }
 
-export function isToday(dateStr: string): boolean {
-  return dateStr === getToday();
-}
-
-export function isYesterday(dateStr: string): boolean {
-  return dateStr === getYesterday();
-}
-
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
@@ -43,4 +35,9 @@ export function addDays(dateStr: string, days: number): string {
 
 export function formatDateTimeIST(date: Date = new Date()): string {
   return date.toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T') + '+05:30';
+}
+
+/** 2026-09-26 → 26-09-2026, as the shop writes dates in chat messages. */
+export function toDDMMYYYY(dateStr: string): string {
+  return dateStr.split('-').reverse().join('-');
 }

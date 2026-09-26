@@ -157,14 +157,6 @@ setInterval(() => {
   }
 }, 60 * 1000); // Check every minute
 
-export function getLogs(): ClientLogEntry[] {
-  return getStoredLogs();
-}
-
-export function clearLogs() {
-  localStorage.removeItem(LOG_KEY);
-}
-
 // Session tracking
 
 export function markSessionStart() {
@@ -238,10 +230,6 @@ export function trackVerificationSubmit(orderDate: string, metadata?: Record<str
 export function trackClosingStockSubmit(orderDate: string, metadata?: Record<string, any>) {
   addLog({ type: 'closing_stock_submit', page: 'closing_stock', details: `Closing stock submitted for ${orderDate}`, metadata });
   flushLogs();
-}
-
-export function trackFormSubmit(page: string, formName: string, metadata?: Record<string, any>) {
-  addLog({ type: 'form_submit', page, details: `Form submitted: ${formName}`, metadata });
 }
 
 export function trackRevenueCheck(orderDate: string, metadata?: Record<string, any>) {

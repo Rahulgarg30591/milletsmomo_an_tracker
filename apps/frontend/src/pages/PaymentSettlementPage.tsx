@@ -246,7 +246,7 @@ export default function PaymentSettlementPage() {
                     borderColor: cashConflict ? '#DC2626' : theme.palette.primary.main,
                   },
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
               {cashConflict && (
@@ -297,7 +297,7 @@ export default function PaymentSettlementPage() {
                     borderColor: upiConflict ? '#DC2626' : theme.palette.primary.main,
                   },
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
               {upiConflict && (

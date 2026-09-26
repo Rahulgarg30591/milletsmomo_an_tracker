@@ -217,7 +217,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                       color: 'inherit',
                       outline: 'none',
                       '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                      '-moz-appearance': 'textfield',
+                      MozAppearance: 'textfield',
                     }}
                   />
                 </Box>
@@ -248,7 +248,7 @@ export default function PaymentModal({ open, totalAmount, onResolve, onCancel }:
                       color: 'inherit',
                       outline: 'none',
                       '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                      '-moz-appearance': 'textfield',
+                      MozAppearance: 'textfield',
                     }}
                   />
                 </Box>

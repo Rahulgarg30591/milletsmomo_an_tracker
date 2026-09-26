@@ -1,3 +1,5 @@
+import { toDDMMYYYY } from './dateUtils';
+
 const SUMMARY_FILLINGS = ['Veg', 'Paneer', 'Cheese Corn'] as const;
 
 function fillingFromDisplayName(displayName: string): string {
@@ -5,10 +7,6 @@ function fillingFromDisplayName(displayName: string): string {
   if (/paneer/i.test(displayName)) return 'Paneer';
   if (/veg/i.test(displayName)) return 'Veg';
   return 'Unknown';
-}
-
-function toDDMMYYYY(dateStr: string): string {
-  return dateStr.split('-').reverse().join('-');
 }
 
 /**
@@ -57,30 +55,4 @@ export function buildClosingSummary(
     lines.push('None');
   }
   return lines.join('\n');
-}
-
-/** Copies text, falling back to a hidden textarea where the Clipboard API is unavailable. */
-export async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // fall through
-  }
-  try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return ok;
-  } catch {
-    return false;
-  }
 }

@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { ArrowLeft, CalendarX2, Pencil, Trash2, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
+import { errorDetail } from '../utils/errors';
 import { getLeaveMonth, addLeave, updateLeave, deleteLeave } from '../api/staffApi';
 import { formatDateLabel, getToday } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
@@ -17,11 +17,6 @@ import Toast from '../components/Toast';
 import { vibrate, haptics } from '../theme/tokens';
 import type { StaffLeave } from '../types';
 
-function errorDetail(error: unknown): string | undefined {
-  return isAxiosError(error) && typeof error.response?.data?.error === 'string'
-    ? error.response.data.error
-    : undefined;
-}
 
 /** Admin marks staff absent, to count the leaves each person takes. */
 export default function AdminLeavesPage() {

@@ -306,7 +306,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   color: 'inherit',
                   outline: 'none',
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
             </Box>
@@ -335,7 +335,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   color: 'inherit',
                   outline: 'none',
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
             </Box>
