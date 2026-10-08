@@ -50,15 +50,20 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'static-assets', expiration: { maxAgeSeconds: 86400 * 30 } },
           },
+          // Matched on the path: a RegExp is tested against the full URL, so the
+          // old /^\/api\/menu/ never matched and the menu was never cached.
+          // Stale-while-revalidate serves the cached menu at once (and offline)
+          // and refreshes it, so price changes reach phones on the next open.
+          // Other API responses are deliberately not cached by the worker:
+          // they are per-user and the device may be shared.
           {
-            urlPattern: /^\/api\/menu/,
-            handler: 'CacheFirst',
-            options: { cacheName: 'menu-data', expiration: { maxAgeSeconds: 86400 } },
-          },
-          {
-            urlPattern: /^\/api\/(orders|supply|admin|closing-stock)/,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'api-data', expiration: { maxAgeSeconds: 300, maxEntries: 60 }, networkTimeoutSeconds: 5 },
+            urlPattern: ({ url }) => url.pathname === '/api/menu',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'menu-data',
+              expiration: { maxAgeSeconds: 86400 * 7 },
+              cacheableResponse: { statuses: [200] },
+            },
           },
         ],
       },
@@ -75,7 +80,9 @@ export default defineConfig({
           'vendor-charts': ['recharts'],
           // Kept a named chunk so the precache exclusion can match it by name.
           'vendor-xlsx': ['xlsx'],
-          'vendor-icons': ['lucide-react'],
+          // lucide-react is left out on purpose: as one chunk it forced every
+          // icon any page uses onto the first screen; unchunked, each route
+          // gets only its own icons.
         },
       },
     },

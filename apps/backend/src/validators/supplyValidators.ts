@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+import { dateRegex } from './common.js';
 
 const supplyItemSchema = z.object({
   supplyItemId: z.number().int().positive(),

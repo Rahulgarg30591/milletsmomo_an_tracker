@@ -218,6 +218,7 @@ export default function SupplyVerificationPage() {
                     <Box
                       component="input"
                       type="number"
+                      inputMode="numeric"
                       value={current}
                       onChange={(e) => setQty(item.supplyItemId, e.target.value)}
                       sx={{
@@ -233,7 +234,7 @@ export default function SupplyVerificationPage() {
                         color: hasConflict ? '#DC2626' : 'inherit',
                         outline: 'none',
                         '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                        '-moz-appearance': 'textfield',
+                        MozAppearance: 'textfield',
                       }}
                     />
                     <IconButton

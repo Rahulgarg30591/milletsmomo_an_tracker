@@ -1,7 +1,6 @@
 import { z } from 'zod';
+import { dateRegex, monthRegex } from './common.js';
 import { CYLINDER_BRANDS } from '../services/cylinderService.js';
-
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 export const getCylinderRefillsSchema = z.object({
   date: z.string().regex(dateRegex, 'Invalid date format (YYYY-MM-DD)'),
@@ -26,5 +25,5 @@ export const cylinderRefillIdSchema = z.object({
 });
 
 export const getCylinderMonthSchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month format (YYYY-MM)'),
+  month: z.string().regex(monthRegex, 'Invalid month format (YYYY-MM)'),
 });

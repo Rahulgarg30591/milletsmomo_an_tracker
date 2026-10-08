@@ -156,9 +156,13 @@ function NewOrderContent() {
     },
   });
 
+  // The page navigates away before the request finishes, so a quick second
+  // tap could otherwise send the order twice.
+  const submittedRef = useRef(false);
+
   const handleSubmit = () => {
     const items = getItemList();
-    if (items.length === 0) return;
+    if (items.length === 0 || submittedRef.current) return;
 
     const errors = {
       type: !draft.orderType,
@@ -173,6 +177,7 @@ function NewOrderContent() {
       return;
     }
 
+    submittedRef.current = true;
     const totalAmount = calculateOrderTotal(items);
 
     const optimisticItems: OrderItem[] = items.map((i) => {

@@ -1,8 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Box, Button, Typography, Paper, useTheme, IconButton, TextField, Chip, Collapse,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Box,
+  Button,
+  Typography,
+  Paper,
+  useTheme,
+  IconButton,
+  TextField,
+  Chip,
+  Collapse,
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -19,7 +26,9 @@ import { trackPageView, trackClosingStockSubmit } from '../utils/tracking';
 import Toast from '../components/Toast';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import { vibrate, haptics } from '../theme/tokens';
-import { buildClosingSummary, copyToClipboard } from '../utils/closingSummary';
+import { buildClosingSummary } from '../utils/closingSummary';
+import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
+import { copyToClipboard } from '../utils/clipboard';
 import type { ClosingStock, SupplyVerification } from '../types';
 
 interface ExpectedStockItem {
@@ -81,8 +90,12 @@ export default function ClosingStockPage() {
     trackPageView('closing_stock', `Opened closing stock for ${targetDate}`);
   }, [targetDate]);
 
+  // Fill the form from the server once per date. A later refetch (e.g. when a
+  // patchy connection comes back) must not overwrite what is being typed.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
-    if (closingStock?.items) {
+    if (closingStock?.items && seededFor.current !== targetDate) {
+      seededFor.current = targetDate;
       const q: Record<number, { packets: number; pieces: number; wastage: number; hasConflict: boolean; conflictReason: string }> = {};
       closingStock.items.forEach((item) => {
         q[item.supplyItemId] = {
@@ -95,7 +108,7 @@ export default function ClosingStockPage() {
       });
       setClosingItems(q);
     }
-  }, [closingStock]);
+  }, [closingStock, targetDate]);
 
   const expectedStock = useMemo<ExpectedStockItem[]>(() => {
     const menuItems = (menuData?.items || []) as Array<{ id: number; filling: string; displayName: string }>;
@@ -562,6 +575,7 @@ export default function ClosingStockPage() {
                         <Box
                           component="input"
                           type="number"
+                          inputMode="numeric"
                           value={current.packets}
                           onChange={(e) => setPackets(item.supplyItemId, e.target.value)}
                           sx={{
@@ -577,7 +591,7 @@ export default function ClosingStockPage() {
                             color: 'inherit',
                             outline: 'none',
                             '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                            '-moz-appearance': 'textfield',
+                            MozAppearance: 'textfield',
                           }}
                         />
                         <IconButton
@@ -605,6 +619,7 @@ export default function ClosingStockPage() {
                             <Box
                               component="input"
                               type="number"
+                              inputMode="numeric"
                               value={current.pieces}
                               onChange={(e) => setPieces(item.supplyItemId, e.target.value, item.piecesPer)}
                               sx={{
@@ -620,7 +635,7 @@ export default function ClosingStockPage() {
                                 color: 'inherit',
                                 outline: 'none',
                                 '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                                '-moz-appearance': 'textfield',
+                                MozAppearance: 'textfield',
                               }}
                             />
                             <IconButton
@@ -648,6 +663,7 @@ export default function ClosingStockPage() {
                         <Box
                           component="input"
                           type="number"
+                          inputMode="numeric"
                           value={current.wastage}
                           onChange={(e) => setWastage(item.supplyItemId, e.target.value)}
                           sx={{
@@ -663,7 +679,7 @@ export default function ClosingStockPage() {
                             color: 'inherit',
                             outline: 'none',
                             '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                            '-moz-appearance': 'textfield',
+                            MozAppearance: 'textfield',
                           }}
                         />
                         <IconButton
@@ -734,45 +750,17 @@ export default function ClosingStockPage() {
       </Box>
 
       {/* Clipboard fallback dialog */}
-      {clipboardFallback && (
-        <Dialog open onClose={() => setClipboardFallback(null)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>Copy Summary</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>
-              Clipboard copy failed. Select the text below and copy manually.
-            </Typography>
-            <TextField
-              multiline
-              fullWidth
-              rows={8}
-              value={clipboardFallback}
-              variant="outlined"
-              inputProps={{ readOnly: true, sx: { fontSize: '0.85rem', fontFamily: 'monospace' } }}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={async () => {
-                const ok = await copyToClipboard(clipboardFallback);
-                if (ok) {
-                  vibrate(haptics.success);
-                  setToast({ message: 'Summary copied to clipboard!', type: 'success' });
-                  setClipboardFallback(null);
-                } else {
-                  setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' });
-                }
-              }}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              Retry Copy
-            </Button>
-            <Button onClick={() => setClipboardFallback(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <ClipboardFallbackDialog
+        text={clipboardFallback}
+        title="Copy Summary"
+        onClose={() => setClipboardFallback(null)}
+        onCopied={() => {
+          vibrate(haptics.success);
+          setToast({ message: 'Summary copied to clipboard!', type: 'success' });
+          setClipboardFallback(null);
+        }}
+        onRetryFailed={() => setToast({ message: 'Copy failed \u2014 select text manually', type: 'error' })}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </Box>

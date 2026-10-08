@@ -291,6 +291,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
               <Box
                 component="input"
                 type="number"
+                inputMode="decimal"
                 value={cashVal}
                 onChange={(e) => handleCashChange(e.target.value)}
                 sx={{
@@ -306,7 +307,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   color: 'inherit',
                   outline: 'none',
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
             </Box>
@@ -320,6 +321,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
               <Box
                 component="input"
                 type="number"
+                inputMode="decimal"
                 value={upiVal}
                 onChange={(e) => handleUpiChange(e.target.value)}
                 sx={{
@@ -335,7 +337,7 @@ const OrderConfigPanelInner = forwardRef<OrderConfigPanelHandle>(function OrderC
                   color: 'inherit',
                   outline: 'none',
                   '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': { WebkitAppearance: 'none' },
-                  '-moz-appearance': 'textfield',
+                  MozAppearance: 'textfield',
                 }}
               />
             </Box>
