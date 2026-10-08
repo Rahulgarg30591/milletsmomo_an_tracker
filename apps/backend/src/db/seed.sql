@@ -19,7 +19,7 @@ VALUES
   ('Paneer', 'Fry', 'Paneer Fry', 129.00, 70.00),
   ('Cheese Corn', 'Fry', 'Cheese Corn Fry', 149.00, 80.00),
   ('Platter', 'Fry', 'Platter Fry', 129.00, 70.00),
-  ('Veg', 'Creamy', 'Veg Creamy', 129.00, 60.00),
+  ('Veg', 'Creamy', 'Veg Creamy', 109.00, 60.00),
   ('Paneer', 'Creamy', 'Paneer Creamy', 129.00, 70.00),
   ('Cheese Corn', 'Creamy', 'Cheese Corn Creamy', 149.00, 80.00),
   ('Platter', 'Creamy', 'Platter Creamy', 129.00, 70.00),
