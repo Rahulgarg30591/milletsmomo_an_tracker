@@ -255,4 +255,12 @@ describe('ordersService against a real database', () => {
       await expect(deleteOrder(1)).rejects.toMatchObject({ status: 404 });
     });
   });
+
+  describe('menu prices', () => {
+    it('charges 109 for a full plate of Veg Creamy', async () => {
+      const order = await placeOrder({ items: [{ menuItemId: 9, quantity: FULL_PLATE, isHalf: false }] });
+      expect(order.items[0].itemName).toBe('Veg Creamy');
+      expect(order.totalAmount).toBe(109);
+    });
+  });
 });

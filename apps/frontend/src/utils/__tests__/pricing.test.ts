@@ -109,3 +109,12 @@ describe('getMenuItem', () => {
     expect(getMenuItem(9999)).toBeUndefined();
   });
 });
+
+describe('menu prices', () => {
+  it('prices Veg Creamy at 109 a full plate and 60 a half', () => {
+    const item = getMenuItem(9);
+    expect(item).toMatchObject({ displayName: 'Veg Creamy', fullPrice: 109, halfPrice: 60 });
+    expect(calculateLineTotal(9, 6, false, false).lineTotal).toBe(109);
+    expect(calculateLineTotal(9, 3, true, false).lineTotal).toBe(60);
+  });
+});
