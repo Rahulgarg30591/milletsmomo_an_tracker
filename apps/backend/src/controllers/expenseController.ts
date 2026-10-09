@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getExpensesSchema, saveExpensesSchema } from '../validators/expenseValidators.js';
 import * as expenseService from '../services/expenseService.js';
 import { createLog } from '../services/staffLogService.js';
+import { notifyAdmins, isStaffActor } from '../services/notificationService.js';
 
 export async function getDayExpenses(
   req: Request,
@@ -50,6 +51,14 @@ export async function saveDayExpenses(
       });
     } catch {
       // Log failure should not block expense save response
+    }
+    if (isStaffActor(req.user?.role)) {
+      await notifyAdmins({
+        title: 'Expenses saved',
+        body: `${req.user!.displayName}: ${data.items.length} expense(s), ₹${totalAmount} (${data.orderDate})`,
+        url: '/admin/expenses',
+        tag: `expenses-${data.orderDate}`,
+      });
     }
 
     res.status(201).json(result);

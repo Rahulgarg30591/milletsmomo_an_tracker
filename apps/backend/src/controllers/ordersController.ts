@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { dateQuerySchema, createOrderSchema, completeOrderSchema, updateOrderSchema } from '../validators/orderValidators.js';
 import * as ordersService from '../services/ordersService.js';
 import * as staffLogService from '../services/staffLogService.js';
+import { notifyAdmins, isStaffActor, LARGE_ORDER_THRESHOLD } from '../services/notificationService.js';
 
 export async function getOrders(
   req: Request,
@@ -53,6 +54,22 @@ export async function createOrder(
       });
     } catch {
       // Log failure should not block order creation
+    }
+
+    if (isStaffActor(req.user?.role)) {
+      const total = Number(result.totalAmount);
+      const isFirst = (await ordersService.countOrders(data.orderDate).catch(() => 0)) === 1;
+      const notes: string[] = [];
+      if (isFirst) notes.push('First order of the day');
+      if (total > LARGE_ORDER_THRESHOLD) notes.push('Large order');
+      if (notes.length > 0) {
+        await notifyAdmins({
+          title: notes.join(' · '),
+          body: `Order #${result.id}: ₹${total} (${data.orderType === 'dine' ? 'Dine' : 'Pack'}, ${data.paymentMethod})`,
+          url: '/admin',
+          tag: `order-${result.id}`,
+        });
+      }
     }
 
     res.status(201).json(result);

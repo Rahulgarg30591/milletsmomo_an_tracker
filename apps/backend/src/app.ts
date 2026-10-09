@@ -14,6 +14,7 @@ import paymentSettlementRoutes from './routes/paymentSettlementRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import cylinderRoutes from './routes/cylinderRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
+import pushRoutes from './routes/pushRoutes.js';
 import { globalLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
@@ -89,6 +90,7 @@ app.use('/api/admin', paymentSettlementRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/cylinders', cylinderRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/push', pushRoutes);
 
 app.use(errorHandler);
 

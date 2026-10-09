@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getSupplyVerificationSchema, createSupplyVerificationSchema, listSupplyVerificationsSchema } from '../validators/supplyVerificationValidators.js';
 import * as supplyVerificationService from '../services/supplyVerificationService.js';
 import * as staffLogService from '../services/staffLogService.js';
+import { notifyAdmins, isStaffActor } from '../services/notificationService.js';
 
 export async function listVerifications(
   req: Request,
@@ -69,6 +70,14 @@ export async function createVerification(
       conflictCount,
       allMatch: conflictCount === 0,
     });
+    if (isStaffActor(req.user!.role)) {
+      await notifyAdmins({
+        title: 'Stock verified',
+        body: `${req.user!.displayName}: ${details.toLowerCase()} (${orderDate})`,
+        url: '/admin/staff-logs',
+        tag: `verification-${orderDate}`,
+      });
+    }
 
     res.status(201).json(verification);
   } catch (err: any) {

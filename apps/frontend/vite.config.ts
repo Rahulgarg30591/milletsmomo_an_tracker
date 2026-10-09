@@ -29,6 +29,8 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: 'index.html',
+        // Push and notification-click handlers live in public/push-sw.js.
+        importScripts: ['push-sw.js'],
         navigateFallbackDenylist: [/^\/api/],
         // Excluded from precache, not from the build: xlsx (~277 kB) and
         // recharts (~366 kB) are admin-only, so precaching them made every

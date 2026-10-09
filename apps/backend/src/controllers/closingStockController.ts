@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getClosingStockSchema, createClosingStockSchema } from '../validators/closingStockValidators.js';
 import * as closingStockService from '../services/closingStockService.js';
 import * as staffLogService from '../services/staffLogService.js';
+import { notifyAdmins, isStaffActor } from '../services/notificationService.js';
 
 export async function getClosingStock(
   req: Request,
@@ -60,6 +61,14 @@ export async function createClosingStock(
       conflictCount: conflictItems.length,
       conflicts: conflictItems.map((i) => ({ supplyItemId: i.supplyItemId, reason: i.conflictReason })),
     });
+    if (isStaffActor(req.user!.role)) {
+      await notifyAdmins({
+        title: 'Closing stock logged',
+        body: `${req.user!.displayName}: ${totalPackets} packets, ${totalPieces} pieces left, ${totalWastage} wasted${conflictItems.length ? `, ${conflictItems.length} conflict` : ''} (${orderDate})`,
+        url: `/admin/closing-stock?date=${orderDate}`,
+        tag: `closing-stock-${orderDate}`,
+      });
+    }
 
     res.status(201).json(stock);
   } catch (err: any) {

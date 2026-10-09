@@ -28,6 +28,7 @@ import SkeletonLoader from '../components/animations/SkeletonLoader';
 import { vibrate, haptics } from '../theme/tokens';
 import { buildClosingSummary } from '../utils/closingSummary';
 import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
+import ClosingCashCard from '../components/ClosingCashCard';
 import { copyToClipboard } from '../utils/clipboard';
 import type { ClosingStock, SupplyVerification } from '../types';
 
@@ -240,11 +241,9 @@ export default function ClosingStockPage() {
       const totalPackets = Object.values(closingItems).reduce((s, c) => s + c.packets, 0);
       trackClosingStockSubmit(targetDate, { conflictCount, totalPackets, itemCount: momoPacketItems.length });
       qc.invalidateQueries({ queryKey: ['closingStock', targetDate] });
-      setToast({ message: 'Closing stock saved!', type: 'success' });
+      // Stay on the page: the closing cash card appears once stock is saved.
+      setToast({ message: 'Closing stock saved! Now enter the closing cash.', type: 'success' });
       vibrate(haptics.success);
-      setTimeout(() => {
-        navigate(`/day/${targetDate}`);
-      }, 500);
     },
     onError: () => {
       setToast({ message: 'Failed to save closing stock', type: 'error' });
@@ -747,6 +746,14 @@ export default function ClosingStockPage() {
         >
           {closingStockMutation.isPending ? 'Saving...' : 'Save Closing Stock'}
         </Button>
+
+        {closingStock?.isSubmitted && (
+          <ClosingCashCard
+            date={targetDate}
+            onSaved={() => setToast({ message: 'Closing cash saved!', type: 'success' })}
+            onError={(message) => setToast({ message, type: 'error' })}
+          />
+        )}
       </Box>
 
       {/* Clipboard fallback dialog */}

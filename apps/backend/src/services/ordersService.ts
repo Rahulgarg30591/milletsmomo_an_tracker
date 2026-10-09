@@ -60,6 +60,12 @@ export async function getOrders(date: string) {
   return { date, orders: groupOrderRows(rows) };
 }
 
+/** How many orders a day has; the first one triggers an admin notification. */
+export async function countOrders(date: string): Promise<number> {
+  const rows = await query<{ n: number }>('SELECT COUNT(*) AS n FROM orders WHERE order_date = $1', [date]);
+  return Number(rows[0].n);
+}
+
 export async function createOrder(
   userId: number,
   data: {
