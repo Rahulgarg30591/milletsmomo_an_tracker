@@ -177,7 +177,7 @@ export interface CreateClosingStockRequest {
 export interface StaffOperationLog {
   id: number;
   orderDate: string;
-  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'cylinder_refill' | 'staff_leave' | 'staff_takeaway' | 'login';
+  operationType: 'verification' | 'closing_stock' | 'order_create' | 'order_update' | 'order_complete' | 'order_delete' | 'supply_order' | 'payment_settlement' | 'expense_save' | 'cylinder_refill' | 'staff_leave' | 'staff_takeaway' | 'closing_cash' | 'login';
   createdBy: number;
   createdAt: string;
   details: string;

@@ -9,9 +9,9 @@ import {
   TextField,
   useTheme,
 } from '@mui/material';
-import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy, Banknote } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getClosingStock } from '../api/closingStockApi';
+import { getClosingStock, getClosingCash } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getAdminOrders } from '../api/adminApi';
 import { useMenu } from '../hooks/useMenu';
@@ -70,6 +70,10 @@ export default function AdminClosingStockPage() {
     queryFn: () => getAdminOrders(date, date),
   });
   const takeawayItems = useTakeawayItems(date);
+  const { data: cash } = useQuery({
+    queryKey: ['closingCash', date],
+    queryFn: () => getClosingCash(date),
+  });
   const { data: menuData } = useMenu();
 
   useEffect(() => {
@@ -212,6 +216,41 @@ export default function AdminClosingStockPage() {
                 </Box>
               )}
             </Paper>
+
+            {cash && (
+              <Paper sx={{ p: 2, borderRadius: 2, mb: 2, border: cardBorder }} data-testid="closing-cash-review">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Banknote size={18} />
+                  <Typography sx={{ fontWeight: 800, color: 'text.primary' }}>Closing Cash</Typography>
+                  {cash.difference != null && (
+                    <Typography
+                      data-testid="closing-cash-difference"
+                      sx={{ ml: 'auto', fontWeight: 800, color: cash.difference === 0 ? ok : cash.difference > 0 ? warn : bad }}
+                    >
+                      {cash.difference === 0 ? 'Matches' : `${cash.difference > 0 ? '+' : '−'}₹${Math.abs(cash.difference)} ${cash.difference > 0 ? 'extra' : 'short'}`}
+                    </Typography>
+                  )}
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, mt: 1.25 }}>
+                  {[
+                    { label: 'Cash sales', value: `₹${cash.cashSales ?? 0}` },
+                    { label: 'Expenses', value: `₹${cash.expenses ?? 0}` },
+                    { label: 'Expected', value: `₹${cash.expectedCash ?? 0}` },
+                    { label: 'Collected', value: cash.amount == null ? '—' : `₹${cash.amount}`, testId: 'closing-cash-collected' },
+                  ].map((t) => (
+                    <Box key={t.label}>
+                      <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{t.label}</Typography>
+                      <Typography data-testid={t.testId} sx={{ fontWeight: 800, fontSize: '0.95rem', color: 'text.primary' }}>{t.value}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+                <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: 1 }}>
+                  {cash.amount == null
+                    ? 'Staff have not entered the cash yet.'
+                    : `Entered by ${cash.recordedByName ?? 'staff'}. Expected = cash sales − expenses.`}
+                </Typography>
+              </Paper>
+            )}
 
             {rows.length === 0 ? (
               <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 2, border: `2px dashed ${theme.palette.divider}`, background: 'transparent' }}>

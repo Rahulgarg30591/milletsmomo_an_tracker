@@ -14,6 +14,7 @@ export type StaffOperationType =
   | 'cylinder_refill'
   | 'staff_leave'
   | 'staff_takeaway'
+  | 'closing_cash'
   | 'login';
 
 export interface StaffOperationLog {

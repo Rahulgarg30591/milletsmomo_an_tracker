@@ -21,6 +21,7 @@ const staffTypeConfig: Record<string, { label: string; color: string; icon: stri
   cylinder_refill: { label: 'Cylinder', color: '#EA580C', icon: '🔥' },
   staff_leave: { label: 'Leave', color: '#DC2626', icon: '🗓️' },
   staff_takeaway: { label: 'Takeaway', color: '#B45309', icon: '🥡' },
+  closing_cash: { label: 'Closing Cash', color: '#15803D', icon: '💵' },
   login: { label: 'Login', color: '#22C55E', icon: '🔑' },
 };
 
