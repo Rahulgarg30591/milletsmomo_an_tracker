@@ -94,6 +94,31 @@ export async function notifyAdmins(message: PushMessage): Promise<void> {
   }
 }
 
+/**
+ * Sends a test notification to one device and reports the push service's
+ * answer, so the admin can see at once whether alerts reach the phone.
+ */
+export async function sendTest(endpoint: string): Promise<{ ok: boolean; error?: string }> {
+  if (!ensureConfigured()) return { ok: false, error: 'Server has no VAPID keys' };
+  const rows = await query<{ endpoint: string; p256dh: string; auth: string }>(
+    'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE endpoint = $1',
+    [endpoint],
+  );
+  if (rows.length === 0) return { ok: false, error: 'This phone is not registered' };
+  const s = rows[0];
+  try {
+    await webpush.sendNotification(
+      { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+      JSON.stringify({ title: 'Alerts are on', body: 'This phone will get Millets Momo alerts.', url: '/admin', tag: 'test' }),
+      { TTL: 600, timeout: 8000 },
+    );
+    return { ok: true };
+  } catch (err: any) {
+    if (err?.statusCode === 404 || err?.statusCode === 410) await deleteSubscription(s.endpoint).catch(() => {});
+    return { ok: false, error: `Push service answered ${err?.statusCode ?? ''} ${String(err?.body ?? err?.message ?? '').slice(0, 200)}`.trim() };
+  }
+}
+
 /** Admin actions are not pushed back to the admin. */
 export function isStaffActor(role: string | undefined): boolean {
   return role !== 'admin';

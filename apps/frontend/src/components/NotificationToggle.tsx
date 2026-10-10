@@ -1,36 +1,67 @@
-import { Button, Tooltip } from '@mui/material';
-import { Bell, BellOff } from 'lucide-react';
+import { useState } from 'react';
+import { Badge, CircularProgress, IconButton, Tooltip } from '@mui/material';
+import { Bell, BellOff, BellRing } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import Toast from './Toast';
+import { haptics, vibrate } from '../theme/tokens';
 
-/** Admin header button that turns this device's push notifications on or off. */
+/**
+ * App-bar bell for admin. Off: grey, crossed out. On: green, filled, with a
+ * dot. Tapping turns alerts on (and sends a test) or off; the result is toasted.
+ */
 export default function NotificationToggle() {
-  const { state, error, enable, disable } = usePushNotifications();
+  const { state, enable, disable } = usePushNotifications();
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   if (state === 'unsupported') return null;
 
-  const label = state === 'on' ? 'Alerts on' : state === 'denied' ? 'Alerts blocked' : 'Alerts off';
-  const hint = error
-    ?? (state === 'denied'
-      ? 'Notifications are blocked. Allow them in the browser’s site settings.'
-      : state === 'on'
-        ? 'This phone gets alerts for orders, stock, expenses and cash. Tap to turn off.'
-        : 'Get alerts on this phone for orders, stock, expenses and cash.');
+  const on = state === 'on';
+  const label = on ? 'Alerts on — tap to turn off' : state === 'denied' ? 'Alerts blocked in Chrome settings' : 'Turn on alerts';
+
+  const handleClick = async () => {
+    vibrate(haptics.light);
+    if (state === 'denied') {
+      setToast({ message: 'Notifications are blocked. Chrome ⋮ → Settings → Site settings → Notifications → allow this app.', type: 'error' });
+      return;
+    }
+    const result = on ? await disable() : await enable();
+    setToast({ message: result.message, type: result.ok ? 'success' : 'error' });
+  };
 
   return (
-    <Tooltip title={hint}>
-      <span>
-        <Button
-          size="small"
-          variant={state === 'on' ? 'contained' : 'outlined'}
-          color={error ? 'error' : 'primary'}
-          disabled={state === 'busy' || state === 'denied'}
-          startIcon={state === 'on' ? <Bell size={16} /> : <BellOff size={16} />}
-          onClick={() => (state === 'on' ? disable() : enable())}
-          aria-label={state === 'on' ? 'Turn off notifications' : 'Turn on notifications'}
-          sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-        >
-          {label}
-        </Button>
-      </span>
-    </Tooltip>
+    <>
+      <Tooltip title={label}>
+        <span>
+          <IconButton
+            onClick={handleClick}
+            disabled={state === 'busy'}
+            size="small"
+            aria-label={label}
+            aria-pressed={on}
+            data-state={state}
+            sx={{
+              minWidth: 40,
+              minHeight: 40,
+              color: on ? 'primary.contrastText' : 'text.disabled',
+              backgroundColor: on ? 'primary.main' : 'transparent',
+              opacity: state === 'denied' ? 0.5 : 1,
+              '&:hover': { backgroundColor: on ? 'primary.dark' : 'action.hover' },
+            }}
+          >
+            {state === 'busy' ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : on ? (
+              <Badge variant="dot" color="warning" overlap="circular">
+                <BellRing size={18} />
+              </Badge>
+            ) : state === 'denied' ? (
+              <BellOff size={18} />
+            ) : (
+              <Bell size={18} />
+            )}
+          </IconButton>
+        </span>
+      </Tooltip>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    </>
   );
 }

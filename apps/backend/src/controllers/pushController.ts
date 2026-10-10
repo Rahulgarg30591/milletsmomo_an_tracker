@@ -36,3 +36,17 @@ export async function unsubscribe(req: Request, res: Response, next: NextFunctio
     next(err);
   }
 }
+
+/** Sends a test notification to this device and reports the result. */
+export async function sendTest(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { endpoint } = pushUnsubscribeSchema.parse(req.body);
+    res.json(await notificationService.sendTest(endpoint));
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid subscription' });
+      return;
+    }
+    next(err);
+  }
+}

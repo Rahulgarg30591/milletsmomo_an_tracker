@@ -3,6 +3,7 @@ import { LogOut, Sun, Moon, Leaf } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext';
+import NotificationToggle from './NotificationToggle';
 import { useThemeMode } from '../context/ThemeContext';
 import { haptics, vibrate } from '../theme/tokens';
 import { getToday } from '../utils/dateUtils';
@@ -125,6 +126,7 @@ export default function AppBarComponent() {
               }}
             />
           )}
+          {auth.role === 'admin' && <NotificationToggle />}
           <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
             <IconButton
               onClick={() => {

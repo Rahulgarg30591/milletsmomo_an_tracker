@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, memo, useDeferredValue } from 'react';
-import NotificationToggle from '../components/NotificationToggle';
 import { useNavigate } from 'react-router-dom';
 
 import { Box, Button, Typography, TextField, Paper, Chip, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, IconButton, ToggleButton, ToggleButtonGroup, useTheme, Tooltip as MuiTooltip, Fade, Dialog, DialogTitle, DialogContent, DialogActions, Accordion, AccordionSummary, AccordionDetails, Divider } from '@mui/material';
@@ -669,7 +668,6 @@ export default function AdminDashboardPage() {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <NotificationToggle />
             <Button
               size="small"
               variant="outlined"
