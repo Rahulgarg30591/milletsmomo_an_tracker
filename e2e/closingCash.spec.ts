@@ -50,6 +50,10 @@ test.describe('admin closing day', () => {
       headers: { 'x-auth-token': (await login.json()).token },
       data: { orderDate: today(), items: [{ description: 'milk', amount: 40 }] },
     });
+    await request.post('/api/admin/leaves', {
+      headers: { 'x-auth-token': (await login.json()).token },
+      data: { staffName: 'Ramesh', leaveDate: today(), reason: 'Fever' },
+    });
     await signIn(page, 'admin');
     await page.goto(`/admin/closing-stock?date=${today()}`);
     await page.getByRole('button', { name: 'Record Closing Stock' }).click();
@@ -71,12 +75,15 @@ test.describe('admin closing day', () => {
     await page.getByRole('button', { name: 'Copy Day Summary' }).click();
     await expect(page.getByText('Day summary copied to clipboard!')).toBeVisible();
     const text = await page.evaluate(() => navigator.clipboard.readText());
-    expect(text).toMatch(/^Date: \d{2}-[A-Z][a-z]{2}-\d{4}/);
-    expect(text).toContain('Expenses: ₹40');
+    expect(text).toMatch(/^Date: \d{2}-[A-Z][a-z]{2}-\d{4}\n\nExpenses\n1\. milk ₹40/);
+    // The date appears once, at the top.
+    expect(text.match(/\d{2}-\d{2}-\d{4}|\d{2}-[A-Z][a-z]{2}-\d{4}/g)).toHaveLength(1);
+    expect(text).toContain('Leaves\n1. Ramesh (Fever)');
+    expect(text).toContain('Take Aways\nNone');
     expect(text).toContain('Cash Collection: ₹500');
     expect(text).toContain('Total: ₹540');
-    expect(text).toContain('1. milk ₹40');
-    expect(text).toContain('Left Over:');
-    expect(text.indexOf('Minimum Sale')).toBeLessThan(text.indexOf('Left Over:'));
+    const order = ['Expenses\n', 'Leaves\n', 'Take Aways\n', 'Closing Stock\n', 'Sales\n'].map((h) => text.indexOf(h));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 });
