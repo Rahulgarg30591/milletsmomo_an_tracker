@@ -16,11 +16,10 @@ import { getDayExpenses, saveDayExpenses } from '../api/expenseApi';
 import { formatDateLabel } from '../utils/dateUtils';
 import Toast from '../components/Toast';
 import CylinderRefills, { useCylinderRefills } from '../components/CylinderRefills';
-import { brandInfo } from '../utils/cylinder';
 import { vibrate, haptics } from '../theme/tokens';
 import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
 import { copyToClipboard } from '../utils/clipboard';
-import { toDDMMYYYY } from '../utils/dateUtils';
+import { buildExpensesText } from '../utils/expensesText';
 import type { ExpenseItem } from '../types';
 
 interface LocalExpense {
@@ -122,17 +121,11 @@ export default function ExpensesPage() {
   });
 
   const createCopyText = useCallback((): string => {
-    const valid = expenses.filter((e) => e.description.trim() && parseFloat(e.amount) > 0);
-    const lines = [`Expenses`, toDDMMYYYY(targetDate)];
-    valid.forEach((e, i) => {
-      lines.push(`${i + 1}. ${e.description.trim()} \u20B9${parseFloat(e.amount)}`);
-    });
-    refills.forEach((r, i) => {
-      lines.push(`${valid.length + i + 1}. Cylinder (${[brandInfo(r.brand).short, r.source].filter(Boolean).join(', ')}) \u20B9${r.amount}`);
-    });
-    lines.push(`Total: \u20B9${total.toFixed(2)}`);
-    return lines.join('\n');
-  }, [expenses, refills, targetDate, total]);
+    const valid = expenses
+      .filter((e) => e.description.trim() && parseFloat(e.amount) > 0)
+      .map((e) => ({ description: e.description, amount: parseFloat(e.amount) }));
+    return buildExpensesText(targetDate, valid, refills).text;
+  }, [expenses, refills, targetDate]);
 
   const handleCopy = useCallback(async () => {
     vibrate(haptics.light);

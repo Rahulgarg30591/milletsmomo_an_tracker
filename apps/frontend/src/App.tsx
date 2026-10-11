@@ -63,6 +63,7 @@ export default function App() {
                 <Route path="/admin/leaves" element={<ProtectedRoute requiredRole="admin"><AdminLeavesPage /></ProtectedRoute>} />
                 <Route path="/admin/takeaways" element={<ProtectedRoute requiredRole="admin"><AdminTakeawaysPage /></ProtectedRoute>} />
                 <Route path="/admin/closing-stock" element={<ProtectedRoute requiredRole="admin"><AdminClosingStockPage /></ProtectedRoute>} />
+                <Route path="/admin/closing-stock/:date/edit" element={<ProtectedRoute requiredRole="admin"><ClosingStockPage /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to={`/day/${getToday()}`} replace />} />
               </Routes>
             </Suspense>
