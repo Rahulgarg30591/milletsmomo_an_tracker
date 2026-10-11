@@ -118,6 +118,17 @@ describe('admin push notifications', () => {
     expect(sent).toEqual([]);
   });
 
+  it('sends a test to the device that just turned alerts on', async () => {
+    await subscribeAdmin();
+    const admin = await authHeader('admin');
+    const res = await request(app).post('/api/push/test').set(admin).send({ endpoint: SUB.endpoint });
+    expect(res.body).toEqual({ ok: true });
+    expect(sent.map((s) => s.payload.title)).toEqual(['Alerts are on']);
+
+    const unknown = await request(app).post('/api/push/test').set(admin).send({ endpoint: 'https://push.example.com/other' });
+    expect(unknown.body).toMatchObject({ ok: false, error: 'This phone is not registered' });
+  });
+
   it('drops a subscription the push service says is gone', async () => {
     await subscribeAdmin({ ...SUB, endpoint: 'https://push.example.com/gone' });
     await request(app).put('/api/supply/closing-cash').set(await authHeader('staff')).send({ orderDate: DATE, amount: 1 });

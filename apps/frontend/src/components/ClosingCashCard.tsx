@@ -32,6 +32,8 @@ export default function ClosingCashCard({ date, onSaved, onError }: ClosingCashC
     mutationFn: () => saveClosingCash(date, Math.round(amount * 100) / 100),
     onSuccess: (saved) => {
       qc.setQueryData(['closingCash', date], saved);
+      // The save reply lacks admin's expected-cash figures; refetch them.
+      qc.invalidateQueries({ queryKey: ['closingCash', date] });
       vibrate(haptics.success);
       onSaved();
     },

@@ -37,3 +37,53 @@ test.describe('closing cash', () => {
     await expect(review.getByTestId('closing-cash-difference')).toHaveText('−₹9 short');
   });
 });
+
+test.describe('admin closing day', () => {
+  test.beforeEach(async () => {
+    await resetData();
+  });
+
+  test('admin edits closing stock and cash, then copies the day summary', async ({ page, context, request }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const login = await request.post('/api/auth/login', { data: { role: 'admin', pin: PINS.admin } });
+    await request.put('/api/expenses', {
+      headers: { 'x-auth-token': (await login.json()).token },
+      data: { orderDate: today(), items: [{ description: 'milk', amount: 40 }] },
+    });
+    await request.post('/api/admin/leaves', {
+      headers: { 'x-auth-token': (await login.json()).token },
+      data: { staffName: 'Ramesh', leaveDate: today(), reason: 'Fever' },
+    });
+    await signIn(page, 'admin');
+    await page.goto(`/admin/closing-stock?date=${today()}`);
+    await page.getByRole('button', { name: 'Record Closing Stock' }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/closing-stock/${today()}/edit$`));
+    await page.getByRole('button', { name: 'Save Closing Stock' }).click();
+
+    const card = page.getByTestId('closing-cash-card');
+    await card.getByLabel('Cash collected (₹)').fill('500');
+    await card.getByRole('button', { name: 'Save Closing Cash' }).click();
+    await expect(card.getByTestId('closing-cash-saved')).toHaveText('Saved ₹500');
+
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page).toHaveURL(/\/admin\/closing-stock\?date=/);
+    await expect(page.getByTestId('closing-cash-collected')).toHaveText('₹500');
+    await expect(page.getByRole('button', { name: 'Edit Closing Cash' })).toBeVisible();
+
+    // One message from the dashboard: sale details, expenses, closing stock.
+    await page.goto('/admin');
+    await page.getByRole('button', { name: 'Copy Day Summary' }).click();
+    await expect(page.getByText('Day summary copied to clipboard!')).toBeVisible();
+    const text = await page.evaluate(() => navigator.clipboard.readText());
+    expect(text).toMatch(/^Date: \d{2}-[A-Z][a-z]{2}-\d{4}\n\nExpenses\n1\. milk ₹40/);
+    // The date appears once, at the top.
+    expect(text.match(/\d{2}-\d{2}-\d{4}|\d{2}-[A-Z][a-z]{2}-\d{4}/g)).toHaveLength(1);
+    expect(text).toContain('Leaves\n1. Ramesh (Fever)');
+    expect(text).toContain('Take Aways\nNone');
+    expect(text).toContain('Cash Collection: ₹500');
+    expect(text).toContain('Total: ₹540');
+    const order = ['Expenses\n', 'Leaves\n', 'Take Aways\n', 'Closing Stock\n', 'Sales\n'].map((h) => text.indexOf(h));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+});

@@ -4,7 +4,7 @@ import { decodeTokenSegment } from './tokenUtils';
 export interface ClientLogEntry {
   id: string;
   timestamp: string;
-  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout' | 'revenue_check' | 'selection' | 'quantity_change';
+  type: 'login' | 'page_view' | 'button_click' | 'form_submit' | 'action_start' | 'action_end' | 'order_submit' | 'order_complete' | 'verification_submit' | 'closing_stock_submit' | 'navigation' | 'logout' | 'revenue_check' | 'selection' | 'quantity_change' | 'push';
   page: string;
   details: string;
   metadata?: Record<string, any>;

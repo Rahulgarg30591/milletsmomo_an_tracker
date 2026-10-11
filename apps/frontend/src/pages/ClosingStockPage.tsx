@@ -29,6 +29,7 @@ import { vibrate, haptics } from '../theme/tokens';
 import { buildClosingSummary } from '../utils/closingSummary';
 import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
 import ClosingCashCard from '../components/ClosingCashCard';
+import { useAuth } from '../context/AuthContext';
 import { copyToClipboard } from '../utils/clipboard';
 import type { ClosingStock, SupplyVerification } from '../types';
 
@@ -48,6 +49,9 @@ export default function ClosingStockPage() {
   const qc = useQueryClient();
   const targetDate = date || '';
   const yesterday = addDays(targetDate, -1);
+  // Admin edit the same form from their closing-stock page and return there.
+  const { auth } = useAuth();
+  const backTo = auth.role === 'admin' ? `/admin/closing-stock?date=${targetDate}` : `/day/${targetDate}`;
 
   const [closingItems, setClosingItems] = useState<Record<number, { packets: number; pieces: number; wastage: number; hasConflict: boolean; conflictReason: string }>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -360,7 +364,7 @@ export default function ClosingStockPage() {
           <Button
             sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
             startIcon={<ArrowLeft size={16} />}
-            onClick={() => navigate(`/day/${targetDate}`)}
+            onClick={() => navigate(backTo)}
           >
             Back
           </Button>
@@ -377,7 +381,7 @@ export default function ClosingStockPage() {
             <Button
               size="small"
               startIcon={<ArrowLeft size={16} />}
-              onClick={() => navigate(`/day/${targetDate}`)}
+              onClick={() => navigate(backTo)}
               sx={{ textTransform: 'none', fontWeight: 600, color: 'text.secondary', minWidth: 0, px: 1 }}
             >
               Back

@@ -17,6 +17,7 @@ function fillingFromDisplayName(displayName: string): string {
 export function buildClosingSummary(
   date: string,
   items: { displayName: string; packets: number; pieces: number; wastage: number }[],
+  { withDate = true }: { withDate?: boolean } = {},
 ): string {
   const data: Record<string, { packets: number; pieces: number; wastage: number }> = {};
   for (const item of items) {
@@ -24,8 +25,10 @@ export function buildClosingSummary(
   }
 
   const lines: string[] = [];
-  lines.push(`Data: ${toDDMMYYYY(date)}`);
-  lines.push('');
+  if (withDate) {
+    lines.push(`Data: ${toDDMMYYYY(date)}`);
+    lines.push('');
+  }
   lines.push('Left Over:');
   for (const f of SUMMARY_FILLINGS) {
     const d = data[f] ?? { packets: 0, pieces: 0, wastage: 0 };

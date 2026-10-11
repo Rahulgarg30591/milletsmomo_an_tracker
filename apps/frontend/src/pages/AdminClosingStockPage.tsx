@@ -9,11 +9,12 @@ import {
   TextField,
   useTheme,
 } from '@mui/material';
-import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy, Banknote } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Package, CheckCircle2, AlertTriangle, Clock, ClipboardCopy, Banknote, Pencil } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getClosingStock, getClosingCash } from '../api/closingStockApi';
 import { getSupplyVerification } from '../api/supplyVerificationApi';
 import { getAdminOrders } from '../api/adminApi';
+import CopyDaySummaryButton from '../components/CopyDaySummaryButton';
 import { useMenu } from '../hooks/useMenu';
 import { useTakeawayItems } from '../hooks/useTakeawayItems';
 import { reconcileClosingStock, type ReconciledItem } from '../utils/stockReconciliation';
@@ -75,6 +76,7 @@ export default function AdminClosingStockPage() {
     queryFn: () => getClosingCash(date),
   });
   const { data: menuData } = useMenu();
+  const editPath = `/admin/closing-stock/${date}/edit`;
 
   useEffect(() => {
     trackPageView('admin_closing_stock', `Viewed closing stock for ${date}`);
@@ -189,17 +191,31 @@ export default function AdminClosingStockPage() {
                   ? `Recorded by ${closing?.recordedByName ?? 'staff'}${closing?.recordedAt ? ` · ${new Date(closing.recordedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : ''}`
                   : 'Staff record this from the day view. Expected figures below are what should be left now.'}
               </Typography>
-              {recorded && momos.length > 0 && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ClipboardCopy size={16} />}
-                  onClick={handleCopy}
-                  sx={{ mt: 1.25, textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
-                >
-                  Copy Summary
-                </Button>
-              )}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.25 }}>
+                {momos.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Pencil size={16} />}
+                    onClick={() => navigate(editPath)}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                  >
+                    {recorded ? 'Edit Closing Stock' : 'Record Closing Stock'}
+                  </Button>
+                )}
+                {recorded && momos.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<ClipboardCopy size={16} />}
+                    onClick={handleCopy}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                  >
+                    Copy Summary
+                  </Button>
+                )}
+                <CopyDaySummaryButton date={date} />
+              </Box>
               {momos.length > 0 && (
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mt: 1.5, pt: 1.25, borderTop: 1, borderColor: 'divider' }}>
                   {[
@@ -249,6 +265,17 @@ export default function AdminClosingStockPage() {
                     ? 'Staff have not entered the cash yet.'
                     : `Entered by ${cash.recordedByName ?? 'staff'}. Expected = cash sales − expenses.`}
                 </Typography>
+                {recorded && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Pencil size={16} />}
+                    onClick={() => navigate(editPath)}
+                    sx={{ mt: 1.25, textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                  >
+                    {cash.amount == null ? 'Enter Closing Cash' : 'Edit Closing Cash'}
+                  </Button>
+                )}
               </Paper>
             )}
 
