@@ -80,11 +80,11 @@ export function usePushNotifications() {
         return { ok: false, message: 'Notifications were not allowed. Allow them in Chrome’s site settings.' };
       }
       step = 'public-key';
-      const key = await getPushPublicKey();
+      const { publicKey: key, reason } = await getPushPublicKey();
       if (!key) {
         setState('off');
-        logPush(step, 'server has no key');
-        return { ok: false, message: 'The server has no notification keys. Check VAPID settings in Azure.' };
+        logPush(step, reason ?? 'server has no key');
+        return { ok: false, message: `Alerts aren’t set up on the server: ${reason ?? 'no keys'}` };
       }
       step = 'service-worker';
       const reg = await getRegistration();
