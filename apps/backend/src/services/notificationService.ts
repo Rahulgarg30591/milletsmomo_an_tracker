@@ -19,28 +19,59 @@ export interface PushMessage {
 export const LARGE_ORDER_THRESHOLD = 400;
 
 let configured: boolean | null = null;
+let publicKeyValue: string | null = null;
+/** Why push is off, for the admin's error message; null when on. */
+let configError: string | null = null;
+
+/** Strips what pasting into a settings box tends to add: quotes, spaces, newlines, base64 padding. */
+function cleanKey(value: string | undefined): string {
+  return (value ?? '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '').replace(/=+$/, '');
+}
+
+/** web-push accepts only a mailto: or https: subject; a bare email is given mailto:. */
+function cleanSubject(value: string | undefined): string {
+  const v = (value ?? '').trim().replace(/^["']|["']$/g, '').replace(/^<|>$/g, '');
+  if (!v || v.includes('<') || v.includes('>')) return 'mailto:admin@milletsmomo.local';
+  if (/^(mailto:|https:\/\/)/i.test(v)) return v;
+  return v.includes('@') ? `mailto:${v}` : 'mailto:admin@milletsmomo.local';
+}
 
 /**
  * Configures web-push from VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT.
  * Read lazily: local.settings.json is merged into process.env by db/pool.ts.
- * Without keys, push is off and every send is a no-op.
+ * Without valid keys push is off, every send is a no-op, and configError says
+ * why. Never throws: a bad setting must not turn into a 500.
  */
 function ensureConfigured(): boolean {
   if (configured !== null) return configured;
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const publicKey = cleanKey(process.env.VAPID_PUBLIC_KEY);
+  const privateKey = cleanKey(process.env.VAPID_PRIVATE_KEY);
   if (!publicKey || !privateKey) {
+    configError = 'VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is not set on the server';
     configured = false;
     return configured;
   }
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@milletsmomo.local', publicKey, privateKey);
-  configured = true;
+  try {
+    webpush.setVapidDetails(cleanSubject(process.env.VAPID_SUBJECT), publicKey, privateKey);
+    publicKeyValue = publicKey;
+    configured = true;
+  } catch (err: any) {
+    configError = `VAPID settings rejected: ${err?.message ?? err}`;
+    console.warn(configError);
+    configured = false;
+  }
   return configured;
 }
 
 /** The public VAPID key browsers subscribe with, or null when push is off. */
 export function getPublicKey(): string | null {
-  return ensureConfigured() ? process.env.VAPID_PUBLIC_KEY! : null;
+  return ensureConfigured() ? publicKeyValue : null;
+}
+
+/** Why push is off, or null when it is on. */
+export function getConfigError(): string | null {
+  ensureConfigured();
+  return configError;
 }
 
 /** Saves (or re-points to this user) a device's push subscription. */

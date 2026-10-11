@@ -1,8 +1,9 @@
 import { client } from './client';
 
-export async function getPushPublicKey(): Promise<string | null> {
-  const res = await client.get<{ publicKey: string | null }>('/push/public-key');
-  return res.data.publicKey;
+/** The server's VAPID key, or null with the reason push is off. */
+export async function getPushPublicKey(): Promise<{ publicKey: string | null; reason: string | null }> {
+  const res = await client.get<{ publicKey: string | null; reason?: string | null }>('/push/public-key');
+  return { publicKey: res.data.publicKey, reason: res.data.reason ?? null };
 }
 
 export async function savePushSubscription(sub: PushSubscriptionJSON): Promise<void> {

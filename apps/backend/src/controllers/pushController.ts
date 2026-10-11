@@ -4,7 +4,8 @@ import * as notificationService from '../services/notificationService.js';
 
 /** The VAPID public key; publicKey is null when the server has push turned off. */
 export function getPublicKey(_req: Request, res: Response): void {
-  res.json({ publicKey: notificationService.getPublicKey() });
+  const publicKey = notificationService.getPublicKey();
+  res.json({ publicKey, reason: publicKey ? null : notificationService.getConfigError() });
 }
 
 /** Registers this admin device for notifications. */
