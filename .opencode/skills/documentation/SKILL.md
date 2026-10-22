@@ -52,7 +52,7 @@ Authoritative documentation standards. **Code is the source of truth — docs dr
 ## docs/DEPLOYMENT.md
 
 - **Audience**: a developer deploying to Azure.
-- **Must stay current**: Azure resource names (`millets-momo-swa`, `millets-momo-sql`, `millets-momo-db`, RG `millets-momo-rg`, region `centralindia`), Bicep deployment steps (`npm run prod:setup`), DB migration steps (`npm run prod:db:migrate`), GitHub Actions workflow behavior (PR→staging, main→production), required secrets/Azure app settings.
+- **Must stay current**: Azure resource names (`millets-momo-swa`, RG `millets-momo-rg`, region `centralindia`; the database is on Supabase), Bicep deployment steps (`npm run prod:setup`), DB migration steps (`npm run prod:db:migrate`), GitHub Actions workflow behavior (PR→staging, main→production), required secrets/Azure app settings.
 - **When to update**: when an Azure resource name changes, a deploy step changes, or a new secret is required.
 
 ## Code comments
