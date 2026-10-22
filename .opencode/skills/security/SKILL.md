@@ -65,7 +65,7 @@ await request.query(`SELECT * FROM Orders WHERE order_date = '${date}'`);
 
 - Env loading: `db/pool.ts` `loadEnvConfig()` reads `.env.development` / `.env.production`, then `loadLocalSettings()` reads `local.settings.json` (dev only, not in production).
 - Never `console.log` env vars. Never expose `process.env` to the frontend (frontend uses `VITE_*` prefixed vars only, e.g., `VITE_API_BASE_URL`).
-- Access env via `process.env.KEY` with a safe default **only for non-sensitive values** (`NODE_ENV`, `SQL_PORT`). `SQL_PASSWORD` must be set — do not provide a default that masks a missing secret. `MM_TOKEN_SECRET` is optional (the token util has a baked-in fallback).
+- Access env via `process.env.KEY` with a safe default **only for non-sensitive values** (`NODE_ENV`, `PORT`). `DATABASE_URL` must be set — do not provide a default that masks a missing secret. `MM_TOKEN_SECRET` is optional (the token util has a baked-in fallback).
 
 ## Secure headers (helmet)
 

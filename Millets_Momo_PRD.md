@@ -1,7 +1,7 @@
 # PRODUCT REQUIREMENTS DOCUMENT
 # Millets Momo — Daily Order Tracking PWA
 
-**Monorepo · React + MUI · Node.js (Azure Functions) · Azure SQL Database**
+**Monorepo · React + MUI · Node.js (Azure Functions) · Supabase Postgres**
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@
 5. [Monorepo Structure](#5-monorepo-structure)
 6. [Design System & Theming](#6-design-system--theming)
 7. [PWA Requirements](#7-pwa-requirements)
-8. [Data Model & Database Schema](#8-data-model--database-schema-azure-sql--t-sql)
+8. [Data Model & Database Schema](#8-data-model--database-schema-postgres)
 9. [Menu & Pricing Reference Data](#9-menu--pricing-reference-data)
 10. [Business Logic & Rules](#10-business-logic--rules)
 11. [API Specification](#11-api-specification)
@@ -78,7 +78,7 @@ A fully working HTML/CSS/JS prototype of the UI already exists and defines the e
 - Security: PIN hashing, JWT-based session, Helmet security headers, parameterized SQL queries (no SQL injection), input validation (no XSS), rate limiting on login.
 - Unit tests on both frontend and backend covering business logic, components, and API endpoints.
 - Well-documented, well-structured TypeScript code with a complete root `README.md`.
-- Deployable on Azure free tiers: Azure Static Web Apps (frontend + managed Functions API) and Azure SQL Database (Free offer tier).
+- Deployable on Azure free tiers: Azure Static Web Apps (frontend + managed Functions API), with the database on Supabase Postgres (Free tier).
 
 ### 2.3 Out of Scope (Explicitly Not Required)
 
@@ -94,7 +94,7 @@ A fully working HTML/CSS/JS prototype of the UI already exists and defines the e
 
 ### 3.1 High-Level Architecture
 
-The system is a single-page application (SPA) built with React, served as static files together with a Service Worker (PWA). All dynamic data flows through a REST API implemented as a single Azure Functions app (Node.js + Express, wrapped via an HTTP trigger). The API connects to a single Azure SQL Database (Free offer tier) using parameterized queries via the `mssql` package.
+The system is a single-page application (SPA) built with React, served as static files together with a Service Worker (PWA). All dynamic data flows through a REST API implemented as a single Azure Functions app (Node.js + Express, wrapped via an HTTP trigger). The API connects to a single Supabase Postgres database (Free tier) over the transaction pooler, using parameterized queries via the `pg` package.
 
 ```
 ┌──────────────────────────┐        HTTPS         ┌───────────────────────────────┐
@@ -104,11 +104,11 @@ The system is a single-page application (SPA) built with React, served as static
 │  home-screen app           │     JSON over HTTPS  │   - Managed Azure Functions    │
 └──────────────────────────┘                       │     (Node.js + Express app)    │
                                                      └───────────────┬───────────────┘
-                                                                      │ mssql (TDS, encrypted)
+                                                                      │ pg (TLS, port 6543)   
                                                                       ▼
                                                      ┌───────────────────────────────┐
-                                                     │   Azure SQL Database           │
-                                                     │   (Free offer tier)            │
+                                                     │   Supabase Postgres            │
+                                                     │   (Free tier)                  │
                                                      │   Tables: Users, MenuItems,    │
                                                      │   Orders, OrderItems           │
                                                      └───────────────────────────────┘
@@ -148,7 +148,7 @@ The system is a single-page application (SPA) built with React, served as static
 | Backend runtime | Node.js 20 LTS | Matches Azure Functions Node 20 support |
 | Backend framework | Express.js + TypeScript | Wrapped by Azure Functions HTTP trigger via serverless-http |
 | Hosting platform | Azure Functions v4 (Node programming model) | Bundled inside Azure Static Web Apps "api" location |
-| Database | Azure SQL Database (Free offer tier) | Serverless compute, T-SQL, accessed via `mssql` package |
+| Database | Supabase Postgres (Free tier) | Accessed via `pg` over the transaction pooler (port 6543) |
 | Authentication | JWT (jsonwebtoken) + bcrypt | PINs hashed with bcrypt; sessions via short-lived JWT |
 | Security middleware | helmet, cors, express-rate-limit | Applied in Express app (see Section 13) |
 | Validation | zod | Schema validation for all request bodies/queries |
@@ -249,7 +249,7 @@ millets-momo/
 │       │   │   ├── ordersService.ts
 │       │   │   └── adminService.ts
 │       │   ├── db/
-│       │   │   ├── pool.ts            # mssql connection pool singleton
+│       │   │   ├── pool.ts            # pg connection pool singleton
 │       │   │   ├── schema.sql         # DDL (Section 8)
 │       │   │   └── seed.sql           # seed data (Sections 8 & 9)
 │       │   ├── middleware/
@@ -271,7 +271,7 @@ millets-momo/
 │       │   ├── admin.test.ts
 │       │   └── pricing.test.ts
 │       ├── scripts/
-│       │   ├── migrate.ts             # runs schema.sql against Azure SQL
+│       │   ├── migrate.ts             # runs schema.sql / migrations against Postgres
 │       │   └── generatePinHash.ts     # CLI: bcrypt-hash a PIN for env vars
 │       ├── host.json
 │       ├── local.settings.example.json
@@ -506,77 +506,13 @@ Configure via `vite-plugin-pwa` in `apps/frontend/vite.config.ts`. The generated
 
 ---
 
-## 8. Data Model & Database Schema (Azure SQL / T-SQL)
+## 8. Data Model & Database Schema (Postgres)
 
-Save the following as `apps/backend/src/db/schema.sql`. All queries against these tables **MUST** use parameterized statements via the `mssql` package — **never string concatenation**.
+The schema lives in `apps/backend/src/db/schema.sql` and is the source of truth; it is not copied here so the two cannot drift. All queries **MUST** use positional `$1` placeholders via the `pg` package — **never string concatenation**. Tables and columns are `snake_case`.
 
-### 8.1 Users Table
+Core tables: `users`, `menu_items`, `orders`, `order_items`. Later features added supply ordering and verification, closing stock and closing cash, payment settlements, expenses, cylinder refills, staff leaves and takeaways, staff and client activity logs, and admin push subscriptions.
 
-```sql
-CREATE TABLE Users (
-  id           INT IDENTITY(1,1) PRIMARY KEY,
-  username     NVARCHAR(50)  NOT NULL UNIQUE,
-  role         NVARCHAR(20)  NOT NULL CHECK (role IN ('staff','admin')),
-  pin_hash     NVARCHAR(255) NOT NULL,
-  display_name NVARCHAR(100) NOT NULL,
-  is_active    BIT           NOT NULL DEFAULT 1,
-  created_at   DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME()
-);
-```
-
-### 8.2 MenuItems Table
-
-```sql
-CREATE TABLE MenuItems (
-  id           INT IDENTITY(1,1) PRIMARY KEY,
-  filling      NVARCHAR(30)  NOT NULL,
-  preparation  NVARCHAR(30)  NOT NULL,
-  display_name NVARCHAR(60)  NOT NULL,
-  full_price   DECIMAL(6,2)  NOT NULL,
-  half_price   DECIMAL(6,2)  NOT NULL,
-  is_active    BIT           NOT NULL DEFAULT 1,
-  CONSTRAINT UQ_MenuItems_Combo UNIQUE (filling, preparation)
-);
-```
-
-### 8.3 Orders Table
-
-```sql
-CREATE TABLE Orders (
-  id              BIGINT        NOT NULL PRIMARY KEY,  -- epoch ms, generated by backend
-  order_date      DATE          NOT NULL,              -- the selected business date (YYYY-MM-DD)
-  time_label      NVARCHAR(20)  NOT NULL,              -- e.g. '02:45 PM' (Asia/Kolkata)
-  order_type      NVARCHAR(10)  NOT NULL CHECK (order_type IN ('dine','pack')),
-  payment_method  NVARCHAR(10)  NOT NULL CHECK (payment_method IN ('cash','upi','pending')),
-  is_completed    BIT           NOT NULL DEFAULT 0,
-  total_amount    DECIMAL(8,2)  NOT NULL,
-  created_by      INT           NULL REFERENCES Users(id),
-  created_at      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
-  completed_at    DATETIME2     NULL
-);
-
-CREATE INDEX IX_Orders_OrderDate  ON Orders(order_date);
-CREATE INDEX IX_Orders_Completed  ON Orders(order_date, is_completed);
-```
-
-### 8.4 OrderItems Table
-
-```sql
-CREATE TABLE OrderItems (
-  id            INT     IDENTITY(1,1) PRIMARY KEY,
-  order_id      BIGINT  NOT NULL REFERENCES Orders(id) ON DELETE CASCADE,
-  menu_item_id  INT     NOT NULL REFERENCES MenuItems(id),
-  item_name     NVARCHAR(60)  NOT NULL,  -- denormalised snapshot, e.g. 'Veg Steam'
-  quantity      INT     NOT NULL CHECK (quantity > 0),
-  is_half       BIT     NOT NULL DEFAULT 0,
-  unit_price    DECIMAL(6,2)  NOT NULL,  -- price actually charged (full or half)
-  line_total    DECIMAL(8,2)  NOT NULL   -- unit_price * quantity
-);
-
-CREATE INDEX IX_OrderItems_OrderId ON OrderItems(order_id);
-```
-
-> ⚠ `item_name` and `unit_price` are denormalised onto `OrderItems` because menu prices may change in the future, but historical orders must always reflect the price actually charged on the day. Never recompute historical totals from the live `MenuItems` table.
+`schema.sql` drops every table, so it is for a fresh database only. Changes to production are additive migrations in `apps/backend/src/db/migrations/`, applied with `npm run prod:db:apply -- <file>`.
 
 ---
 
@@ -697,42 +633,7 @@ export function computeHalfPrice(fullPrice: number): number {
 
 ### 9.5 Seed Data (seed.sql)
 
-Append to `apps/backend/src/db/seed.sql` — 24 menu item rows, then the two user accounts:
-
-```sql
--- Menu items (24 rows)
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Steam', 'Veg Steam', 89.00, 50.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Steam', 'Paneer Steam', 109.00, 60.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Steam', 'Cheese Corn Steam', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Steam', 'Platter Steam', 109.00, 60.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Fry', 'Veg Fry', 109.00, 60.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Fry', 'Paneer Fry', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Fry', 'Cheese Corn Fry', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Fry', 'Platter Fry', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Creamy', 'Veg Creamy', 129.00, 60.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Creamy', 'Paneer Creamy', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Creamy', 'Cheese Corn Creamy', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Creamy', 'Platter Creamy', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Creamy Fry', 'Veg Creamy Fry', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Creamy Fry', 'Paneer Creamy Fry', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Creamy Fry', 'Cheese Corn Creamy Fry', 169.00, 90.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Creamy Fry', 'Platter Creamy Fry', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Nep. Kothey', 'Veg Nep. Kothey', 129.00, 70.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Nep. Kothey', 'Paneer Nep. Kothey', 139.00, 75.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Nep. Kothey', 'Cheese Corn Nep. Kothey', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Nep. Kothey', 'Platter Nep. Kothey', 139.00, 75.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Veg', 'Pan Fried', 'Veg Pan Fried', 139.00, 75.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Paneer', 'Pan Fried', 'Paneer Pan Fried', 149.00, 80.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Cheese Corn', 'Pan Fried', 'Cheese Corn Pan Fried', 159.00, 85.00);
-INSERT INTO MenuItems (filling, preparation, display_name, full_price, half_price) VALUES ('Platter', 'Pan Fried', 'Platter Pan Fried', 149.00, 80.00);
-
--- User accounts
--- Run scripts/generatePinHash.ts with the desired 4-digit PIN to obtain a bcrypt hash,
--- then substitute the hashes below before running this seed.
-INSERT INTO Users (username, role, pin_hash, display_name) VALUES
-  ('staff', 'staff', '<BCRYPT_HASH_OF_STAFF_PIN>', 'Cart Staff'),
-  ('admin', 'admin', '<BCRYPT_HASH_OF_ADMIN_PIN>', 'Owner');
-```
+`apps/backend/src/db/seed.sql` inserts the menu items and the two user accounts with `INSERT ... ON CONFLICT`, so it can be re-run. Prices there must match `packages/shared/src/menu.ts`.
 
 ---
 
@@ -1072,26 +973,24 @@ Run both workspaces' tests from the root: `npm run test --workspaces`.
 
 ## 15. Deployment & DevOps Plan
 
-### 15.1 Azure Resources Required
+### 15.1 Resources Required
 
 | Resource | Tier / Plan | Notes |
 |---|---|---|
-| Resource Group | N/A | e.g. `rg-millets-momo` |
-| Azure SQL logical server | N/A | Allow Azure services access (firewall rule) |
-| Azure SQL Database | **Free offer tier** (serverless) | **CRITICAL: must explicitly pick the Free offer at creation — it is not the default.** 100,000 vCore-seconds + 32GB storage/month, free indefinitely. |
+| Azure Resource Group | N/A | `millets-momo-rg` |
 | Azure Static Web App | Free plan | Hosts built frontend AND managed Azure Functions for `/api/*` |
+| Supabase project | Free tier | Postgres database; the app connects through the transaction pooler (port 6543) |
+
+Nothing else in Azure is needed. The database is not provisioned by Bicep.
 
 ### 15.2 Step-by-Step Setup
 
-1. Create resource group: `az group create --name rg-millets-momo --location centralindia`
-2. Create SQL logical server: `az sql server create --name <server-name> --resource-group rg-millets-momo --location centralindia --admin-user <admin> --admin-password <strong-password>`
-3. Allow Azure services to connect: `az sql server firewall-rule create --resource-group rg-millets-momo --server <server-name> --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0`
-4. Create the database via Azure Portal — on "Compute + storage", explicitly select the **"Free offer"** pricing tier before creating.
-5. Run `schema.sql` and `seed.sql` against the new database (via `npm run db:migrate` or the Portal Query Editor).
-6. Create the Static Web App, linking it to the GitHub repo, with: `app_location = apps/frontend`, `output_location = dist`, `api_location = apps/backend`.
-7. Set Application Settings: `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `JWT_SECRET`, `ALLOWED_ORIGIN`.
-8. Push to the configured branch — GitHub Actions builds and deploys both frontend and API automatically.
-9. Verify: open the SWA URL on a phone, confirm HTTPS, log in as Staff and Admin, place a test order, and confirm PWA installability on iOS and Android.
+1. Create a Supabase project and copy its transaction-pooler connection string.
+2. Run `schema.sql` and `seed.sql` against the new database (`npm run prod:db:migrate` — **drops every table**, fresh databases only).
+3. Deploy the Static Web App with `npm run prod:setup` (Bicep), linked to the GitHub repo.
+4. Set Application Settings: `DATABASE_URL`, `ALLOWED_ORIGINS`, and optionally `MM_TOKEN_SECRET` and the `VAPID_*` keys for admin notifications.
+5. Push to `main` — GitHub Actions builds and deploys both frontend and API.
+6. Verify: open the SWA URL on a phone, log in as Staff and Admin, place a test order, and confirm the PWA installs.
 
 ### 15.3 GitHub Actions Workflow
 
@@ -1099,7 +998,7 @@ Run both workspaces' tests from the root: `npm run test --workspaces`.
 
 ### 15.4 Database Migration Script
 
-`apps/backend/scripts/migrate.ts` connects using the same env vars as the runtime, reads `schema.sql` and `seed.sql`, and executes them in order (idempotent where appropriate). Exposed as `npm run db:migrate`.
+`apps/backend/scripts/migrate.ts` connects with `DATABASE_URL`. `migrate` runs `schema.sql` then `seed.sql` (drops every table); `apply <file>` runs one additive migration from `src/db/migrations/`. Exposed as `npm run local:db:migrate`, `npm run prod:db:migrate` and `npm run prod:db:apply -- <file>`.
 
 ---
 
@@ -1114,17 +1013,11 @@ Run both workspaces' tests from the root: `npm run test --workspaces`.
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "AzureWebJobsStorage": "",
     "NODE_ENV": "development",
-
-    "SQL_SERVER": "<server-name>.database.windows.net",
-    "SQL_DATABASE": "millets-momo-db",
-    "SQL_USER": "<admin-username>",
-    "SQL_PASSWORD": "<admin-password>",
-    "SQL_ENCRYPT": "true",
-
-    "JWT_SECRET": "<random-long-secret-string>",
-    "JWT_EXPIRY": "12h",
-
-    "ALLOWED_ORIGIN": "http://localhost:5173"
+    "DATABASE_URL": "postgresql://<user>:<password>@<host>:<port>/<database>",
+    "ALLOWED_ORIGINS": "http://localhost:5173",
+    "VAPID_PUBLIC_KEY": "",
+    "VAPID_PRIVATE_KEY": "",
+    "VAPID_SUBJECT": "mailto:you@example.com"
   }
 }
 ```
@@ -1139,11 +1032,10 @@ VITE_API_BASE_URL=http://localhost:7071/api
 
 | Variable | Where | Description |
 |---|---|---|
-| `SQL_SERVER` / `SQL_DATABASE` / `SQL_USER` / `SQL_PASSWORD` | Backend | Azure SQL connection details |
-| `SQL_ENCRYPT` | Backend | Must be `"true"` — Azure SQL requires encrypted connections |
-| `JWT_SECRET` | Backend | Signing secret for session JWTs |
-| `JWT_EXPIRY` | Backend | Token lifetime, default `"12h"` |
-| `ALLOWED_ORIGIN` | Backend | CORS allow-list — the deployed frontend URL |
+| `DATABASE_URL` | Backend | Postgres connection string; Supabase transaction pooler (port 6543) in production |
+| `MM_TOKEN_SECRET` | Backend | Optional override for the session-token signing secret |
+| `ALLOWED_ORIGINS` | Backend | Comma-separated CORS allow-list — the deployed frontend URL |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Backend | Web Push keys for admin notifications; push is off without them |
 | `VITE_API_BASE_URL` | Frontend | Base URL for API calls; same-origin `"/api"` in production |
 
 ---
@@ -1156,7 +1048,7 @@ The root `README.md` **MUST** contain the following sections in this order:
 2. Features — bullet list mirroring Section 2.1.
 3. Tech stack table (reuse Section 4).
 4. Monorepo structure — abbreviated version of the tree in Section 5.
-5. Prerequisites — Node.js 20+, npm, an Azure SQL Database (or local SQL Server) for development.
+5. Prerequisites — Node.js 22, npm, and Docker (for the local Postgres) for development.
 6. Local setup — step-by-step: clone, `npm install`, copy `.env.example` / `local.settings.example.json`, fill in values, `npm run db:migrate`, `npm run dev`.
 7. Default accounts — explains that Staff and Admin PINs are set via the seed/migration step (Section 9.5 / 16) and how to generate new PIN hashes with `scripts/generatePinHash.ts`.
 8. Build & test — `npm run build`, `npm run test`, `npm run lint` commands.
@@ -1176,7 +1068,7 @@ The root `README.md` **MUST** contain the following sections in this order:
 
 ### 18.2 Scalability / Concurrency
 
-Designed for ≤10 concurrent users. Azure SQL Free offer's 100,000 vCore-seconds/month and Azure Functions' 1M free executions/month both provide enormous headroom at this scale.
+Designed for ≤10 concurrent users. Supabase's Free tier and Azure Functions' 1M free executions/month both provide enormous headroom at this scale.
 
 ### 18.3 Accessibility
 
@@ -1238,7 +1130,7 @@ Designed for ≤10 concurrent users. Azure SQL Free offer's 100,000 vCore-second
 
 ### 19.6 Deployment
 
-1. App is deployed to Azure Static Web Apps with Azure SQL Database on the Free offer tier.
+1. App is deployed to Azure Static Web Apps with the database on Supabase Postgres (Free tier).
 2. Reachable over HTTPS from a mobile browser.
 3. All environment variables configured per Section 16 — no secrets committed to the repo.
 

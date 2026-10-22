@@ -4,14 +4,13 @@ const WARMUP_INTERVAL_MS = 30_000;
 let lastWarmupAt = 0;
 
 /**
- * Nudges the API so a cold Functions instance and a paused Azure SQL database
- * start waking immediately.
+ * Nudges the API so a cold Functions instance and its database connection
+ * start warming immediately.
  *
  * The app is used from long-lived mobile browser tabs. By the time someone
- * returns to a backgrounded tab both the Functions instance and the serverless
- * database are usually cold, and a resume takes tens of seconds — so the first
- * real request used to fail. Firing this on page load and on tab focus spends
- * that resume time while the user is still typing their PIN.
+ * returns to a backgrounded tab the Functions instance is usually cold, and
+ * the first real request pays for the start-up. Firing this on page load and
+ * on tab focus spends that time while the user is still typing their PIN.
  *
  * Fire-and-forget and self-throttling; failures are expected and ignored.
  */

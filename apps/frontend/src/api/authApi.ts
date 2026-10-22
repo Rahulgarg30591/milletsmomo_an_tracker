@@ -1,7 +1,7 @@
 import { client } from './client';
 import type { LoginRequest, LoginResponse } from 'shared';
 
-/** Generous: a paused Azure SQL database can take ~30s to resume. */
+/** Generous: a cold Functions instance plus the first database connection can take a while. */
 const LOGIN_TIMEOUT_MS = 45_000;
 const LOGIN_ATTEMPTS = 3;
 const RETRY_BACKOFF_MS = 1200;
