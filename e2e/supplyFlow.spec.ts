@@ -93,3 +93,59 @@ test.describe('partial supply', () => {
     await expect(page.getByText('Veg Momo Packet', { exact: true })).toBeVisible();
   });
 });
+
+test.describe('red sauce', () => {
+  const RED_SAUCE = 4;
+
+  test.beforeEach(async () => {
+    await resetData();
+  });
+
+  test('staff count red sauce packets against leftover plus supply, and admin sees yesterday’s leftover when ordering', async ({ page, request, context }) => {
+    // 2 left yesterday, 3 ordered today: 5 expected at close.
+    await seed(request, { leftover: { supplyItemId: RED_SAUCE, packetsLeft: 2 }, order: [{ supplyItemId: RED_SAUCE, quantity: 3 }] });
+
+    await signIn(page, 'staff');
+    await page.goto(`/day/${today()}/closing`);
+    const card = page.getByTestId('red-sauce-card');
+    await expect(card.getByTestId('red-sauce-expected')).toHaveText('Expected 5 packets (2 left yesterday + 3 received)');
+    await card.getByRole('button', { name: 'More red sauce packets' }).click();
+    await card.getByRole('button', { name: 'More red sauce packets' }).click();
+    await card.getByRole('button', { name: 'More red sauce packets' }).click();
+    await card.getByRole('button', { name: 'Fewer red sauce packets' }).click();
+    await expect(card.getByLabel('Red sauce packets left')).toHaveValue('2');
+
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.getByRole('button', { name: 'Copy Summary' }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Red Sauce: 2 Packets');
+    await page.getByRole('button', { name: 'Save Closing Stock' }).click();
+    await expect(page.getByTestId('closing-cash-card')).toBeVisible();
+
+    const saved = await request.get(`/api/supply/closing-stock?date=${today()}`, {
+      headers: { 'x-auth-token': await token(request, 'admin') },
+    });
+    const sauce = (await saved.json()).items.find((i: { supplyItemId: number }) => i.supplyItemId === RED_SAUCE);
+    expect(sauce.packetsLeft).toBe(2);
+
+    // Admin planning tomorrow's order sees what was left today.
+    await signIn(page, 'admin');
+    const tomorrow = new Date(`${today()}T00:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    await page.goto(`/admin/supply?date=${tomorrow.toISOString().slice(0, 10)}`);
+    await expect(page.getByTestId('red-sauce-left-yesterday')).toHaveText('Left yesterday: 2');
+  });
+
+  test('zero red sauce can be saved', async ({ page, request }) => {
+    await signIn(page, 'staff');
+    await page.goto(`/day/${today()}/closing`);
+    const card = page.getByTestId('red-sauce-card');
+    await expect(card.getByTestId('red-sauce-expected')).toHaveText('Expected 0 packets (0 left yesterday + 0 received)');
+    await page.getByRole('button', { name: 'Save Closing Stock' }).click();
+    await expect(page.getByTestId('closing-cash-card')).toBeVisible();
+    const saved = await request.get(`/api/supply/closing-stock?date=${today()}`, {
+      headers: { 'x-auth-token': await token(request, 'admin') },
+    });
+    const sauce = (await saved.json()).items.find((i: { supplyItemId: number }) => i.supplyItemId === RED_SAUCE);
+    expect(sauce.packetsLeft).toBe(0);
+  });
+});
