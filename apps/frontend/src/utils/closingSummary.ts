@@ -2,6 +2,10 @@ import { toDDMMYYYY } from './dateUtils';
 
 const SUMMARY_FILLINGS = ['Veg', 'Paneer', 'Cheese Corn'] as const;
 
+/** Red sauce is counted in whole packets, not pieces. */
+export const isRedSauce = (item: { category: string; displayName: string }) =>
+  item.category === 'sauce' && /red\s*sauce/i.test(item.displayName);
+
 function fillingFromDisplayName(displayName: string): string {
   if (/cheese\s*corn/i.test(displayName)) return 'Cheese Corn';
   if (/paneer/i.test(displayName)) return 'Paneer';
@@ -11,13 +15,13 @@ function fillingFromDisplayName(displayName: string): string {
 
 /**
  * The closing-stock message staff paste into chat: leftovers and wastage per
- * filling. Shared by the staff and admin closing-stock pages so both copy the
- * same text.
+ * filling, plus red sauce packets when counted. Shared by the staff and admin
+ * closing-stock pages so both copy the same text.
  */
 export function buildClosingSummary(
   date: string,
   items: { displayName: string; packets: number; pieces: number; wastage: number }[],
-  { withDate = true }: { withDate?: boolean } = {},
+  { withDate = true, redSauce = null }: { withDate?: boolean; redSauce?: number | null } = {},
 ): string {
   const data: Record<string, { packets: number; pieces: number; wastage: number }> = {};
   for (const item of items) {
@@ -43,6 +47,9 @@ export function buildClosingSummary(
       s = '0';
     }
     lines.push(`${f}: ${s}`);
+  }
+  if (redSauce !== null) {
+    lines.push(`Red Sauce: ${redSauce} ${redSauce === 1 ? 'Packet' : 'Packets'}`);
   }
   lines.push('');
   lines.push('Wastage:');

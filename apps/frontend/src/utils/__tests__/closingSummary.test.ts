@@ -27,3 +27,12 @@ describe('buildClosingSummary', () => {
     expect(text.endsWith('Wastage:\nNone')).toBe(true);
   });
 });
+
+describe('buildClosingSummary red sauce', () => {
+  it('adds red sauce packets to Left Over, including zero', () => {
+    const items = [{ displayName: 'Veg Momo Packet (24 Pcs)', packets: 1, pieces: 0, wastage: 0 }];
+    expect(buildClosingSummary('2026-11-24', items, { redSauce: 0 })).toContain('Cheese Corn: 0\nRed Sauce: 0 Packets\n');
+    expect(buildClosingSummary('2026-11-24', items, { redSauce: 1 })).toContain('Red Sauce: 1 Packet');
+    expect(buildClosingSummary('2026-11-24', items)).not.toContain('Red Sauce');
+  });
+});

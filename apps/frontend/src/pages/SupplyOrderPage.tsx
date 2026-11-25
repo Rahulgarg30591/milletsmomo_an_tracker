@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isRedSauce } from '../utils/closingSummary';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -274,6 +275,11 @@ export default function SupplyOrderPage() {
                 ₹{item.unitPrice} per {item.category === 'momo_packet' ? 'packet' : 'pack'}
                 {item.category === 'momo_packet' && ` · ${item.piecesPer} pcs`}
               </Typography>
+              {isRedSauce(item) && yesterdayStock?.isSubmitted && (
+                <Typography data-testid="red-sauce-left-yesterday" sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'secondary.main' }}>
+                  Left yesterday: {yesterdayStock.items.find((i) => i.supplyItemId === item.id)?.packetsLeft ?? 0}
+                </Typography>
+              )}
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', mt: 0.25, opacity: qty > 0 ? 1 : 0, minHeight: '1.1rem' }}>
                 {qty > 0 ? `₹${lineTotal.toLocaleString()}${item.category === 'momo_packet' ? ` · ${qty * item.piecesPer} pcs` : ''}` : ' '}
               </Typography>
@@ -535,9 +541,11 @@ export default function SupplyOrderPage() {
                       {item.piecesLeft > 0 && `${item.piecesLeft} pcs`}
                       {item.packetsLeft === 0 && item.piecesLeft === 0 && 'None'}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>
-                      {item.totalPiecesLeft} pieces total
-                    </Typography>
+                    {item.category === 'momo_packet' && (
+                      <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>
+                        {item.totalPiecesLeft} pieces total
+                      </Typography>
+                    )}
                   </Box>
                 ))}
               </Box>

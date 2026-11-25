@@ -26,7 +26,7 @@ import { trackPageView, trackClosingStockSubmit } from '../utils/tracking';
 import Toast from '../components/Toast';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import { vibrate, haptics } from '../theme/tokens';
-import { buildClosingSummary } from '../utils/closingSummary';
+import { buildClosingSummary, isRedSauce } from '../utils/closingSummary';
 import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
 import ClosingCashCard from '../components/ClosingCashCard';
 import { useAuth } from '../context/AuthContext';
@@ -211,6 +211,18 @@ export default function ClosingStockPage() {
     [closingStock],
   );
 
+  // Red sauce: whole packets only. Nothing on the menu maps to it, so what
+  // should be left is yesterday's leftover plus what came in today.
+  const redSauceItem = useMemo(() => closingStock?.items.find(isRedSauce), [closingStock]);
+  const redSauceExpected = useMemo(() => {
+    if (!redSauceItem) return null;
+    const id = redSauceItem.supplyItemId;
+    const leftover = yesterdayClosing?.items.find((i) => i.supplyItemId === id)?.packetsLeft ?? 0;
+    const v = (supplyVerification as SupplyVerification | null)?.items.find((i) => i.supplyItemId === id);
+    const received = v ? (v.actualQty ?? v.expectedQty) : 0;
+    return { leftover, received, total: leftover + received };
+  }, [redSauceItem, yesterdayClosing, supplyVerification]);
+
   const getExpected = (supplyItemId: number): ExpectedStockItem | undefined => {
     return expectedByItemId.get(supplyItemId);
   };
@@ -238,6 +250,16 @@ export default function ClosingStockPage() {
           conflictReason: current.conflictReason || null,
         };
       });
+      if (redSauceItem) {
+        items.push({
+          supplyItemId: redSauceItem.supplyItemId,
+          packetsLeft: closingItems[redSauceItem.supplyItemId]?.packets ?? 0,
+          piecesLeft: 0,
+          wastagePieces: 0,
+          hasConflict: false,
+          conflictReason: null,
+        });
+      }
       return submitClosingStock({ orderDate: targetDate, items });
     },
     onSuccess: () => {
@@ -326,7 +348,8 @@ export default function ClosingStockPage() {
       const c = closingItems[item.supplyItemId] ?? { packets: 0, pieces: 0, wastage: 0 };
       return { displayName: item.displayName, packets: c.packets, pieces: c.pieces, wastage: c.wastage };
     }),
-  ), [momoPacketItems, closingItems, targetDate]);
+    { redSauce: redSauceItem ? closingItems[redSauceItem.supplyItemId]?.packets ?? 0 : null },
+  ), [momoPacketItems, redSauceItem, closingItems, targetDate]);
 
   const handleCopySummary = useCallback(async () => {
     vibrate(haptics.light);
@@ -727,6 +750,42 @@ export default function ClosingStockPage() {
             })}
           </Box>
         </Paper>
+
+        {redSauceItem && redSauceExpected && (
+          <Paper data-testid="red-sauce-card" sx={{ mt: 2, p: 1.5, borderRadius: 2, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : theme.palette.divider}` }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>Red Sauce</Typography>
+                <Typography data-testid="red-sauce-expected" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                  Expected {redSauceExpected.total} packets ({redSauceExpected.leftover} left yesterday + {redSauceExpected.received} received)
+                </Typography>
+              </Box>
+              <IconButton
+                size="small"
+                aria-label="Fewer red sauce packets"
+                onClick={() => updatePackets(redSauceItem.supplyItemId, -1)}
+                sx={{ width: 36, height: 36, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1 }}
+              >
+                <Minus size={14} />
+              </IconButton>
+              <TextField
+                size="small"
+                value={closingItems[redSauceItem.supplyItemId]?.packets ?? 0}
+                onChange={(e) => setPackets(redSauceItem.supplyItemId, e.target.value)}
+                inputProps={{ inputMode: 'numeric', 'aria-label': 'Red sauce packets left', style: { textAlign: 'center', width: 36 } }}
+              />
+              <IconButton
+                size="small"
+                aria-label="More red sauce packets"
+                onClick={() => updatePackets(redSauceItem.supplyItemId, 1)}
+                sx={{ width: 36, height: 36, border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider}`, borderRadius: 1 }}
+              >
+                <Plus size={14} />
+              </IconButton>
+            </Box>
+            <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.5 }}>packets left · enter 0 if none</Typography>
+          </Paper>
+        )}
 
         <Button
           fullWidth

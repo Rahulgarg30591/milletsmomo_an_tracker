@@ -6,7 +6,7 @@ import { getCylinderRefills } from '../api/cylinderApi';
 import { getLeaveMonth, getTakeawayMonth } from '../api/staffApi';
 import { buildSalesText, buildLeavesText, buildTakeawaysText, toDDMMMYYYY } from './dayDetails';
 import { buildExpensesText } from './expensesText';
-import { buildClosingSummary } from './closingSummary';
+import { buildClosingSummary, isRedSauce } from './closingSummary';
 
 /**
  * The admin's single end-of-day message. The date heads it once, then:
@@ -32,7 +32,7 @@ export async function fetchDaySummary(qc: QueryClient, date: string): Promise<st
     ? `Closing Stock\n${buildClosingSummary(
       date,
       momos.map((i) => ({ displayName: i.displayName, packets: i.packetsLeft, pieces: i.piecesLeft, wastage: i.wastagePieces })),
-      { withDate: false },
+      { withDate: false, redSauce: closing.items.find(isRedSauce)?.packetsLeft ?? null },
     )}`
     : 'Closing Stock\nNot recorded yet';
 

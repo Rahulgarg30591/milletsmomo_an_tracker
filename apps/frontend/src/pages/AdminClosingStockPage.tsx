@@ -22,7 +22,7 @@ import { addDays, formatDateLabel, getToday } from '../utils/dateUtils';
 import { trackPageView } from '../utils/tracking';
 import SkeletonLoader from '../components/animations/SkeletonLoader';
 import Toast from '../components/Toast';
-import { buildClosingSummary } from '../utils/closingSummary';
+import { buildClosingSummary, isRedSauce } from '../utils/closingSummary';
 import ClipboardFallbackDialog from '../components/ClipboardFallbackDialog';
 import { copyToClipboard } from '../utils/clipboard';
 import { vibrate, haptics } from '../theme/tokens';
@@ -97,6 +97,7 @@ export default function AdminClosingStockPage() {
   const momos = rows.filter((r) => r.category === 'momo_packet');
   const others = rows.filter((r) => r.category !== 'momo_packet');
   const recorded = !!closing?.isSubmitted;
+  const redSauceRow = recorded ? others.find(isRedSauce) : undefined;
   const mismatches = momos.filter((r) => r.difference !== 0 || r.hasConflict).length;
   const totals = momos.reduce(
     (t, r) => ({ left: t.left + r.actualTotalPieces, expected: t.expected + r.expectedTotalPieces, wastage: t.wastage + r.wastagePieces }),
@@ -112,6 +113,7 @@ export default function AdminClosingStockPage() {
     const text = buildClosingSummary(
       date,
       momos.map((r) => ({ displayName: r.displayName, packets: r.actualPackets, pieces: r.actualPieces, wastage: r.wastagePieces })),
+      { redSauce: redSauceRow ? redSauceRow.actualPackets : null },
     );
     if (await copyToClipboard(text)) {
       vibrate(haptics.success);
@@ -347,7 +349,9 @@ export default function AdminClosingStockPage() {
                     {others.map((r) => (
                       <Box key={r.supplyItemId} sx={{ px: 1.5, py: 0.75, display: 'flex', justifyContent: 'space-between', borderTop: 1, borderColor: 'divider' }}>
                         <Typography sx={{ fontSize: '0.85rem', color: 'text.primary' }}>{r.displayName}</Typography>
-                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{r.actualPackets} left</Typography>
+                        <Typography data-testid={isRedSauce(r) ? 'admin-red-sauce' : undefined} sx={{ fontSize: '0.85rem', fontWeight: 600, color: r.actualTotalPieces === r.expectedTotalPieces ? 'text.primary' : warn }}>
+                          {r.actualPackets} left · expected {r.expectedTotalPieces}
+                        </Typography>
                       </Box>
                     ))}
                   </Paper>

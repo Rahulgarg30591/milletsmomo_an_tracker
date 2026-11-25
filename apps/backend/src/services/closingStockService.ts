@@ -100,6 +100,7 @@ function toClosingStockItem(
  * The list is the union of:
  *   - every active momo packet, so a type left out of today's supply order
  *     (or a day with no order at all) can still be counted;
+ *   - red sauce, counted in packets every day to plan the next order;
  *   - every item on today's supply order, which is how sauces and dips appear;
  *   - every item with packets or pieces left over from yesterday's count;
  *   - every item already counted today, so a recorded row never disappears.
@@ -116,6 +117,7 @@ export async function getClosingStock(date: string): Promise<ClosingStock | null
     `SELECT si.id, si.display_name, si.category, si.pieces_per
      FROM supply_items si
      WHERE (si.category = 'momo_packet' AND si.is_active = TRUE)
+        OR (si.name = 'red_sauce' AND si.is_active = TRUE)
         OR si.id IN (
           SELECT doi.supply_item_id
           FROM daily_supply_order_items doi

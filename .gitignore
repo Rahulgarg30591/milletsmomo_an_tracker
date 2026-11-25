@@ -43,3 +43,8 @@ graphify-out
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Marketing assets kept locally, not in the repo
+signboard_print/
+zomato_photos/
+Millets_Momo_Adarsh_Nagar_*.png

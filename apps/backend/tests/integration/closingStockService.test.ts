@@ -87,11 +87,12 @@ describe('closingStockService against a real database', () => {
   });
 
   describe('without a supply order for the day', () => {
-    it('falls back to the active momo packets so a count can still be taken', async () => {
+    it('falls back to the active momo packets and red sauce so a count can still be taken', async () => {
       const stock = await getClosingStock(DAY);
       expect(stock).not.toBeNull();
       expect(stock!.items.length).toBeGreaterThan(0);
-      expect(stock!.items.every((i) => i.category === 'momo_packet')).toBe(true);
+      // Red sauce is counted every day, in packets, to plan the next order.
+      expect(stock!.items.filter((i) => i.category !== 'momo_packet').map((i) => i.displayName)).toEqual(['Red Sauce']);
       expect(stock!.isSubmitted).toBe(false);
     });
 
